@@ -1,14 +1,11 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! A crate with a strongly-typed wrapper for an [Advent of Code] leaderboard,
+//! along with ways to fetch them from the AoC website.
+//! 
+//! [Advent of Code]: https://adventofcode.com/
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#![deny(missing_docs)]
+#![deny(rustdoc::missing_crate_level_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod aoc;
