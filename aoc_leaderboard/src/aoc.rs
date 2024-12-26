@@ -11,9 +11,8 @@ use serde_with::PickFirst;
 
 /// Content of an [Advent of Code] private leaderboard.
 ///
-/// Private leaderboards can be fetched from the [Advent of Code] website
+/// Private leaderboards can be fetched from the Advent of Code website
 /// via their API URL: `https://adventofcode.com/{year}/leaderboard/private/view/{leaderboard_id}.json`
-///
 ///
 /// Leaderboards exist across all years, but can only be fetched for a specific
 /// year at a time.
@@ -42,6 +41,7 @@ pub struct Leaderboard {
 }
 
 #[cfg(feature = "http")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "http")))]
 impl Leaderboard {
     /// Fetches this leaderboard's data from the [Advent of Code] website.
     ///
