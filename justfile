@@ -73,6 +73,11 @@ update *extra_args:
 @_open-tarpaulin:
     ./tarpaulin-report.html
 
+# Run `cargo llvm-cov` to produce code coverage
+llvm-cov *extra_args:
+    cargo +nightly llvm-cov --codecov --output-path codecov.json {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{target_tuple_flag}} {{extra_args}}
+    cargo +nightly llvm-cov report --html {{ if env('CI', '') == '' { '--open' } else { '' } }}
+
 # Generate documentation with rustdoc
 doc: _doc
 
