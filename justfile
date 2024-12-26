@@ -20,10 +20,10 @@ target_tuple_flag := if target_tuple != "" { "--target " + target_tuple } else {
 release := "false"
 release_flag := if release == "true" { "--release" } else { "" }
 
-# Note: there seems to be an issue in `cargo-tarpaulin` when using Rust 1.75.0 or later - it reports some missing line coverage.
-# I've entered an issue: https://github.com/xd009642/tarpaulin/issues/1438
-# In the meantime, let's pin the Rust version used for code coverage to 1.74.1 until we know what's happening.
-cargo_tarpaulin := tool + (if toolchain != "" { " +" + toolchain } else { " +1.74.1" }) + " tarpaulin"
+workspace := "true"
+workspace_flag := if workspace == "true" { "--workspace" } else { "" }
+
+cargo_tarpaulin := tool + " tarpaulin"
 
 [private]
 default:
@@ -38,7 +38,7 @@ tidy: clippy fmt
 
 # Run clippy on workspace files
 clippy:
-    {{cargo}} clippy --workspace {{all_targets_flag}} {{all_features_flag}} {{target_tuple_flag}} -- -D warnings
+    {{cargo}} clippy {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{target_tuple_flag}} -- -D warnings
 
 # Run rustfmt on workspace files
 fmt:
@@ -46,15 +46,15 @@ fmt:
 
 # Run `cargo check` on workspace
 check *extra_args:
-    {{cargo}} check --workspace {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+    {{cargo}} check {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo build` on workspace
 build *extra_args:
-    {{cargo}} build --workspace {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+    {{cargo}} build {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo test` on workspace
 test *extra_args:
-    {{cargo}} test --workspace {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+    {{cargo}} test {{workspace_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo update` to update dependencies in Cargo.lock
 update *extra_args:
@@ -77,35 +77,35 @@ update *extra_args:
 doc: _doc
 
 _doc $RUSTDOCFLAGS="-D warnings":
-    {{cargo}} doc {{ if env('CI', '') != '' { '--no-deps' } else { '--open' } }} --workspace {{all_features_flag}} {{message_format_flag}}
+    {{cargo}} doc {{ if env('CI', '') != '' { '--no-deps' } else { '--open' } }} {{workspace_flag}} {{all_features_flag}} {{message_format_flag}}
 
 # Check doc coverage with Nightly rustdoc
 doc-coverage: _doc-coverage
 
 _doc-coverage $RUSTDOCFLAGS="-Z unstable-options --show-coverage":
-    cargo +nightly doc --no-deps --workspace {{all_features_flag}} {{message_format_flag}}
+    cargo +nightly doc --no-deps {{workspace_flag}} {{all_features_flag}} {{message_format_flag}}
 
 [private]
 minimize:
-    {{cargo}} hack --remove-dev-deps --workspace
+    {{cargo}} hack --remove-dev-deps {{workspace_flag}}
     cargo +nightly update -Z minimal-versions
 
 # Run `cargo minimal-versions check` on workspace
 check-minimal: prep _check-minimal-only && (_rimraf "target-minimal") unprep
 
 _check-minimal-only: (_rimraf "target-minimal")
-    {{cargo}} minimal-versions check --target-dir target-minimal --workspace --lib --bins {{all_features_flag}} {{message_format_flag}}
+    {{cargo}} minimal-versions check --target-dir target-minimal {{workspace_flag}} --lib --bins {{all_features_flag}} {{message_format_flag}}
 
 # Run `cargo msrv` with `cargo minimal-versions check`
 msrv-minimal: (prep "--manifest-backup-suffix .msrv-prep.outer.bak") && (_rimraf "target-minimal") (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
-    {{cargo}} msrv find -- just all_features="{{all_features}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _check-minimal-only
+    {{cargo}} msrv find -- just workspace="{{workspace}}" all_features="{{all_features}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _check-minimal-only
 
 # Run `cargo msrv` with `cargo check`
 msrv *extra_args: (prep "--manifest-backup-suffix .msrv-prep.outer.bak --no-merge-pinned-dependencies") && (_rimraf "target-msrv") (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
-    {{cargo}} msrv find -- just all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _msrv-check {{extra_args}}
+    {{cargo}} msrv find -- just workspace="{{workspace}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _msrv-check {{extra_args}}
 
 _msrv-check *extra_args: (_rimraf "target-msrv")
-    just all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" check --target-dir target-msrv {{extra_args}}
+    just workspace="{{workspace}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" check --target-dir target-msrv {{extra_args}}
 
 # Perform `cargo publish` dry-run
 test-package *extra_args:
@@ -113,11 +113,11 @@ test-package *extra_args:
 
 # Run `cargo msrv-prep` on workspace
 prep *extra_args:
-    {{cargo}} msrv-prep --workspace {{extra_args}}
+    {{cargo}} msrv-prep {{workspace_flag}} {{extra_args}}
 
 # Run `cargo msrv-unprep` on workspace
 unprep *extra_args:
-    {{cargo}} msrv-unprep --workspace {{extra_args}}
+    {{cargo}} msrv-unprep {{workspace_flag}} {{extra_args}}
 
 # ----- Utilities -----
 

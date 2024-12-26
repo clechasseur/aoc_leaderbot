@@ -25,3 +25,6 @@ docker-compose.override.yml
 *.profraw
 cobertura.xml
 tarpaulin-report.*
+
+# Local environment overrides
+.env

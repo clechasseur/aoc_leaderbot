@@ -29,6 +29,5 @@
 /bin
 /justfile
 /rustfmt.toml
-/target
-/target-tarpaulin
+/target*
 /tarpaulin.toml
