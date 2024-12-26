@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use serde_with::DisplayFromStr;
-use serde_with::PickFirst;
 
 /// Content of an [Advent of Code] private leaderboard.
 ///
@@ -23,7 +22,7 @@ use serde_with::PickFirst;
 pub struct Leaderboard {
     /// Year of the event for this leaderboard.
     #[serde(rename = "event")]
-    #[serde_as(as = "PickFirst<(_, DisplayFromStr)>")]
+    #[serde_as(as = "DisplayFromStr")]
     pub year: i32,
 
     /// ID of the [Advent of Code] user that owns this leaderboard.
@@ -36,7 +35,7 @@ pub struct Leaderboard {
     pub day1_ts: u64,
 
     /// Members of this leaderboard.
-    #[serde_as(as = "HashMap<PickFirst<(_, DisplayFromStr)>, _>")]
+    #[serde_as(as = "HashMap<DisplayFromStr, _>")]
     pub members: HashMap<u64, LeaderboardMember>,
 }
 
@@ -125,7 +124,7 @@ pub struct LeaderboardMember {
     pub last_star_ts: u64,
 
     /// Information about completed puzzles for the event.
-    #[serde_as(as = "HashMap<PickFirst<(_, DisplayFromStr)>, _>")]
+    #[serde_as(as = "HashMap<DisplayFromStr, _>")]
     pub completion_day_level: HashMap<u32, CompletionDayLevel>,
 }
 
