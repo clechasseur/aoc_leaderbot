@@ -58,6 +58,7 @@ impl Leaderboard {
     /// overuse this method.
     ///
     /// [Advent of Code]: https://adventofcode.com/
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub async fn get<S>(year: i32, id: u64, aoc_session: S) -> crate::Result<Leaderboard>
     where
         S: AsRef<str>,
