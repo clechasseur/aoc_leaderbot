@@ -16,11 +16,11 @@ jobs:
         arch: [ aarch64, x86_64 ]
         platform: [ unknown-linux-gnu, unknown-linux-musl, unknown-freebsd, apple-darwin, pc-windows-msvc ]
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
           - platform: apple-darwin
-            os: macos-latest
+            os: macos-14
           - platform: pc-windows-msvc
-            os: windows-latest
+            os: windows-2022
           - crt-static: false
           - link-self-contained: false
           - platform: pc-windows-msvc
