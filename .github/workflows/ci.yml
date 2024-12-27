@@ -83,6 +83,10 @@ jobs:
           key: all-features-${{ matrix.all-features }}-msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
           cache-on-failure: true
 
+      - name: Check cargo bin directory content
+        if: ${{ matrix.os == 'ubuntu-24.04' }}
+        run: ls $HOME/.cargo/bin
+
       - name: Install required tools
         uses: taiki-e/install-action@2c3c8dfabf5933531aca0613c6b0c173fa51745e # v2.46.15
         with:
