@@ -94,6 +94,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check cargo bin directory content after install
+        if: ${{ matrix.os == 'ubuntu-24.04' }}
+        run: ls $HOME/.cargo/bin
+
       - name: Run checks using cargo-minimal-versions
         run: just all_features=${{ matrix.all-features }} check-minimal
 
