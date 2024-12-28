@@ -62,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ 1.78.0 ]
+        toolchain: [ 1.70.0 ]
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         all-features: [ false, true ]
     runs-on: ${{ matrix.os }}
@@ -83,20 +83,12 @@ jobs:
           key: all-features-${{ matrix.all-features }}-msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
           cache-on-failure: true
 
-      - name: Check cargo bin directory content
-        if: ${{ matrix.os == 'ubuntu-24.04' }}
-        run: ls $HOME/.cargo/bin
-
       - name: Install required tools
         uses: taiki-e/install-action@2c3c8dfabf5933531aca0613c6b0c173fa51745e # v2.46.15
         with:
           tool: just,cargo-hack,cargo-minimal-versions,cargo-msrv,cargo-msrv-prep
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Check cargo bin directory content after install
-        if: ${{ matrix.os == 'ubuntu-24.04' }}
-        run: ls $HOME/.cargo/bin
 
       - name: Run checks using cargo-minimal-versions
         run: just all_features=${{ matrix.all-features }} check-minimal
@@ -106,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ 1.78.0, stable, beta, nightly ]
+        toolchain: [ 1.75.0, stable, beta, nightly ]
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         ignore-lock: [ false, true ]
         all-features: [ false, true ]
@@ -117,7 +109,7 @@ jobs:
           - toolchain: nightly
             experimental: true
         exclude:
-          - toolchain: 1.78.0
+          - toolchain: 1.75.0
             ignore-lock: true
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
