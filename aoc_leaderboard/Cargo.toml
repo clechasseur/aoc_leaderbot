@@ -17,7 +17,7 @@ description = "Strongly-typed wrapper for Advent of Code leaderboard data"
 keywords = [ "aoc", "advent-of-code", "api", "http" ]
 categories = [ "api-bindings", "asynchronous", "data-structures" ]
 
-include = [ "src/**/*", "tests/**/*", "resources/tests/**/*", "build.rs", "../LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "resources/tests/**/*", "examples/**/*", "build.rs", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -27,6 +27,10 @@ rustc-args = [ "--cfg", "docsrs" ]
 [lints.rust.unexpected_cfgs]
 level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+
+[[example]]
+name = "http"
+required-features = ["http"]
 
 [features]
 http = ["dep:reqwest", "dep:serde_json"]
@@ -39,6 +43,7 @@ serde_with = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+anyhow = { workspace = true }
 assert_matches = { workspace = true }
 dotenvy = { workspace = true }
 serde_json = { workspace = true }

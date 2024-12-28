@@ -33,6 +33,10 @@ default:
 run *extra_args:
     {{cargo}} run {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
 
+# Run an example
+teach example_name *extra_args:
+    {{cargo}} run {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} --example {{example_name}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
+
 # Run clippy and rustfmt on workspace files
 tidy: clippy fmt
 
@@ -112,9 +116,9 @@ msrv *extra_args: (prep "--manifest-backup-suffix .msrv-prep.outer.bak --no-merg
 _msrv-check *extra_args: (_rimraf "target-msrv")
     just workspace="{{workspace}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" check --target-dir target/msrv-target {{extra_args}}
 
-# Perform `cargo publish` dry-run
-test-package *extra_args:
-    {{cargo}} publish --dry-run {{extra_args}}
+# Perform `cargo publish` dry-run on a package
+test-package package_name *extra_args:
+    {{cargo}} publish --package {{package_name}} --dry-run {{extra_args}}
 
 # Run `cargo msrv-prep` on workspace
 prep *extra_args:
