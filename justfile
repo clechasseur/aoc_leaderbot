@@ -33,6 +33,10 @@ default:
 run *extra_args:
     {{cargo}} run {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
 
+# Run an example
+teach example_name *extra_args:
+    {{cargo}} run {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} --example {{example_name}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
+
 # Run clippy and rustfmt on workspace files
 tidy: clippy fmt
 
