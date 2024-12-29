@@ -26,5 +26,9 @@ derive_builder = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 
+[dev-dependencies]
+assert_matches = { workspace = true }
+serial_test = { workspace = true }
+
 [build-dependencies]
 rustc_version = { workspace = true }
