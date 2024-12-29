@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["aoc_leaderboard"]
+members = ["aoc_leaderboard", "aoc_leaderbot_lib"]
 
 [workspace.package]
 authors = [ "Charles Lechasseur <shiftingbeard@outlook.com>" ]
@@ -13,6 +13,8 @@ repository = "https://github.com/clechasseur/aoc_leaderbot"
 [workspace.dependencies]
 anyhow = "1.0.95"
 assert_matches = "1.5.0"
+chrono = "0.4.39"
+derive_builder = "0.20.2"
 dotenvy = "0.15.7"
 reqwest = "0.12.12"
 rustc_version = "0.4.1"

@@ -1,0 +1,30 @@
+[package]
+name = "aoc_leaderbot_lib"
+version = "0.1.0"
+authors.workspace = true
+edition = "2021"
+
+license.workspace = true
+
+homepage.workspace = true
+repository.workspace = true
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+
+[features]
+default = ["config-env"]
+
+config-static = ["derive_builder"]
+config-env = ["config-static"]
+
+[dependencies]
+aoc_leaderboard = { path = "../aoc_leaderboard", features = ["http"] }
+chrono = { workspace = true }
+derive_builder = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+
+[build-dependencies]
+rustc_version = { workspace = true }

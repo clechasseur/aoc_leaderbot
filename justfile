@@ -83,10 +83,10 @@ llvm-cov *extra_args:
     cargo +nightly llvm-cov report --html {{ if env('CI', '') == '' { '--open' } else { '' } }}
 
 # Generate documentation with rustdoc
-doc: _doc
+doc package_name='': (_doc package_name)
 
-_doc $RUSTDOCFLAGS="-D warnings":
-    {{cargo}} doc {{ if env('CI', '') != '' { '--no-deps' } else { '--open' } }} {{workspace_flag}} {{all_features_flag}} {{message_format_flag}}
+_doc package_name='' $RUSTDOCFLAGS="-D warnings":
+    {{cargo}} doc {{ if env('CI', '') != '' { '--no-deps' } else { '--open' } }} {{ if package_name != '' { '--package ' + package_name } else { workspace_flag } }} {{all_features_flag}} {{message_format_flag}}
 
 # Check doc coverage with Nightly rustdoc
 doc-coverage: _doc-coverage
