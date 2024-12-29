@@ -73,6 +73,7 @@ impl From<env::VarError> for EnvVarError {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use assert_matches::assert_matches;
 

@@ -32,6 +32,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use assert_matches::assert_matches;
     use uuid::Uuid;
