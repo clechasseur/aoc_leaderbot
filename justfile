@@ -99,21 +99,21 @@ minimize:
     {{cargo}} hack --remove-dev-deps {{workspace_flag}}
     cargo +nightly update -Z minimal-versions
 
-# Run `cargo minimal-versions check` on workspace
-check-minimal: prep _check-minimal-only && (_rimraf "target-minimal") unprep
+# Run `cargo minimal-versions check`
+check-minimal package_name='': prep (_check-minimal-only package_name) && unprep
 
-_check-minimal-only: (_rimraf "target-minimal")
-    {{cargo}} minimal-versions check --target-dir target/check-minimal-target {{workspace_flag}} --lib --bins {{all_features_flag}} {{message_format_flag}}
+_check-minimal-only package_name='': (_rimraf "target/check-minimal-target")
+    {{cargo}} minimal-versions check --target-dir target/check-minimal-target {{ if package_name != '' { '--package ' + package_name } else { workspace_flag } }} --lib --bins {{all_features_flag}} {{message_format_flag}}
 
 # Run `cargo msrv` with `cargo minimal-versions check`
-msrv-minimal: (prep "--manifest-backup-suffix .msrv-prep.outer.bak") && (_rimraf "target-minimal") (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
-    {{cargo}} msrv find -- just workspace="{{workspace}}" all_features="{{all_features}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _check-minimal-only
+msrv-minimal package_name='': (prep "--manifest-backup-suffix .msrv-prep.outer.bak") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
+    {{cargo}} msrv find -- just workspace="{{workspace}}" all_features="{{all_features}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _check-minimal-only {{package_name}}
 
 # Run `cargo msrv` with `cargo check`
-msrv *extra_args: (prep "--manifest-backup-suffix .msrv-prep.outer.bak --no-merge-pinned-dependencies") && (_rimraf "target-msrv") (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
+msrv *extra_args: (prep "--manifest-backup-suffix .msrv-prep.outer.bak --no-merge-pinned-dependencies") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
     {{cargo}} msrv find -- just workspace="{{workspace}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _msrv-check {{extra_args}}
 
-_msrv-check *extra_args: (_rimraf "target-msrv")
+_msrv-check *extra_args: (_rimraf "target/msrv-target")
     just workspace="{{workspace}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" check --target-dir target/msrv-target {{extra_args}}
 
 # Perform `cargo publish` dry-run on a package
@@ -122,11 +122,11 @@ test-package package_name *extra_args:
 
 # Run `cargo msrv-prep` on workspace
 prep *extra_args:
-    {{cargo}} msrv-prep {{workspace_flag}} {{extra_args}} --backup-root-manifest
+    {{cargo}} msrv-prep {{workspace_flag}} --backup-root-manifest {{extra_args}}
 
 # Run `cargo msrv-unprep` on workspace
 unprep *extra_args:
-    {{cargo}} msrv-unprep {{workspace_flag}} {{extra_args}} --backup-root-manifest
+    {{cargo}} msrv-unprep {{workspace_flag}} --backup-root-manifest {{extra_args}}
 
 # ----- Utilities -----
 

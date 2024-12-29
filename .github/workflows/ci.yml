@@ -58,13 +58,16 @@ jobs:
           args: --all
 
   msrv-check:
-    name: MSRV check for Rust ${{ matrix.toolchain }} on ${{ matrix.os }}${{ matrix.all-features && ' with all features' || '' }}
+    name: MSRV check of ${{ matrix.package }} for Rust ${{ matrix.toolchain }} on ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ 1.70.0 ]
+        package: [ "aoc_leaderboard", "aoc_leaderbot_lib" ]
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
-        all-features: [ false, true ]
+        include:
+          - toolchain: 1.75.0
+          - package: "aoc_leaderboard"
+            toolchain: 1.70.0
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -79,19 +82,19 @@ jobs:
       - name: Rust Cache
         uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
         with:
-          prefix-key: v8-rust
-          key: all-features-${{ matrix.all-features }}-msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
+          prefix-key: v9-rust
+          key: package-${{ matrix.package }}-msrv-pins-files-${{ hashFiles('**/msrv-pins.toml') }}
           cache-on-failure: true
 
       - name: Install required tools
         uses: taiki-e/install-action@333ea3e9a483e78588ef8e157263f263a7640903 # v2.47.12
         with:
-          tool: just,cargo-hack,cargo-minimal-versions,cargo-msrv,cargo-msrv-prep
+          tool: just,cargo-hack,cargo-minimal-versions,cargo-msrv-prep
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run checks using cargo-minimal-versions
-        run: just all_features=${{ matrix.all-features }} check-minimal
+        run: just toolchain=${{ matrix.toolchain }} check-minimal ${{ matrix.package }}
 
   build:
     name: Build for Rust ${{ matrix.toolchain }}${{ matrix.experimental && ' (experimental)' || '' }} on ${{ matrix.os }}${{ matrix.ignore-lock && ' without Cargo.lock' || '' }}${{ matrix.all-features && ' with all features' || '' }}
@@ -160,13 +163,6 @@ jobs:
         with:
           toolchain: nightly
           cache: false
-
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3 # v2.7.7
-        with:
-          cache-targets: false
-          cache-on-failure: true
-
       - name: Install required tools
         uses: taiki-e/install-action@333ea3e9a483e78588ef8e157263f263a7640903 # v2.47.12
         with:
