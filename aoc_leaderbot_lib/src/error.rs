@@ -23,8 +23,14 @@ pub enum Error {
     },
 
     /// Error while getting the value of an environment variable.
-    #[error(transparent)]
-    Env(#[from] EnvVarError),
+    #[error("error fetching environment variable {var_name}: {source}")]
+    Env {
+        /// Name of environment variable.
+        var_name: String,
+        
+        /// Error that occurred while trying to get environment variable's value.
+        source: EnvVarError,
+    },
 
     /// Error while fetching leaderboard data from the AoC website.
     #[error(transparent)]
@@ -47,7 +53,7 @@ pub enum EnvVarError {
     NotUnicode(OsString),
 
     /// Environment variable was expected to contain an integer value but didn't.
-    #[error("expected int value, found {actual}")]
+    #[error("expected int value, found {actual}: {source}")]
     IntExpected {
         /// The actual content of the environment variable.
         actual: String,
@@ -66,8 +72,31 @@ impl From<env::VarError> for EnvVarError {
     }
 }
 
-impl From<env::VarError> for Error {
-    fn from(value: env::VarError) -> Self {
-        EnvVarError::from(value).into()
+#[cfg(test)]
+mod tests {
+    use assert_matches::assert_matches;
+    
+    use super::*;
+    
+    mod from_env_var_error_for_env_var_error {
+        use super::*;
+        
+        #[test]
+        fn test_not_present() {
+            let err = env::VarError::NotPresent;
+            let actual: EnvVarError = err.into();
+            
+            assert_matches!(actual, EnvVarError::NotPresent);
+        }
+
+        #[test]
+        fn test_not_unicode() {
+            let err = env::VarError::NotUnicode("foo".into());
+            let actual: EnvVarError = err.into();
+
+            assert_matches!(actual, EnvVarError::NotUnicode(value) => {
+                assert_eq!(value, "foo");
+            });
+        }
     }
 }

@@ -71,12 +71,12 @@ pub struct LeaderbotOutput {
 }
 
 impl LeaderbotOutput {
-    /// Creates a new [`LeaderboardOutput`].
+    /// Creates a new [`LeaderbotOutput`].
     pub fn new(new_members: HashSet<u64>, members_with_new_stars: HashSet<u64>) -> Self {
         Self { new_members, members_with_new_stars }
     }
 
-    /// Creates a new [`LeaderboardOutput`] if there are new members and/or members
+    /// Creates a new [`LeaderbotOutput`] if there are new members and/or members
     /// with new stars, otherwise returns `None`.
     pub fn if_needed(
         new_members: HashSet<u64>,
@@ -100,7 +100,7 @@ pub trait LeaderbotReporter {
     /// The method receives references to both the previous version of the leaderboard,
     /// the current version of the leaderboard, and the lists of changes detected.
     ///
-    /// IDs stored in the [`LeaderboardOutput`] point to [leaderboard members] found
+    /// IDs stored in the [`LeaderbotOutput`] point to [leaderboard members] found
     /// in the current version of the leaderboard.
     ///
     /// [leaderboard members]: Leaderboard::members
@@ -119,6 +119,10 @@ pub trait LeaderbotReporter {
 /// the first run), saves the current leaderboard to storage and exits; otherwise, computes
 /// if the leaderboard has new members and/or members who got new stars and calls the
 /// [`reporter`] if some diff is found.
+/// 
+/// [`config`]: LeaderbotConfig
+/// [`storage`]: LeaderbotStorage
+/// [`reporter`]: LeaderbotReporter
 pub async fn run_bot<C, S, R>(config: C, storage: S, reporter: R) -> crate::Result<()>
 where
     C: LeaderbotConfig,
