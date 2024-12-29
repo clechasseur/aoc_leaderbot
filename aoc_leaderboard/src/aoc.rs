@@ -75,15 +75,24 @@ impl Leaderboard {
         B: AsRef<str>,
         S: AsRef<str>,
     {
-        let client = reqwest::Client::builder().build()?;
+        // When trying to fetch the data of a private leaderboard you do
+        // not have access to, the AoC website redirects to the main leaderboard,
+        // so we won't follow redirect and consider that an unauthorized error.
+        let client = reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::limited(0))
+            .build()?;
 
-        Ok(client
+        let response = client
             .get(format!("{}/{year}/leaderboard/private/view/{id}.json", base.as_ref()))
             .header("Cookie", format!("session={}", aoc_session.as_ref()))
             .send()
-            .await?
-            .json()
-            .await?)
+            .await
+            .and_then(reqwest::Response::error_for_status);
+        match response {
+            Ok(response) => Ok(response.json().await?),
+            Err(err) if err.is_redirect() => Err(crate::Error::NoAccess),
+            Err(err) => Err(err.into()),
+        }
     }
 }
 
@@ -199,6 +208,7 @@ mod tests {
 
         #[cfg(feature = "http")]
         mod get {
+            use reqwest::StatusCode;
             use wiremock::http::Method;
             use wiremock::matchers::{header, method, path};
             use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -216,7 +226,7 @@ mod tests {
                 Mock::given(method(Method::GET))
                     .and(path(format!("/{year}/leaderboard/private/view/{id}.json")))
                     .and(header("Cookie", format!("session={aoc_session}")))
-                    .respond_with(ResponseTemplate::new(200).set_body_json(leaderboard))
+                    .respond_with(ResponseTemplate::new(StatusCode::OK).set_body_json(leaderboard))
                     .mount(&mock_server)
                     .await;
 
@@ -224,7 +234,7 @@ mod tests {
             }
 
             #[tokio::test]
-            async fn test_get_leaderboard() {
+            async fn success() {
                 let year = 2024;
                 let id = 12345;
                 let aoc_session = "aoc_session";
@@ -235,6 +245,96 @@ mod tests {
                     .await
                     .unwrap();
                 assert_eq!(expected, actual);
+            }
+
+            mod errors {
+                use assert_matches::assert_matches;
+
+                use super::*;
+
+                async fn get_mock_server_with_leaderboard_with_no_access(
+                    year: i32,
+                    id: u64,
+                ) -> MockServer {
+                    let mock_server = MockServer::start().await;
+
+                    // When you try to fetch a leaderboard you don't have access to,
+                    // the AoC website redirects to the main leaderboard.
+                    Mock::given(method(Method::GET))
+                        .and(path(format!("/{year}/leaderboard/private/view/{id}.json")))
+                        .respond_with(
+                            ResponseTemplate::new(StatusCode::SEE_OTHER)
+                                .insert_header("location", format!("/{year}/leaderboard")),
+                        )
+                        .mount(&mock_server)
+                        .await;
+
+                    mock_server
+                }
+
+                async fn get_mock_server_with_leaderboard_with_invalid_json(
+                    year: i32,
+                    id: u64,
+                    aoc_session: &str,
+                ) -> MockServer {
+                    let mock_server = MockServer::start().await;
+
+                    Mock::given(method(Method::GET))
+                        .and(path(format!("/{year}/leaderboard/private/view/{id}.json")))
+                        .and(header("Cookie", format!("session={aoc_session}")))
+                        .respond_with(
+                            ResponseTemplate::new(StatusCode::OK)
+                                .set_body_string("{\"members\":")
+                                .insert_header("Content-Type", "application/json"),
+                        )
+                        .mount(&mock_server)
+                        .await;
+
+                    mock_server
+                }
+
+                #[tokio::test]
+                async fn no_access() {
+                    let year = 2024;
+                    let id = 12345;
+                    let aoc_session = "aoc_session";
+                    let mock_server =
+                        get_mock_server_with_leaderboard_with_no_access(year, id).await;
+
+                    let actual =
+                        Leaderboard::get_from(mock_server.uri(), year, id, aoc_session).await;
+                    assert_matches!(actual, Err(crate::Error::NoAccess));
+                }
+
+                #[tokio::test]
+                async fn not_found() {
+                    let mock_server = MockServer::start().await;
+
+                    let year = 2024;
+                    let id = 12345;
+                    let aoc_session = "aoc_session";
+
+                    let actual =
+                        Leaderboard::get_from(mock_server.uri(), year, id, aoc_session).await;
+                    assert_matches!(actual, Err(crate::Error::HttpGet(err)) => {
+                        assert!(err.is_status());
+                        assert_eq!(err.status(), Some(StatusCode::NOT_FOUND));
+                    });
+                }
+
+                #[tokio::test]
+                async fn invalid_json() {
+                    let year = 2024;
+                    let id = 12345;
+                    let aoc_session = "aoc_session";
+                    let mock_server =
+                        get_mock_server_with_leaderboard_with_invalid_json(year, id, aoc_session)
+                            .await;
+
+                    let actual =
+                        Leaderboard::get_from(mock_server.uri(), year, id, aoc_session).await;
+                    assert_matches!(actual, Err(crate::Error::HttpGet(err)) if err.is_decode());
+                }
             }
         }
     }
