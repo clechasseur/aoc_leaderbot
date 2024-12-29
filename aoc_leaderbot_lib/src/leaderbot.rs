@@ -119,7 +119,7 @@ pub trait LeaderbotReporter {
 /// the first run), saves the current leaderboard to storage and exits; otherwise, computes
 /// if the leaderboard has new members and/or members who got new stars and calls the
 /// [`reporter`] if some diff is found.
-/// 
+///
 /// [`config`]: LeaderbotConfig
 /// [`storage`]: LeaderbotStorage
 /// [`reporter`]: LeaderbotReporter

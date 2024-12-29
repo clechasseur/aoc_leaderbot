@@ -28,7 +28,7 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
-serial_test = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]
 rustc_version = { workspace = true }
