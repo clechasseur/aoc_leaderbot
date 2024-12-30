@@ -62,10 +62,12 @@ impl Leaderboard {
     where
         S: AsRef<str>,
     {
-        Self::get_from("https://adventofcode.com", year, id, aoc_session).await
+        Self::get_from(Self::http_client()?, "https://adventofcode.com", year, id, aoc_session)
+            .await
     }
 
     async fn get_from<B, S>(
+        http_client: reqwest::Client,
         base: B,
         year: i32,
         id: u64,
@@ -75,16 +77,9 @@ impl Leaderboard {
         B: AsRef<str>,
         S: AsRef<str>,
     {
-        // When trying to fetch the data of a private leaderboard you do
-        // not have access to, the AoC website redirects to the main leaderboard,
-        // so we won't follow redirect and consider that an unauthorized error.
-        let client = reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::limited(0))
-            .build()?;
-
-        let response = client
+        let response = http_client
             .get(format!("{}/{year}/leaderboard/private/view/{id}.json", base.as_ref()))
-            .header("Cookie", format!("session={}", aoc_session.as_ref()))
+            .header(reqwest::header::COOKIE, format!("session={}", aoc_session.as_ref()))
             .send()
             .await
             .and_then(reqwest::Response::error_for_status);
@@ -93,6 +88,22 @@ impl Leaderboard {
             Err(err) if err.is_redirect() => Err(crate::Error::NoAccess),
             Err(err) => Err(err.into()),
         }
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn http_client() -> crate::Result<reqwest::Client> {
+        // When trying to fetch the data of a private leaderboard you do
+        // not have access to, the AoC website redirects to the main leaderboard,
+        // so we won't follow redirect and consider that an unauthorized error.
+        Ok(reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::limited(0))
+            .user_agent(Self::http_user_agent())
+            .build()?)
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn http_user_agent() -> String {
+        format!("clechasseur/{}@{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
     }
 }
 
@@ -208,24 +219,25 @@ mod tests {
 
         #[cfg(feature = "http")]
         mod get {
-            use reqwest::StatusCode;
+            use assert_matches::assert_matches;
+            use reqwest::{header, StatusCode};
             use wiremock::http::Method;
             use wiremock::matchers::{header, method, path};
             use wiremock::{Mock, MockServer, ResponseTemplate};
 
             use super::*;
 
-            async fn get_mock_server_with_leaderboard(
-                year: i32,
-                id: u64,
-                aoc_session: &str,
-            ) -> MockServer {
+            const YEAR: i32 = 2024;
+            const LEADERBOARD_ID: u64 = 12345;
+            const AOC_SESSION: &str = "aoc_session";
+
+            async fn get_mock_server_with_leaderboard() -> MockServer {
                 let mock_server = MockServer::start().await;
 
                 let leaderboard = get_sample_leaderboard();
                 Mock::given(method(Method::GET))
-                    .and(path(format!("/{year}/leaderboard/private/view/{id}.json")))
-                    .and(header("Cookie", format!("session={aoc_session}")))
+                    .and(path(format!("/{YEAR}/leaderboard/private/view/{LEADERBOARD_ID}.json")))
+                    .and(header(header::COOKIE, format!("session={AOC_SESSION}")))
                     .respond_with(ResponseTemplate::new(StatusCode::OK).set_body_json(leaderboard))
                     .mount(&mock_server)
                     .await;
@@ -233,38 +245,41 @@ mod tests {
                 mock_server
             }
 
+            async fn get_mock_leaderboard(mock_server: &MockServer) -> crate::Result<Leaderboard> {
+                Leaderboard::get_from(
+                    Leaderboard::http_client()?,
+                    mock_server.uri(),
+                    YEAR,
+                    LEADERBOARD_ID,
+                    AOC_SESSION,
+                )
+                .await
+            }
+
             #[tokio::test]
             async fn success() {
-                let year = 2024;
-                let id = 12345;
-                let aoc_session = "aoc_session";
-                let mock_server = get_mock_server_with_leaderboard(year, id, aoc_session).await;
+                let mock_server = get_mock_server_with_leaderboard().await;
 
                 let expected = get_sample_leaderboard();
-                let actual = Leaderboard::get_from(mock_server.uri(), year, id, aoc_session)
-                    .await
-                    .unwrap();
-                assert_eq!(expected, actual);
+                let actual = get_mock_leaderboard(&mock_server).await;
+                assert_matches!(actual, Ok(actual) if actual == expected);
             }
 
             mod errors {
-                use assert_matches::assert_matches;
-
                 use super::*;
 
-                async fn get_mock_server_with_leaderboard_with_no_access(
-                    year: i32,
-                    id: u64,
-                ) -> MockServer {
+                async fn get_mock_server_with_leaderboard_with_no_access() -> MockServer {
                     let mock_server = MockServer::start().await;
 
                     // When you try to fetch a leaderboard you don't have access to,
                     // the AoC website redirects to the main leaderboard.
                     Mock::given(method(Method::GET))
-                        .and(path(format!("/{year}/leaderboard/private/view/{id}.json")))
+                        .and(path(format!(
+                            "/{YEAR}/leaderboard/private/view/{LEADERBOARD_ID}.json"
+                        )))
                         .respond_with(
                             ResponseTemplate::new(StatusCode::SEE_OTHER)
-                                .insert_header("location", format!("/{year}/leaderboard")),
+                                .insert_header(header::LOCATION, format!("/{YEAR}/leaderboard")),
                         )
                         .mount(&mock_server)
                         .await;
@@ -272,20 +287,18 @@ mod tests {
                     mock_server
                 }
 
-                async fn get_mock_server_with_leaderboard_with_invalid_json(
-                    year: i32,
-                    id: u64,
-                    aoc_session: &str,
-                ) -> MockServer {
+                async fn get_mock_server_with_leaderboard_with_invalid_json() -> MockServer {
                     let mock_server = MockServer::start().await;
 
                     Mock::given(method(Method::GET))
-                        .and(path(format!("/{year}/leaderboard/private/view/{id}.json")))
-                        .and(header("Cookie", format!("session={aoc_session}")))
+                        .and(path(format!(
+                            "/{YEAR}/leaderboard/private/view/{LEADERBOARD_ID}.json"
+                        )))
+                        .and(header(header::COOKIE, format!("session={AOC_SESSION}")))
                         .respond_with(
                             ResponseTemplate::new(StatusCode::OK)
                                 .set_body_string("{\"members\":")
-                                .insert_header("Content-Type", "application/json"),
+                                .insert_header(header::CONTENT_TYPE, "application/json"),
                         )
                         .mount(&mock_server)
                         .await;
@@ -295,14 +308,9 @@ mod tests {
 
                 #[tokio::test]
                 async fn no_access() {
-                    let year = 2024;
-                    let id = 12345;
-                    let aoc_session = "aoc_session";
-                    let mock_server =
-                        get_mock_server_with_leaderboard_with_no_access(year, id).await;
+                    let mock_server = get_mock_server_with_leaderboard_with_no_access().await;
 
-                    let actual =
-                        Leaderboard::get_from(mock_server.uri(), year, id, aoc_session).await;
+                    let actual = get_mock_leaderboard(&mock_server).await;
                     assert_matches!(actual, Err(crate::Error::NoAccess));
                 }
 
@@ -310,12 +318,7 @@ mod tests {
                 async fn not_found() {
                     let mock_server = MockServer::start().await;
 
-                    let year = 2024;
-                    let id = 12345;
-                    let aoc_session = "aoc_session";
-
-                    let actual =
-                        Leaderboard::get_from(mock_server.uri(), year, id, aoc_session).await;
+                    let actual = get_mock_leaderboard(&mock_server).await;
                     assert_matches!(actual, Err(crate::Error::HttpGet(err)) => {
                         assert!(err.is_status());
                         assert_eq!(err.status(), Some(StatusCode::NOT_FOUND));
@@ -324,15 +327,9 @@ mod tests {
 
                 #[tokio::test]
                 async fn invalid_json() {
-                    let year = 2024;
-                    let id = 12345;
-                    let aoc_session = "aoc_session";
-                    let mock_server =
-                        get_mock_server_with_leaderboard_with_invalid_json(year, id, aoc_session)
-                            .await;
+                    let mock_server = get_mock_server_with_leaderboard_with_invalid_json().await;
 
-                    let actual =
-                        Leaderboard::get_from(mock_server.uri(), year, id, aoc_session).await;
+                    let actual = get_mock_leaderboard(&mock_server).await;
                     assert_matches!(actual, Err(crate::Error::HttpGet(err)) if err.is_decode());
                 }
             }
