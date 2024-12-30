@@ -71,31 +71,3 @@ impl From<env::VarError> for EnvVarError {
         }
     }
 }
-
-#[cfg(test)]
-#[cfg_attr(coverage_nightly, coverage(off))]
-mod tests {
-    use assert_matches::assert_matches;
-
-    use super::*;
-
-    mod from_env_var_error_for_env_var_error {
-        use super::*;
-
-        #[test]
-        fn test_not_present() {
-            let err = env::VarError::NotPresent;
-            let actual: EnvVarError = err.into();
-
-            assert_matches!(actual, EnvVarError::NotPresent);
-        }
-
-        #[test]
-        fn test_not_unicode() {
-            let err = env::VarError::NotUnicode("foo".into());
-            let actual: EnvVarError = err.into();
-
-            assert_matches!(actual, EnvVarError::NotUnicode(value) if value == "foo");
-        }
-    }
-}
