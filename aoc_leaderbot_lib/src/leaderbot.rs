@@ -104,12 +104,26 @@ pub trait LeaderbotReporter {
     /// in the current version of the leaderboard.
     ///
     /// [leaderboard members]: Leaderboard::members
-    fn report(
+    fn report_changes(
         &self,
         previous_leaderboard: &Leaderboard,
         leaderboard: &Leaderboard,
         changes: &LeaderbotOutput,
     ) -> impl Future<Output = crate::Result<(), Self::Err>> + Send;
+
+    /// Report an error that occurred while the bot was running.
+    ///
+    /// This can be useful to report things to the same channel as
+    /// the one where we send the leaderboard changes, so that the
+    /// bot owner can fix the issue.
+    ///
+    /// # Notes
+    ///
+    /// This method doesn't allow returning an error, because it
+    /// will only be called while processing another error.
+    /// If an error occurs while sending the error report,
+    /// it should simply be ignored internally.
+    fn report_error(&self, error: &crate::Error) -> impl Future<Output = ()> + Send;
 }
 
 /// Runs the bot's core functionality.
@@ -130,42 +144,61 @@ where
     R: LeaderbotReporter,
     crate::Error: From<<S as LeaderbotStorage>::Err> + From<<R as LeaderbotReporter>::Err>,
 {
-    let leaderboard =
-        Leaderboard::get(config.year(), config.leaderboard_id(), config.aoc_session()).await?;
+    async fn internal_run_bot<C, S, R>(config: C, storage: S, reporter: &R) -> crate::Result<()>
+    where
+        C: LeaderbotConfig,
+        S: LeaderbotStorage,
+        R: LeaderbotReporter,
+        crate::Error: From<<S as LeaderbotStorage>::Err> + From<<R as LeaderbotReporter>::Err>,
+    {
+        let leaderboard =
+            Leaderboard::get(config.year(), config.leaderboard_id(), config.aoc_session()).await?;
 
-    match storage.load_previous().await? {
-        Some(previous_leaderboard) => {
-            if let Some(changes) = detect_changes(&leaderboard, &previous_leaderboard) {
-                reporter
-                    .report(&previous_leaderboard, &leaderboard, &changes)
-                    .await?;
-                storage.save(&leaderboard).await?;
-            }
-        },
-        None => storage.save(&leaderboard).await?,
+        match storage.load_previous().await? {
+            Some(previous_leaderboard) => {
+                if let Some(changes) = detect_changes(&leaderboard, &previous_leaderboard) {
+                    reporter
+                        .report_changes(&previous_leaderboard, &leaderboard, &changes)
+                        .await?;
+                    storage.save(&leaderboard).await?;
+                }
+            },
+            None => storage.save(&leaderboard).await?,
+        }
+
+        Ok(())
     }
 
-    Ok(())
+    match internal_run_bot(config, storage, &reporter).await {
+        Ok(()) => Ok(()),
+        Err(err) => {
+            reporter.report_error(&err).await;
+            Err(err)
+        },
+    }
 }
 
 fn detect_changes(
     previous_leaderboard: &Leaderboard,
     leaderboard: &Leaderboard,
 ) -> Option<LeaderbotOutput> {
-    let mut new_members = HashSet::new();
-    let mut members_with_new_stars = HashSet::new();
-    for member in leaderboard.members.values() {
-        match previous_leaderboard.members.get(&member.id) {
-            Some(previous_member) => {
-                if member.stars > previous_member.stars {
-                    members_with_new_stars.insert(member.id);
-                }
-            },
-            None => {
-                new_members.insert(member.id);
-            },
-        }
-    }
+    let new_members = leaderboard
+        .members
+        .keys()
+        .filter(|id| !previous_leaderboard.members.contains_key(id))
+        .copied()
+        .collect();
+    let members_with_new_stars = leaderboard
+        .members
+        .values()
+        .filter(|member| {
+            previous_leaderboard
+                .members
+                .get(&member.id)
+                .is_some_and(|prev| prev.stars < member.stars)
+        })
+        .map(|member| member.id)
+        .collect();
 
     LeaderbotOutput::if_needed(new_members, members_with_new_stars)
 }
