@@ -3,6 +3,7 @@
 //! [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 
 pub mod config;
+pub mod storage;
 
 use std::collections::HashSet;
 use std::future::Future;
@@ -48,21 +49,19 @@ pub trait LeaderbotStorage {
     ///
     /// If loading was successful but no previous data exists, this method
     /// should return `Ok(None)`.
-    fn load_previous(
-        &self,
-    ) -> impl Future<Output = crate::Result<Option<Leaderboard>, Self::Err>> + Send;
+    fn load_previous(&self) -> impl Future<Output = Result<Option<Leaderboard>, Self::Err>> + Send;
 
     /// Saves the given leaderboard data to storage so that the next bot run
     /// can fetch it using [`load_previous`](Self::load_previous).
     fn save(
-        &self,
+        &mut self,
         leaderboard: &Leaderboard,
-    ) -> impl Future<Output = crate::Result<(), Self::Err>> + Send;
+    ) -> impl Future<Output = Result<(), Self::Err>> + Send;
 }
 
-/// Output of the bot when it detects leaderboard changes.
+/// Changes to a leaderboard detected by the bot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LeaderbotOutput {
+pub struct LeaderbotChanges {
     /// IDs of new members added to the leaderboard since last run.
     pub new_members: HashSet<u64>,
 
@@ -70,13 +69,13 @@ pub struct LeaderbotOutput {
     pub members_with_new_stars: HashSet<u64>,
 }
 
-impl LeaderbotOutput {
-    /// Creates a new [`LeaderbotOutput`].
+impl LeaderbotChanges {
+    /// Creates a new [`LeaderbotChanges`].
     pub fn new(new_members: HashSet<u64>, members_with_new_stars: HashSet<u64>) -> Self {
         Self { new_members, members_with_new_stars }
     }
 
-    /// Creates a new [`LeaderbotOutput`] if there are new members and/or members
+    /// Creates a new [`LeaderbotChanges`] if there are new members and/or members
     /// with new stars, otherwise returns `None`.
     pub fn if_needed(
         new_members: HashSet<u64>,
@@ -100,16 +99,16 @@ pub trait LeaderbotReporter {
     /// The method receives references to both the previous version of the leaderboard,
     /// the current version of the leaderboard, and the lists of changes detected.
     ///
-    /// IDs stored in the [`LeaderbotOutput`] point to [leaderboard members] found
+    /// IDs stored in the [`LeaderbotChanges`] point to [leaderboard members] found
     /// in the current version of the leaderboard.
     ///
     /// [leaderboard members]: Leaderboard::members
     fn report_changes(
-        &self,
+        &mut self,
         previous_leaderboard: &Leaderboard,
         leaderboard: &Leaderboard,
-        changes: &LeaderbotOutput,
-    ) -> impl Future<Output = crate::Result<(), Self::Err>> + Send;
+        changes: &LeaderbotChanges,
+    ) -> impl Future<Output = Result<(), Self::Err>> + Send;
 
     /// Report an error that occurred while the bot was running.
     ///
@@ -123,7 +122,9 @@ pub trait LeaderbotReporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
-    fn report_error(&self, error: &crate::Error) -> impl Future<Output = ()> + Send;
+    fn report_error<S>(&mut self, error: S) -> impl Future<Output = ()> + Send
+    where
+        S: Into<String> + Send;
 }
 
 /// Runs the bot's core functionality.
@@ -137,14 +138,18 @@ pub trait LeaderbotReporter {
 /// [`config`]: LeaderbotConfig
 /// [`storage`]: LeaderbotStorage
 /// [`reporter`]: LeaderbotReporter
-pub async fn run_bot<C, S, R>(config: C, storage: S, reporter: R) -> crate::Result<()>
+pub async fn run_bot<C, S, R>(config: C, storage: S, mut reporter: R) -> crate::Result<()>
 where
     C: LeaderbotConfig,
     S: LeaderbotStorage,
     R: LeaderbotReporter,
     crate::Error: From<<S as LeaderbotStorage>::Err> + From<<R as LeaderbotReporter>::Err>,
 {
-    async fn internal_run_bot<C, S, R>(config: C, storage: S, reporter: &R) -> crate::Result<()>
+    async fn internal_run_bot<C, S, R>(
+        config: C,
+        mut storage: S,
+        reporter: &mut R,
+    ) -> crate::Result<()>
     where
         C: LeaderbotConfig,
         S: LeaderbotStorage,
@@ -169,10 +174,10 @@ where
         Ok(())
     }
 
-    match internal_run_bot(config, storage, &reporter).await {
+    match internal_run_bot(config, storage, &mut reporter).await {
         Ok(()) => Ok(()),
         Err(err) => {
-            reporter.report_error(&err).await;
+            reporter.report_error(err.to_string()).await;
             Err(err)
         },
     }
@@ -181,7 +186,7 @@ where
 fn detect_changes(
     previous_leaderboard: &Leaderboard,
     leaderboard: &Leaderboard,
-) -> Option<LeaderbotOutput> {
+) -> Option<LeaderbotChanges> {
     let new_members = leaderboard
         .members
         .keys()
@@ -200,5 +205,5 @@ fn detect_changes(
         .map(|member| member.id)
         .collect();
 
-    LeaderbotOutput::if_needed(new_members, members_with_new_stars)
+    LeaderbotChanges::if_needed(new_members, members_with_new_stars)
 }

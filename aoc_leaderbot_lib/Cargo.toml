@@ -17,8 +17,10 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 [features]
 default = ["config-env"]
 
-config-static = ["derive_builder"]
-config-env = ["config-static"]
+config-mem = ["derive_builder"]
+config-env = ["config-mem"]
+
+storage-mem = []
 
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", features = ["http"] }
@@ -29,6 +31,8 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]
