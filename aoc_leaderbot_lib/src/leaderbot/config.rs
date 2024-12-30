@@ -1,11 +1,9 @@
 //! Implementations of [`LeaderbotConfig`](crate::leaderbot::LeaderbotConfig).
 
-pub use config_env::*;
-pub use config_static::*;
-
-#[cfg(feature = "config-static")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "config-static")))]
-mod config_static {
+/// Memory-based bot config implementation
+#[cfg(feature = "config-mem")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "config-mem")))]
+pub mod mem {
     use std::any::type_name;
 
     use chrono::{Datelike, Local};
@@ -14,13 +12,13 @@ mod config_static {
 
     use crate::leaderbot::LeaderbotConfig;
 
-    /// Static bot config with predefined values.
+    /// Bot config storing values in memory.
     #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Builder)]
     #[builder(
         derive(Debug, PartialEq, Eq, Hash),
         build_fn(name = "build_internal", error = "UninitializedFieldError", private)
     )]
-    pub struct StaticLeaderbotConfig {
+    pub struct MemoryLeaderbotConfig {
         /// Year for which to monitor the leaderboard.
         ///
         /// If not provided, the current year will be used.
@@ -39,10 +37,10 @@ mod config_static {
         pub aoc_session: String,
     }
 
-    impl StaticLeaderbotConfig {
+    impl MemoryLeaderbotConfig {
         /// Creates a builder to initialize a new instance.
-        pub fn builder() -> StaticLeaderbotConfigBuilder {
-            StaticLeaderbotConfigBuilder::default()
+        pub fn builder() -> MemoryLeaderbotConfigBuilder {
+            MemoryLeaderbotConfigBuilder::default()
         }
 
         /// Creates a new instance with values for all fields.
@@ -54,26 +52,26 @@ mod config_static {
         }
     }
 
-    impl StaticLeaderbotConfigBuilder {
-        /// Builds a new [`StaticLeaderbotConfig`].
+    impl MemoryLeaderbotConfigBuilder {
+        /// Builds a new [`MemoryLeaderbotConfig`].
         ///
         /// # Errors
         ///
         /// - [`Error::MissingField`]: if a required field was not specified
         ///
         /// [`Error::MissingField`]: crate::error::Error::MissingField
-        pub fn build(&self) -> crate::Result<StaticLeaderbotConfig> {
+        pub fn build(&self) -> crate::Result<MemoryLeaderbotConfig> {
             match self.build_internal() {
                 Ok(config) => Ok(config),
                 Err(field_err) => Err(crate::Error::MissingField {
-                    target: type_name::<StaticLeaderbotConfig>(),
+                    target: type_name::<MemoryLeaderbotConfig>(),
                     field: field_err.field_name(),
                 }),
             }
         }
     }
 
-    impl LeaderbotConfig for StaticLeaderbotConfig {
+    impl LeaderbotConfig for MemoryLeaderbotConfig {
         fn year(&self) -> i32 {
             self.year
         }
@@ -88,14 +86,15 @@ mod config_static {
     }
 }
 
+/// Bot config loading values from the environment
 #[cfg(feature = "config-env")]
 #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "config-env")))]
-mod config_env {
+pub mod env {
     use std::fmt::Debug;
 
-    use super::*;
     use crate::detail::{env_var, int_env_var};
     use crate::error::EnvVarError;
+    use crate::leaderbot::config::mem::MemoryLeaderbotConfig;
     use crate::leaderbot::LeaderbotConfig;
 
     /// Environment variable name suffix for `year`. See [`get_env_config`].
@@ -131,7 +130,7 @@ mod config_env {
             Err(err) => return Err(err),
         };
 
-        let mut builder = StaticLeaderbotConfig::builder();
+        let mut builder = MemoryLeaderbotConfig::builder();
         if let Some(year) = year {
             builder.year(year);
         }

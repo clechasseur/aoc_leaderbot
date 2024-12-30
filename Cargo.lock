@@ -74,7 +74,9 @@ dependencies = [
  "derive_builder",
  "rustc_version",
  "serde",
+ "serde_json",
  "thiserror",
+ "tokio",
  "uuid",
 ]
 

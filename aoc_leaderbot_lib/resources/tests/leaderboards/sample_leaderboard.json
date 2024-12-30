@@ -1,0 +1,737 @@
+{
+  "owner_id": 0,
+  "day1_ts": 12345,
+  "members": {
+    "12345": {
+      "last_star_ts": 12345,
+      "completion_day_level": {
+        "1": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "2": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "3": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "4": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "5": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "6": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        }
+      },
+      "name": "<REDACTED>",
+      "local_score": 123,
+      "id": 12345,
+      "stars": 12,
+      "global_score": 0
+    },
+    "12346": {
+      "local_score": 123,
+      "stars": 12,
+      "global_score": 0,
+      "id": 12346,
+      "completion_day_level": {
+        "1": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "2": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "3": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        }
+      },
+      "name": "<REDACTED>",
+      "last_star_ts": 12345
+    },
+    "12347": {
+      "completion_day_level": {
+        "1": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "2": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "3": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "4": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "5": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        }
+      },
+      "name": "<REDACTED>",
+      "last_star_ts": 12345,
+      "local_score": 123,
+      "stars": 12,
+      "global_score": 0,
+      "id": 12347
+    },
+    "12348": {
+      "last_star_ts": 12345,
+      "completion_day_level": {},
+      "name": "<REDACTED>",
+      "local_score": 123,
+      "stars": 12,
+      "global_score": 0,
+      "id": 12348
+    },
+    "12349": {
+      "stars": 12,
+      "global_score": 0,
+      "id": 12349,
+      "local_score": 123,
+      "completion_day_level": {
+        "1": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "2": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "3": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "4": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "5": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "6": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "7": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "8": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "14": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        }
+      },
+      "last_star_ts": 12345,
+      "name": "<REDACTED>"
+    },
+    "12350": {
+      "name": "<REDACTED>",
+      "completion_day_level": {
+        "1": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "2": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "3": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "4": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "5": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "6": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "7": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "8": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "9": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "10": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "11": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "12": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "13": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "14": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "15": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "16": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "17": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "18": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "19": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "20": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        }
+      },
+      "last_star_ts": 12345,
+      "local_score": 123,
+      "global_score": 0,
+      "stars": 12,
+      "id": 12350
+    },
+    "12351": {
+      "completion_day_level": {},
+      "last_star_ts": 12345,
+      "name": null,
+      "stars": 12,
+      "id": 12351,
+      "global_score": 0,
+      "local_score": 123
+    },
+    "12352": {
+      "completion_day_level": {
+        "1": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "2": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "3": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "4": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "5": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "6": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "7": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "8": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "9": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "10": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "11": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "12": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "13": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "14": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "15": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "16": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "17": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "18": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "19": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "20": {
+          "1": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        },
+        "21": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "22": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          }
+        },
+        "23": {
+          "1": {
+            "star_index": 12345,
+            "get_star_ts": 12345
+          },
+          "2": {
+            "get_star_ts": 12345,
+            "star_index": 12345
+          }
+        }
+      },
+      "name": null,
+      "last_star_ts": 12345,
+      "stars": 12,
+      "global_score": 0,
+      "id": 12352,
+      "local_score": 123
+    }
+  },
+  "event": "2024"
+}

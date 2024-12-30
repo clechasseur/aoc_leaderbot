@@ -38,7 +38,7 @@ pub enum Error {
 }
 
 /// A version of [`env::VarError`] with additional variants.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum EnvVarError {
     /// Environment variable is not present.
     ///
