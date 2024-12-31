@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod config;
 mod storage;
 pub(crate) mod test_helpers;
