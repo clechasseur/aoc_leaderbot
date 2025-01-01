@@ -237,6 +237,7 @@ fn detect_changes(
 
 #[cfg(test)]
 #[cfg(all(feature = "config-mem", feature = "storage-mem"))]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
 
