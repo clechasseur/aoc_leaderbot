@@ -25,6 +25,26 @@ mod memory_leaderbot_storage {
         }
     }
 
+    mod mem_storage_impl {
+        use super::*;
+
+        #[tokio::test]
+        async fn len_and_is_empty() {
+            let mut storage = MemoryLeaderbotStorage::new();
+
+            assert_eq!(storage.len(), 0);
+            assert!(storage.is_empty());
+
+            storage
+                .save(YEAR, LEADERBOARD_ID, &get_sample_leaderboard())
+                .await
+                .unwrap();
+
+            assert_eq!(storage.len(), 1);
+            assert!(!storage.is_empty());
+        }
+    }
+
     mod storage_impl {
         use super::*;
 

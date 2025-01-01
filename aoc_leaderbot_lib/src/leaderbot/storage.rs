@@ -24,6 +24,16 @@ pub mod mem {
         pub fn new() -> Self {
             Self::default()
         }
+
+        /// Returns the total number of previous leaderboards in storage.
+        pub fn len(&self) -> usize {
+            self.previous.values().map(HashMap::len).sum()
+        }
+
+        /// Checks if there are previous leaderboards in storage.
+        pub fn is_empty(&self) -> bool {
+            self.previous.is_empty()
+        }
     }
 
     impl LeaderbotStorage for MemoryLeaderbotStorage {

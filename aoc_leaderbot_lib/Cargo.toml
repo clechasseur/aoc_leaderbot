@@ -26,15 +26,17 @@ storage-mem = []
 aoc_leaderboard = { path = "../aoc_leaderboard", features = ["http"] }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
+mockall_double = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+mockall = { workspace = true }
 serde_json = { workspace = true }
+serial_test = { workspace = true, features = ["file_locks"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 uuid = { workspace = true, features = ["v4"] }
-wiremock = { workspace = true }
 
 [build-dependencies]
 rustc_version = { workspace = true }
