@@ -236,10 +236,10 @@ fn detect_changes(
 }
 
 #[cfg(test)]
+#[cfg(all(feature = "config-mem", feature = "storage-mem"))]
 mod tests {
     use super::*;
 
-    #[cfg(all(feature = "config-mem", feature = "storage-mem"))]
     mod run_bot {
         use std::collections::HashMap;
 
