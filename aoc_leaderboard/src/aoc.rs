@@ -32,9 +32,11 @@ pub struct Leaderboard {
 
     /// Possibly the timestamp representing when the day 1 puzzles were completed
     /// by members of this leaderboard? Not sure. 🤔
-    pub day1_ts: u64,
+    #[serde(default)]
+    pub day1_ts: i64,
 
     /// Members of this leaderboard.
+    #[serde(default)]
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
     pub members: HashMap<u64, LeaderboardMember>,
 }
@@ -128,22 +130,27 @@ pub struct LeaderboardMember {
     pub id: u64,
 
     /// Number of stars obtained by the user for this year's event.
+    #[serde(default)]
     pub stars: u32,
 
     /// Member's score in this year's event, local to a given private leaderboard.
     ///
     /// A member's local score is computed using only the scores of other leaderboard members.
+    #[serde(default)]
     pub local_score: u64,
 
     /// Member's score in this year's event in the overall leaderboard.
+    #[serde(default)]
     pub global_score: u64,
 
     /// Timestamp representing the moment the member obtained their latest star.
     ///
     /// Can be used to determine if the user has progressed in the event.
-    pub last_star_ts: u64,
+    #[serde(default)]
+    pub last_star_ts: i64,
 
     /// Information about completed puzzles for the event.
+    #[serde(default)]
     #[serde_as(as = "HashMap<DisplayFromStr, _>")]
     pub completion_day_level: HashMap<u32, CompletionDayLevel>,
 }
@@ -170,9 +177,10 @@ pub struct CompletionDayLevel {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct PuzzleCompletionInfo {
     /// Timestamp representing the moment the member obtained the star for this puzzle.
-    pub get_star_ts: u64,
+    pub get_star_ts: i64,
 
     /// Star index. No idea what this means yet. 🤔
+    #[serde(default)]
     pub star_index: u64,
 }
 

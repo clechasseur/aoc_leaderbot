@@ -8,15 +8,17 @@ mod leaderbot_config {
     use aoc_leaderbot_lib::leaderbot::LeaderbotConfig;
     use chrono::{Datelike, Local};
 
+    use crate::test_helpers::{AOC_SESSION, LEADERBOARD_ID};
+
     struct TestLeaderbotConfig;
 
     impl LeaderbotConfig for TestLeaderbotConfig {
         fn leaderboard_id(&self) -> u64 {
-            12345
+            LEADERBOARD_ID
         }
 
         fn aoc_session(&self) -> String {
-            "aoc_session".into()
+            AOC_SESSION.into()
         }
     }
 
@@ -25,8 +27,8 @@ mod leaderbot_config {
         let config = TestLeaderbotConfig;
 
         assert_eq!(config.year(), Local::now().year());
-        assert_eq!(config.leaderboard_id(), 12345);
-        assert_eq!(config.aoc_session(), "aoc_session");
+        assert_eq!(config.leaderboard_id(), LEADERBOARD_ID);
+        assert_eq!(config.aoc_session(), AOC_SESSION);
     }
 }
 
@@ -88,19 +90,162 @@ mod leaderbot_changes {
     }
 }
 
-// mod run_bot {
-//     use aoc_leaderbot_lib::leaderbot::config::mem::MemoryLeaderbotConfig;
-//
-//     const YEAR: i32 = 2024;
-//     const LEADERBOARD_ID: u64 = 12345;
-//     const AOC_SESSION: &str = "aoc_session";
-//
-//     fn config() -> MemoryLeaderbotConfig {
-//         MemoryLeaderbotConfig::builder()
-//             .year(YEAR)
-//             .leaderboard_id(LEADERBOARD_ID)
-//             .aoc_session(AOC_SESSION)
-//             .build()
-//             .unwrap()
-//     }
-// }
+#[cfg(all(feature = "config-mem", feature = "storage-mem"))]
+mod run_bot {
+    use std::collections::HashMap;
+
+    use aoc_leaderboard::aoc::{
+        CompletionDayLevel, Leaderboard, LeaderboardMember, PuzzleCompletionInfo,
+    };
+    use aoc_leaderbot_lib::leaderbot::config::mem::MemoryLeaderbotConfig;
+    use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryLeaderbotStorage;
+    use aoc_leaderbot_lib::leaderbot::{LeaderbotConfig, LeaderbotStorage};
+    use chrono::Local;
+
+    use crate::test_helpers::{SpyLeaderbotReporter, AOC_SESSION, LEADERBOARD_ID, YEAR};
+
+    const OWNER: u64 = 42;
+    const MEMBER_1: u64 = 23;
+    const MEMBER_2: u64 = 11;
+
+    fn config() -> impl LeaderbotConfig + Send {
+        MemoryLeaderbotConfig::builder()
+            .year(YEAR)
+            .leaderboard_id(LEADERBOARD_ID)
+            .aoc_session(AOC_SESSION)
+            .build()
+            .unwrap()
+    }
+
+    fn storage() -> impl LeaderbotStorage + Send {
+        MemoryLeaderbotStorage::new()
+    }
+
+    fn spy_reporter() -> SpyLeaderbotReporter {
+        SpyLeaderbotReporter::default()
+    }
+
+    fn base_leaderboard() -> Leaderboard {
+        Leaderboard {
+            year: YEAR,
+            owner_id: OWNER,
+            day1_ts: Local::now().timestamp(),
+            members: {
+                let mut members = HashMap::new();
+
+                members.insert(
+                    OWNER,
+                    LeaderboardMember {
+                        name: Some("clechasseur".to_string()),
+                        id: OWNER,
+                        stars: 0,
+                        local_score: 0,
+                        global_score: 0,
+                        last_star_ts: 0,
+                        completion_day_level: HashMap::new(),
+                    },
+                );
+                members.insert(
+                    MEMBER_1,
+                    LeaderboardMember {
+                        name: None,
+                        id: MEMBER_1,
+                        stars: 2,
+                        local_score: 10,
+                        global_score: 0,
+                        last_star_ts: Local::now().timestamp(),
+                        completion_day_level: {
+                            let mut completion_day_level = HashMap::new();
+
+                            completion_day_level.insert(
+                                1,
+                                CompletionDayLevel {
+                                    part_1: PuzzleCompletionInfo {
+                                        get_star_ts: Local::now().timestamp(),
+                                        star_index: 1,
+                                    },
+                                    part_2: Some(PuzzleCompletionInfo {
+                                        get_star_ts: Local::now().timestamp(),
+                                        star_index: 2,
+                                    }),
+                                },
+                            );
+
+                            completion_day_level
+                        },
+                    },
+                );
+
+                members
+            },
+        }
+    }
+
+    fn add_member_1_stars(leaderboard: &mut Leaderboard) {
+        let member_1 = leaderboard.members.get_mut(&MEMBER_1).unwrap();
+
+        member_1.stars += 1;
+        member_1.local_score += 5;
+        member_1.last_star_ts = Local::now().timestamp();
+        member_1.completion_day_level.insert(
+            2,
+            CompletionDayLevel {
+                part_1: PuzzleCompletionInfo {
+                    get_star_ts: Local::now().timestamp(),
+                    star_index: 3,
+                },
+                part_2: None,
+            },
+        );
+    }
+
+    fn leaderboard_with_new_member() -> Leaderboard {
+        let mut leaderboard = base_leaderboard();
+
+        leaderboard.members.insert(
+            MEMBER_1,
+            LeaderboardMember {
+                name: None,
+                id: MEMBER_2,
+                stars: 1,
+                local_score: 2,
+                global_score: 0,
+                last_star_ts: Local::now().timestamp(),
+                completion_day_level: {
+                    let mut completion_day_level = HashMap::new();
+
+                    completion_day_level.insert(
+                        1,
+                        CompletionDayLevel {
+                            part_1: PuzzleCompletionInfo {
+                                get_star_ts: Local::now().timestamp(),
+                                star_index: 1,
+                            },
+                            part_2: None,
+                        },
+                    );
+
+                    completion_day_level
+                },
+            },
+        );
+
+        leaderboard
+    }
+
+    fn leaderboard_with_member_with_new_stars() -> Leaderboard {
+        let mut leaderboard = base_leaderboard();
+
+        add_member_1_stars(&mut leaderboard);
+
+        leaderboard
+    }
+
+    fn leaderboard_with_both_updates() -> Leaderboard {
+        let mut leaderboard = leaderboard_with_new_member();
+
+        add_member_1_stars(&mut leaderboard);
+
+        leaderboard
+    }
+}
