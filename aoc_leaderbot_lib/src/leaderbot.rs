@@ -244,6 +244,7 @@ mod tests {
         use std::collections::HashMap;
 
         use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
+        use serial_test::serial;
 
         use super::*;
         use crate::leaderbot::config::mem::MemoryLeaderbotConfig;
@@ -457,6 +458,7 @@ mod tests {
             use super::*;
 
             #[tokio::test]
+            #[serial(run_bot)]
             async fn stores_current() {
                 let config = config();
                 let mut storage = storage();
@@ -477,8 +479,6 @@ mod tests {
         }
 
         mod with_previous {
-            use serial_test::file_serial;
-
             use super::*;
 
             async fn test_previous<N, W>(
@@ -528,26 +528,26 @@ mod tests {
             }
 
             #[tokio::test]
-            #[file_serial(run_bot)]
+            #[serial(run_bot)]
             async fn with_no_changes() {
                 test_previous(base_leaderboard(), vec![], vec![]).await;
             }
 
             #[tokio::test]
-            #[file_serial(run_bot)]
+            #[serial(run_bot)]
             async fn with_new_member() {
                 test_previous(leaderboard_with_new_member(), vec![MEMBER_2], vec![]).await;
             }
 
             #[tokio::test]
-            #[file_serial(run_bot)]
+            #[serial(run_bot)]
             async fn with_member_with_new_stars() {
                 test_previous(leaderboard_with_member_with_new_stars(), vec![], vec![MEMBER_1])
                     .await;
             }
 
             #[tokio::test]
-            #[file_serial(run_bot)]
+            #[serial(run_bot)]
             async fn with_both() {
                 test_previous(leaderboard_with_both_updates(), vec![MEMBER_2], vec![MEMBER_1])
                     .await;

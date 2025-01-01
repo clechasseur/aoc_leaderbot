@@ -34,7 +34,7 @@ thiserror = { workspace = true }
 assert_matches = { workspace = true }
 mockall = { workspace = true }
 serde_json = { workspace = true }
-serial_test = { workspace = true, features = ["file_locks"] }
+serial_test = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 uuid = { workspace = true, features = ["v4"] }
 
