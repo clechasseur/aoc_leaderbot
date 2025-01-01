@@ -239,6 +239,7 @@ mod tests {
             const LEADERBOARD_ID: u64 = 12345;
             const AOC_SESSION: &str = "aoc_session";
 
+            //noinspection DuplicatedCode
             async fn get_mock_server_with_leaderboard() -> MockServer {
                 let mock_server = MockServer::start().await;
 

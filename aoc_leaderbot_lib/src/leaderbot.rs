@@ -12,6 +12,8 @@ use aoc_leaderboard::aoc::Leaderboard;
 use chrono::{Datelike, Local};
 use serde::{Deserialize, Serialize};
 
+use crate::mockable_helpers;
+
 /// Trait that can be implemented to provide the parameters required by the
 /// bot to monitor an [Advent of Code] leaderboard.
 ///
@@ -151,7 +153,7 @@ pub trait LeaderbotReporter {
 /// [`config`]: LeaderbotConfig
 /// [`storage`]: LeaderbotStorage
 /// [`reporter`]: LeaderbotReporter
-pub async fn run_bot<C, S, R>(config: C, storage: S, mut reporter: R) -> crate::Result<()>
+pub async fn run_bot<C, S, R>(config: &C, storage: &mut S, reporter: &mut R) -> crate::Result<()>
 where
     C: LeaderbotConfig,
     S: LeaderbotStorage,
@@ -162,7 +164,7 @@ where
         year: i32,
         leaderboard_id: u64,
         aoc_session: String,
-        mut storage: S,
+        storage: &mut S,
         reporter: &mut R,
     ) -> crate::Result<()>
     where
@@ -170,11 +172,12 @@ where
         R: LeaderbotReporter,
         crate::Error: From<<S as LeaderbotStorage>::Err> + From<<R as LeaderbotReporter>::Err>,
     {
-        let leaderboard = Leaderboard::get(year, leaderboard_id, aoc_session).await?;
+        let leaderboard =
+            mockable_helpers::get_leaderboard(year, leaderboard_id, &aoc_session).await?;
 
         match storage.load_previous(year, leaderboard_id).await? {
             Some(previous_leaderboard) => {
-                if let Some(changes) = detect_changes(&leaderboard, &previous_leaderboard) {
+                if let Some(changes) = detect_changes(&previous_leaderboard, &leaderboard) {
                     reporter
                         .report_changes(
                             year,
@@ -193,11 +196,10 @@ where
         Ok(())
     }
 
-    let year = config.year();
-    let leaderboard_id = config.leaderboard_id();
-    let aoc_session = config.aoc_session();
+    let (year, leaderboard_id, aoc_session) =
+        (config.year(), config.leaderboard_id(), config.aoc_session());
 
-    match internal_run_bot(year, leaderboard_id, aoc_session, storage, &mut reporter).await {
+    match internal_run_bot(year, leaderboard_id, aoc_session, storage, reporter).await {
         Ok(()) => Ok(()),
         Err(err) => {
             reporter
@@ -231,4 +233,325 @@ fn detect_changes(
         .collect();
 
     LeaderbotChanges::if_needed(new_members, members_with_new_stars)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(all(feature = "config-mem", feature = "storage-mem"))]
+    mod run_bot {
+        use std::collections::HashMap;
+
+        use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
+
+        use super::*;
+        use crate::leaderbot::config::mem::MemoryLeaderbotConfig;
+        use crate::leaderbot::storage::mem::MemoryLeaderbotStorage;
+
+        pub const YEAR: i32 = 2024;
+        pub const LEADERBOARD_ID: u64 = 12345;
+        pub const AOC_SESSION: &str = "aoc_session";
+
+        const OWNER: u64 = 42;
+        const MEMBER_1: u64 = 23;
+        const MEMBER_2: u64 = 11;
+
+        #[derive(Debug, PartialEq, Eq)]
+        pub struct SpiedChanges {
+            pub previous_leaderboard: Leaderboard,
+            pub leaderboard: Leaderboard,
+            pub changes: LeaderbotChanges,
+        }
+
+        #[derive(Debug, Default)]
+        pub struct SpyLeaderbotReporter {
+            pub changes: Vec<(i32, u64, SpiedChanges)>,
+            pub errors: Vec<(i32, u64, String)>,
+        }
+
+        impl SpyLeaderbotReporter {
+            pub fn calls(&self) -> usize {
+                self.changes.len() + self.errors.len()
+            }
+
+            pub fn called(&self) -> bool {
+                self.calls() != 0
+            }
+        }
+
+        impl LeaderbotReporter for SpyLeaderbotReporter {
+            type Err = crate::Error;
+
+            async fn report_changes(
+                &mut self,
+                year: i32,
+                leaderboard_id: u64,
+                previous_leaderboard: &Leaderboard,
+                leaderboard: &Leaderboard,
+                changes: &LeaderbotChanges,
+            ) -> Result<(), Self::Err> {
+                self.changes.push((
+                    year,
+                    leaderboard_id,
+                    SpiedChanges {
+                        previous_leaderboard: previous_leaderboard.clone(),
+                        leaderboard: leaderboard.clone(),
+                        changes: changes.clone(),
+                    },
+                ));
+
+                Ok(())
+            }
+
+            async fn report_error<S>(&mut self, year: i32, leaderboard_id: u64, error: S)
+            where
+                S: Into<String> + Send,
+            {
+                self.errors.push((year, leaderboard_id, error.into()));
+            }
+        }
+
+        fn config() -> MemoryLeaderbotConfig {
+            MemoryLeaderbotConfig::builder()
+                .year(YEAR)
+                .leaderboard_id(LEADERBOARD_ID)
+                .aoc_session(AOC_SESSION)
+                .build()
+                .unwrap()
+        }
+
+        fn storage() -> MemoryLeaderbotStorage {
+            MemoryLeaderbotStorage::new()
+        }
+
+        fn spy_reporter() -> SpyLeaderbotReporter {
+            SpyLeaderbotReporter::default()
+        }
+
+        fn base_leaderboard() -> Leaderboard {
+            Leaderboard {
+                year: YEAR,
+                owner_id: OWNER,
+                day1_ts: Local::now().timestamp(),
+                members: {
+                    let mut members = HashMap::new();
+
+                    members.insert(
+                        OWNER,
+                        LeaderboardMember {
+                            name: Some("clechasseur".to_string()),
+                            id: OWNER,
+                            stars: 0,
+                            local_score: 0,
+                            global_score: 0,
+                            last_star_ts: 0,
+                            completion_day_level: HashMap::new(),
+                        },
+                    );
+                    members.insert(
+                        MEMBER_1,
+                        LeaderboardMember {
+                            name: None,
+                            id: MEMBER_1,
+                            stars: 2,
+                            local_score: 10,
+                            global_score: 0,
+                            last_star_ts: Local::now().timestamp(),
+                            completion_day_level: {
+                                let mut completion_day_level = HashMap::new();
+
+                                completion_day_level.insert(
+                                    1,
+                                    CompletionDayLevel {
+                                        part_1: PuzzleCompletionInfo {
+                                            get_star_ts: Local::now().timestamp(),
+                                            star_index: 1,
+                                        },
+                                        part_2: Some(PuzzleCompletionInfo {
+                                            get_star_ts: Local::now().timestamp(),
+                                            star_index: 2,
+                                        }),
+                                    },
+                                );
+
+                                completion_day_level
+                            },
+                        },
+                    );
+
+                    members
+                },
+            }
+        }
+
+        fn add_member_1_stars(leaderboard: &mut Leaderboard) {
+            let member_1 = leaderboard.members.get_mut(&MEMBER_1).unwrap();
+
+            member_1.stars += 1;
+            member_1.local_score += 5;
+            member_1.last_star_ts = Local::now().timestamp();
+            member_1.completion_day_level.insert(
+                2,
+                CompletionDayLevel {
+                    part_1: PuzzleCompletionInfo {
+                        get_star_ts: Local::now().timestamp(),
+                        star_index: 3,
+                    },
+                    part_2: None,
+                },
+            );
+        }
+
+        fn leaderboard_with_new_member() -> Leaderboard {
+            let mut leaderboard = base_leaderboard();
+
+            leaderboard.members.insert(
+                MEMBER_2,
+                LeaderboardMember {
+                    name: None,
+                    id: MEMBER_2,
+                    stars: 1,
+                    local_score: 2,
+                    global_score: 0,
+                    last_star_ts: Local::now().timestamp(),
+                    completion_day_level: {
+                        let mut completion_day_level = HashMap::new();
+
+                        completion_day_level.insert(
+                            1,
+                            CompletionDayLevel {
+                                part_1: PuzzleCompletionInfo {
+                                    get_star_ts: Local::now().timestamp(),
+                                    star_index: 1,
+                                },
+                                part_2: None,
+                            },
+                        );
+
+                        completion_day_level
+                    },
+                },
+            );
+
+            leaderboard
+        }
+
+        fn leaderboard_with_member_with_new_stars() -> Leaderboard {
+            let mut leaderboard = base_leaderboard();
+
+            add_member_1_stars(&mut leaderboard);
+
+            leaderboard
+        }
+
+        fn leaderboard_with_both_updates() -> Leaderboard {
+            let mut leaderboard = leaderboard_with_new_member();
+
+            add_member_1_stars(&mut leaderboard);
+
+            leaderboard
+        }
+
+        mod without_previous {
+            use super::*;
+
+            #[tokio::test]
+            async fn stores_current() {
+                let config = config();
+                let mut storage = storage();
+                let mut reporter = spy_reporter();
+
+                let ctx = mockable_helpers::get_leaderboard_context();
+                ctx.expect().returning(|_, _, _| Ok(base_leaderboard()));
+
+                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                assert!(result.is_ok());
+                assert_eq!(storage.len(), 1);
+                assert!(!reporter.called());
+
+                let expected = base_leaderboard();
+                let actual = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+                assert_eq!(actual, Some(expected));
+            }
+        }
+
+        mod with_previous {
+            use serial_test::file_serial;
+
+            use super::*;
+
+            async fn test_previous<N, W>(
+                leaderboard: Leaderboard,
+                new_members: N,
+                members_with_new_stars: W,
+            ) where
+                N: IntoIterator<Item = u64>,
+                W: IntoIterator<Item = u64>,
+            {
+                let config = config();
+                let mut storage = storage();
+                let mut reporter = spy_reporter();
+
+                let base = base_leaderboard();
+
+                storage.save(YEAR, LEADERBOARD_ID, &base).await.unwrap();
+
+                let ctx = mockable_helpers::get_leaderboard_context();
+                let returned_leaderboard = leaderboard.clone();
+                ctx.expect()
+                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+
+                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                assert!(result.is_ok());
+                assert_eq!(storage.len(), 1);
+
+                let expected = SpiedChanges {
+                    previous_leaderboard: base.clone(),
+                    leaderboard: leaderboard.clone(),
+                    changes: LeaderbotChanges {
+                        new_members: new_members.into_iter().collect(),
+                        members_with_new_stars: members_with_new_stars.into_iter().collect(),
+                    },
+                };
+                if expected.changes.new_members.len()
+                    + expected.changes.members_with_new_stars.len()
+                    != 0
+                {
+                    let (actual_year, actual_leaderboard_id, actual) = &reporter.changes[0];
+                    assert_eq!(*actual_year, YEAR);
+                    assert_eq!(*actual_leaderboard_id, LEADERBOARD_ID);
+                    assert_eq!(*actual, expected);
+                } else {
+                    assert!(!reporter.called())
+                }
+            }
+
+            #[tokio::test]
+            #[file_serial(run_bot)]
+            async fn with_no_changes() {
+                test_previous(base_leaderboard(), vec![], vec![]).await;
+            }
+
+            #[tokio::test]
+            #[file_serial(run_bot)]
+            async fn with_new_member() {
+                test_previous(leaderboard_with_new_member(), vec![MEMBER_2], vec![]).await;
+            }
+
+            #[tokio::test]
+            #[file_serial(run_bot)]
+            async fn with_member_with_new_stars() {
+                test_previous(leaderboard_with_member_with_new_stars(), vec![], vec![MEMBER_1])
+                    .await;
+            }
+
+            #[tokio::test]
+            #[file_serial(run_bot)]
+            async fn with_both() {
+                test_previous(leaderboard_with_both_updates(), vec![MEMBER_2], vec![MEMBER_1])
+                    .await;
+            }
+        }
+    }
 }

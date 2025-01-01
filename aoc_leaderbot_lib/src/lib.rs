@@ -17,6 +17,9 @@
 pub(crate) mod detail;
 pub mod error;
 pub mod leaderbot;
+pub(crate) mod mockable;
 
 pub use error::Error;
 pub use error::Result;
+#[mockall_double::double]
+pub(crate) use mockable::helpers as mockable_helpers;
