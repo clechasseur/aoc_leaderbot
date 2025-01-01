@@ -49,12 +49,18 @@ pub trait LeaderbotStorage {
     ///
     /// If loading was successful but no previous data exists, this method
     /// should return `Ok(None)`.
-    fn load_previous(&self) -> impl Future<Output = Result<Option<Leaderboard>, Self::Err>> + Send;
+    fn load_previous(
+        &self,
+        year: i32,
+        leaderboard_id: u64,
+    ) -> impl Future<Output = Result<Option<Leaderboard>, Self::Err>> + Send;
 
     /// Saves the given leaderboard data to storage so that the next bot run
     /// can fetch it using [`load_previous`](Self::load_previous).
     fn save(
         &mut self,
+        year: i32,
+        leaderboard_id: u64,
         leaderboard: &Leaderboard,
     ) -> impl Future<Output = Result<(), Self::Err>> + Send;
 }
@@ -105,6 +111,8 @@ pub trait LeaderbotReporter {
     /// [leaderboard members]: Leaderboard::members
     fn report_changes(
         &mut self,
+        year: i32,
+        leaderboard_id: u64,
         previous_leaderboard: &Leaderboard,
         leaderboard: &Leaderboard,
         changes: &LeaderbotChanges,
@@ -122,7 +130,12 @@ pub trait LeaderbotReporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
-    fn report_error<S>(&mut self, error: S) -> impl Future<Output = ()> + Send
+    fn report_error<S>(
+        &mut self,
+        year: i32,
+        leaderboard_id: u64,
+        error: S,
+    ) -> impl Future<Output = ()> + Send
     where
         S: Into<String> + Send;
 }
@@ -145,39 +158,51 @@ where
     R: LeaderbotReporter,
     crate::Error: From<<S as LeaderbotStorage>::Err> + From<<R as LeaderbotReporter>::Err>,
 {
-    async fn internal_run_bot<C, S, R>(
-        config: C,
+    async fn internal_run_bot<S, R>(
+        year: i32,
+        leaderboard_id: u64,
+        aoc_session: String,
         mut storage: S,
         reporter: &mut R,
     ) -> crate::Result<()>
     where
-        C: LeaderbotConfig,
         S: LeaderbotStorage,
         R: LeaderbotReporter,
         crate::Error: From<<S as LeaderbotStorage>::Err> + From<<R as LeaderbotReporter>::Err>,
     {
-        let leaderboard =
-            Leaderboard::get(config.year(), config.leaderboard_id(), config.aoc_session()).await?;
+        let leaderboard = Leaderboard::get(year, leaderboard_id, aoc_session).await?;
 
-        match storage.load_previous().await? {
+        match storage.load_previous(year, leaderboard_id).await? {
             Some(previous_leaderboard) => {
                 if let Some(changes) = detect_changes(&leaderboard, &previous_leaderboard) {
                     reporter
-                        .report_changes(&previous_leaderboard, &leaderboard, &changes)
+                        .report_changes(
+                            year,
+                            leaderboard_id,
+                            &previous_leaderboard,
+                            &leaderboard,
+                            &changes,
+                        )
                         .await?;
-                    storage.save(&leaderboard).await?;
+                    storage.save(year, leaderboard_id, &leaderboard).await?;
                 }
             },
-            None => storage.save(&leaderboard).await?,
+            None => storage.save(year, leaderboard_id, &leaderboard).await?,
         }
 
         Ok(())
     }
 
-    match internal_run_bot(config, storage, &mut reporter).await {
+    let year = config.year();
+    let leaderboard_id = config.leaderboard_id();
+    let aoc_session = config.aoc_session();
+
+    match internal_run_bot(year, leaderboard_id, aoc_session, storage, &mut reporter).await {
         Ok(()) => Ok(()),
         Err(err) => {
-            reporter.report_error(err.to_string()).await;
+            reporter
+                .report_error(year, leaderboard_id, err.to_string())
+                .await;
             Err(err)
         },
     }

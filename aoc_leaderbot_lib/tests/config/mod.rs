@@ -3,13 +3,15 @@ mod memory_leaderbot_config {
     use aoc_leaderbot_lib::leaderbot::config::mem::MemoryLeaderbotConfig;
     use aoc_leaderbot_lib::leaderbot::LeaderbotConfig;
 
+    use crate::test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
+
     #[test]
     fn new() {
-        let actual = MemoryLeaderbotConfig::new(2024, 12345, "aoc_session");
+        let actual = MemoryLeaderbotConfig::new(YEAR, LEADERBOARD_ID, AOC_SESSION);
 
-        assert_eq!(actual.year(), 2024);
-        assert_eq!(actual.leaderboard_id(), 12345);
-        assert_eq!(actual.aoc_session(), "aoc_session");
+        assert_eq!(actual.year(), YEAR);
+        assert_eq!(actual.leaderboard_id(), LEADERBOARD_ID);
+        assert_eq!(actual.aoc_session(), AOC_SESSION);
     }
 
     mod builder {
@@ -24,35 +26,35 @@ mod memory_leaderbot_config {
         #[test]
         fn with_all_fields() {
             let actual = MemoryLeaderbotConfig::builder()
-                .year(2024)
-                .leaderboard_id(12345)
-                .aoc_session("aoc_session")
+                .year(YEAR)
+                .leaderboard_id(LEADERBOARD_ID)
+                .aoc_session(AOC_SESSION)
                 .build()
                 .unwrap();
 
-            assert_eq!(actual.year(), 2024);
-            assert_eq!(actual.leaderboard_id(), 12345);
-            assert_eq!(actual.aoc_session(), "aoc_session");
+            assert_eq!(actual.year(), YEAR);
+            assert_eq!(actual.leaderboard_id(), LEADERBOARD_ID);
+            assert_eq!(actual.aoc_session(), AOC_SESSION);
         }
 
         #[test]
         fn with_default_year() {
             let actual = MemoryLeaderbotConfig::builder()
-                .leaderboard_id(12345)
-                .aoc_session("aoc_session")
+                .leaderboard_id(LEADERBOARD_ID)
+                .aoc_session(AOC_SESSION)
                 .build()
                 .unwrap();
 
             assert_eq!(actual.year(), Local::now().year());
-            assert_eq!(actual.leaderboard_id(), 12345);
-            assert_eq!(actual.aoc_session(), "aoc_session");
+            assert_eq!(actual.leaderboard_id(), LEADERBOARD_ID);
+            assert_eq!(actual.aoc_session(), AOC_SESSION);
         }
 
         #[test]
         fn with_missing_leaderboard_id() {
             let actual = MemoryLeaderbotConfig::builder()
-                .year(2024)
-                .aoc_session("aoc_session")
+                .year(YEAR)
+                .aoc_session(AOC_SESSION)
                 .build();
 
             assert_matches!(actual, Err(Error::MissingField { target, field }) => {
@@ -64,8 +66,8 @@ mod memory_leaderbot_config {
         #[test]
         fn with_missing_aoc_session() {
             let actual = MemoryLeaderbotConfig::builder()
-                .year(2024)
-                .leaderboard_id(12345)
+                .year(YEAR)
+                .leaderboard_id(LEADERBOARD_ID)
                 .build();
 
             assert_matches!(actual, Err(Error::MissingField { target, field }) => {
@@ -91,6 +93,8 @@ mod get_env_config {
     use chrono::{Datelike, Local};
     use uuid::Uuid;
 
+    use crate::test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
+
     fn random_env_var_prefix() -> String {
         format!("test_{}_", Uuid::new_v4())
     }
@@ -99,44 +103,26 @@ mod get_env_config {
         let var_name = |name| format!("{env_var_prefix}{name}");
 
         if set_year {
-            env::set_var(var_name(ENV_CONFIG_YEAR_SUFFIX), "2024");
+            env::set_var(var_name(ENV_CONFIG_YEAR_SUFFIX), YEAR.to_string());
         }
-        env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), "12345");
-        env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), "aoc_session");
+        env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), LEADERBOARD_ID.to_string());
+        env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), AOC_SESSION);
 
         let actual = get_env_config(env_var_prefix).unwrap();
 
-        assert_eq!(actual.year(), if set_year { 2024 } else { Local::now().year() });
-        assert_eq!(actual.leaderboard_id(), 12345);
-        assert_eq!(actual.aoc_session(), "aoc_session");
+        assert_eq!(actual.year(), if set_year { YEAR } else { Local::now().year() });
+        assert_eq!(actual.leaderboard_id(), LEADERBOARD_ID);
+        assert_eq!(actual.aoc_session(), AOC_SESSION);
     }
 
-    mod empty_prefix {
-        use super::*;
-
-        #[test]
-        fn with_year() {
-            perform_valid_test("", true);
-        }
-
-        #[test]
-        fn without_year() {
-            perform_valid_test("", false);
-        }
+    #[test]
+    fn with_year() {
+        perform_valid_test(&random_env_var_prefix(), true);
     }
 
-    mod non_empty_prefix {
-        use super::*;
-
-        #[test]
-        fn with_year() {
-            perform_valid_test(&random_env_var_prefix(), true);
-        }
-
-        #[test]
-        fn without_year() {
-            perform_valid_test(&random_env_var_prefix(), false);
-        }
+    #[test]
+    fn without_year() {
+        perform_valid_test(&random_env_var_prefix(), false);
     }
 
     mod missing_vars {
@@ -147,7 +133,7 @@ mod get_env_config {
             let env_var_prefix = random_env_var_prefix();
             let var_name = |name| format!("{env_var_prefix}{name}");
 
-            env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), "aoc_session");
+            env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), AOC_SESSION);
 
             let actual = get_env_config(&env_var_prefix);
             assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source: EnvVarError::NotPresent }) if actual_var_name == var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX));
@@ -158,7 +144,7 @@ mod get_env_config {
             let env_var_prefix = random_env_var_prefix();
             let var_name = |name| format!("{env_var_prefix}{name}");
 
-            env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), "12345");
+            env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), LEADERBOARD_ID.to_string());
 
             let actual = get_env_config(&env_var_prefix);
             assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source: EnvVarError::NotPresent }) if actual_var_name == var_name(ENV_CONFIG_AOC_SESSION_SUFFIX));

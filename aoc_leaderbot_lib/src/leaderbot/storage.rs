@@ -4,6 +4,8 @@
 #[cfg(feature = "storage-mem")]
 #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "storage-mem")))]
 pub mod mem {
+    use std::collections::HashMap;
+
     use aoc_leaderboard::aoc::Leaderboard;
     use serde::{Deserialize, Serialize};
 
@@ -14,7 +16,7 @@ pub mod mem {
     /// Can be persisted through [`serde`] if required.
     #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct MemoryLeaderbotStorage {
-        previous: Option<Leaderboard>,
+        previous: HashMap<u64, HashMap<i32, Leaderboard>>,
     }
 
     impl MemoryLeaderbotStorage {
@@ -22,22 +24,33 @@ pub mod mem {
         pub fn new() -> Self {
             Self::default()
         }
-
-        /// Creates a new instance with the given initial data.
-        pub fn with_previous(previous: Leaderboard) -> Self {
-            Self { previous: Some(previous) }
-        }
     }
 
     impl LeaderbotStorage for MemoryLeaderbotStorage {
         type Err = crate::Error;
 
-        async fn load_previous(&self) -> Result<Option<Leaderboard>, Self::Err> {
-            Ok(self.previous.clone())
+        async fn load_previous(
+            &self,
+            year: i32,
+            leaderboard_id: u64,
+        ) -> Result<Option<Leaderboard>, Self::Err> {
+            Ok(self
+                .previous
+                .get(&leaderboard_id)
+                .and_then(|board_prev| board_prev.get(&year))
+                .cloned())
         }
 
-        async fn save(&mut self, leaderboard: &Leaderboard) -> Result<(), Self::Err> {
-            self.previous = Some(leaderboard.clone());
+        async fn save(
+            &mut self,
+            year: i32,
+            leaderboard_id: u64,
+            leaderboard: &Leaderboard,
+        ) -> Result<(), Self::Err> {
+            self.previous
+                .entry(leaderboard_id)
+                .or_default()
+                .insert(year, leaderboard.clone());
 
             Ok(())
         }
