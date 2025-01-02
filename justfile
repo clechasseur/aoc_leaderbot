@@ -7,6 +7,7 @@ cargo := tool + (if toolchain != "" { " +" + toolchain } else { "" })
 
 all_features := "true"
 all_features_flag := if all_features == "true" { "--all-features" } else { "" }
+feature_powerset_flag := if all_features == "true" { "--feature-powerset" } else { "" }
 
 all_targets := "true"
 all_targets_flag := if all_targets == "true" { "--all-targets" } else { "" }
@@ -22,8 +23,13 @@ release_flag := if release == "true" { "--release" } else { "" }
 
 workspace := "true"
 workspace_flag := if workspace == "true" { "--workspace" } else { "" }
+all_flag := if workspace == "true" { "--all" } else { "" }
+
+warnings_as_errors := "true"
+clippy_flags := if warnings_as_errors == "true" { "-- -D warnings" } else { "" }
 
 cargo_tarpaulin := tool + " tarpaulin"
+cargo_hack := tool + " hack"
 
 [private]
 default:
@@ -41,16 +47,24 @@ teach example_name *extra_args:
 tidy: clippy fmt
 
 # Run clippy on workspace files
-clippy:
-    {{cargo}} clippy {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{target_tuple_flag}} -- -D warnings
+clippy *extra_args:
+    {{cargo}} clippy {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
+
+# Run `cargo hack clippy` for the feature powerset
+mega-clippy *extra_args:
+    {{cargo_hack}} clippy {{workspace_flag}} {{all_targets_flag}} {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
 
 # Run rustfmt on workspace files
-fmt:
-    cargo +nightly fmt --all
+fmt *extra_args:
+    cargo +nightly fmt {{all_flag}} {{message_format_flag}} {{extra_args}}
 
 # Run `cargo check` on workspace
 check *extra_args:
     {{cargo}} check {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+
+# Run `cargo hack check` for the feature powerset
+mega-check *extra_args:
+    {{cargo_hack}} check {{workspace_flag}} --no-dev-deps --lib --bins {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo build` on workspace
 build *extra_args:
