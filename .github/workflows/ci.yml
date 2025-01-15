@@ -28,21 +28,12 @@ jobs:
           prefix-key: v2-rust
           cache-on-failure: true
 
-      - name: Install cargo-hack
-        uses: taiki-e/install-action@acd25891978b4cdaebd139d3efef606d26513b14 # v2.47.0
-        with:
-          tool: cargo-hack
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Run clippy
         uses: clechasseur/rs-clippy-check@c6fff255f0b3d3cbae04efd0d164b1ed3a773c1d # v4.0.0
         with:
-          # Note: this is a hack to pass `hack` in-between `cargo` and `clippy` when
-          # rs-clippy-check builds the command-line. We should instead support using
-          # cargo-hack in rs-clippy-check directly.
-          toolchain: +stable hack
           args: --workspace --all-targets --feature-powerset -- -D warnings
+          tool: cargo-hack
+          cache-key: v1-aoc_leaderbot-clippy
 
   fmt:
     name: Rustfmt check
@@ -168,6 +159,7 @@ jobs:
         with:
           toolchain: nightly
           cache: false
+
       - name: Install required tools
         uses: taiki-e/install-action@333ea3e9a483e78588ef8e157263f263a7640903 # v2.47.12
         with:

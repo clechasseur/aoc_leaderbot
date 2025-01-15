@@ -46,6 +46,9 @@ teach example_name *extra_args:
 # Run clippy and rustfmt on workspace files
 tidy: clippy fmt
 
+# Run `cargo hack clippy` for the feature powerset and rustfmt
+mega-tidy: mega-clippy fmt
+
 # Run clippy on workspace files
 clippy *extra_args:
     {{cargo}} clippy {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
