@@ -17,4 +17,20 @@ pub enum Error {
     #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "http")))]
     #[error("http error: {0}")]
     HttpGet(#[from] reqwest::Error),
+
+    /// Error occurring when getting a [`Leaderboard`]'s data
+    /// from the [Advent of Code] website, but the AoC session token
+    /// does not have access to that private leaderboard.
+    ///
+    /// This is a separate error than [`HttpGet`](Self::HttpGet) because
+    /// when you do not have access to a private leaderboard, the AoC
+    /// website redirects you to the main leaderboard instead of returning
+    /// a code like `401 Unauthorized`.
+    ///
+    /// [`Leaderboard`]: crate::aoc::Leaderboard
+    /// [Advent of Code]: https://adventofcode.com/
+    #[cfg(feature = "http")]
+    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "http")))]
+    #[error("session does not have access to this leaderboard")]
+    NoAccess,
 }

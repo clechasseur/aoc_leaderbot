@@ -24,8 +24,7 @@ mod real_endpoint {
     #[tokio::test]
     async fn test_with_real_endpoint() {
         // This test is not executed by default because we could get banned from AoC
-        // (we're not supposed to ping a leaderboard's API URL more that once every
-        // 15 minutes).
+        // (we're not supposed to ping a leaderboard's API URL more that once every 15 minutes).
         let _ = dotenvy::dotenv();
 
         if let (Some(token), Some(leaderboard_id), Some(year)) = (token(), leaderboard_id(), year())

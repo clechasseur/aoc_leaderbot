@@ -1,23 +1,23 @@
 [package]
-name = "aoc_leaderboard"
+name = "aoc_leaderbot_lib"
 version = "0.2.0"
 authors.workspace = true
 edition = "2021"
-rust-version = "1.70.0"
+rust-version = "1.75.0"
 
 readme = "README.md"
 license.workspace = true
 
 homepage.workspace = true
 repository.workspace = true
-documentation = "https://docs.rs/aoc_leaderboard/"
+documentation = "https://docs.rs/aoc_leaderbot_lib/"
 
-description = "Strongly-typed wrapper for Advent of Code leaderboard data"
+description = "Support library for aoc_leaderbot, an Advent of Code leaderboard-watching bot"
 
-keywords = [ "aoc", "advent-of-code", "api", "http" ]
-categories = [ "api-bindings", "asynchronous", "data-structures" ]
+keywords = [ "aoc", "advent-of-code" ]
+categories = [ "asynchronous" ]
 
-include = [ "src/**/*", "tests/**/*", "resources/tests/**/*", "examples/**/*", "build.rs", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "resources/tests/**/*", "build.rs", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -28,27 +28,29 @@ rustc-args = [ "--cfg", "docsrs" ]
 level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
-[[example]]
-name = "http"
-required-features = ["http"]
-
 [features]
-http = ["dep:reqwest", "dep:serde_json"]
+default = ["config-env"]
+
+config-mem = ["derive_builder"]
+config-env = ["config-mem"]
+
+storage-mem = []
 
 [dependencies]
-reqwest = { workspace = true, optional = true, features = ["json"] }
+aoc_leaderboard = { path = "../aoc_leaderboard", features = ["http"] }
+chrono = { workspace = true }
+derive_builder = { workspace = true, optional = true }
+mockall_double = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true, optional = true }
-serde_with = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-anyhow = { workspace = true }
 assert_matches = { workspace = true }
-dotenvy = { workspace = true }
+mockall = { workspace = true }
 serde_json = { workspace = true }
+serial_test = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
-wiremock = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]
 rustc_version = { workspace = true }
