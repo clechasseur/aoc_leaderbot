@@ -35,6 +35,27 @@ pub enum Error {
     /// Error while fetching leaderboard data from the AoC website.
     #[error(transparent)]
     Leaderboard(#[from] aoc_leaderboard::Error),
+
+    // The following errors are only used in tests, they will not be available to users.
+    #[cfg(test)]
+    #[doc(hidden)]
+    #[error("test")]
+    TestLoadPreviousError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    #[error("test")]
+    TestReportChangesError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    #[error("test")]
+    TestSaveUpdatedError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    #[error("test")]
+    TestSaveBaseError,
 }
 
 /// A version of [`env::VarError`] with additional variants.

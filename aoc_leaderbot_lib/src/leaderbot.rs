@@ -43,6 +43,7 @@ pub trait Config {
 
 /// Trait that must be implemented to persist the data required by the bot
 /// in-between every invocation.
+#[cfg_attr(test, mockall::automock(type Err=crate::Error;))]
 pub trait Storage {
     /// Type of error used by this storage.
     type Err: std::error::Error + Send;
@@ -68,7 +69,7 @@ pub trait Storage {
 }
 
 /// Changes to a leaderboard detected by the bot.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Changes {
     /// IDs of new members added to the leaderboard since last run.
     pub new_members: HashSet<u64>,
@@ -243,8 +244,11 @@ mod tests {
 
     mod run_bot {
         use std::collections::HashMap;
+        use std::future::ready;
 
         use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
+        use assert_matches::assert_matches;
+        use mockall::predicate::eq;
         use serial_test::serial;
 
         use super::*;
@@ -259,7 +263,7 @@ mod tests {
         const MEMBER_1: u64 = 23;
         const MEMBER_2: u64 = 11;
 
-        #[derive(Debug, PartialEq, Eq)]
+        #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct SpiedChanges {
             pub previous_leaderboard: Leaderboard,
             pub leaderboard: Leaderboard,
@@ -519,6 +523,7 @@ mod tests {
                     + expected.changes.members_with_new_stars.len()
                     != 0
                 {
+                    assert!(reporter.called());
                     let (actual_year, actual_leaderboard_id, actual) = &reporter.changes[0];
                     assert_eq!(*actual_year, YEAR);
                     assert_eq!(*actual_leaderboard_id, LEADERBOARD_ID);
@@ -552,6 +557,169 @@ mod tests {
             async fn with_both() {
                 test_previous(leaderboard_with_both_updates(), vec![MEMBER_2], vec![MEMBER_1])
                     .await;
+            }
+        }
+
+        mod errors {
+            use super::*;
+
+            #[tokio::test]
+            #[serial(run_bot)]
+            async fn leaderboard_get_error() {
+                let config = config();
+                let mut storage = storage();
+                let mut reporter = spy_reporter();
+
+                let ctx = mockable_helpers::get_leaderboard_context();
+                ctx.expect()
+                    .returning(move |_, _, _| Err(aoc_leaderboard::Error::NoAccess));
+
+                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                assert_matches!(
+                    result,
+                    Err(crate::Error::Leaderboard(aoc_leaderboard::Error::NoAccess))
+                );
+                assert!(storage.is_empty());
+                assert!(reporter.called());
+                assert_eq!(reporter.errors.len(), 1);
+            }
+
+            #[tokio::test]
+            #[serial(run_bot)]
+            async fn load_previous_error() {
+                let config = config();
+                let mut storage = MockStorage::new();
+                let mut reporter = spy_reporter();
+
+                let ctx = mockable_helpers::get_leaderboard_context();
+                let returned_leaderboard = base_leaderboard();
+                ctx.expect()
+                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+
+                storage
+                    .expect_load_previous()
+                    .with(eq(YEAR), eq(LEADERBOARD_ID))
+                    .times(1)
+                    .returning(move |_, _| {
+                        Box::pin(ready(Err(crate::Error::TestLoadPreviousError)))
+                    });
+
+                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                assert_matches!(result, Err(crate::Error::TestLoadPreviousError));
+                assert!(reporter.called());
+                assert_eq!(reporter.errors.len(), 1);
+                assert_eq!(reporter.errors[0], (YEAR, LEADERBOARD_ID, "test".to_string()));
+            }
+
+            #[tokio::test]
+            #[serial(run_bot)]
+            async fn report_changes_error() {
+                #[derive(Debug, Default)]
+                struct MockReporter {
+                    pub errors: usize,
+                }
+
+                impl Reporter for MockReporter {
+                    type Err = crate::Error;
+
+                    async fn report_changes(
+                        &mut self,
+                        _year: i32,
+                        _leaderboard_id: u64,
+                        _previous_leaderboard: &Leaderboard,
+                        _leaderboard: &Leaderboard,
+                        _changes: &Changes,
+                    ) -> Result<(), Self::Err> {
+                        Err(crate::Error::TestReportChangesError)
+                    }
+
+                    async fn report_error<S>(&mut self, _year: i32, _leaderboard_id: u64, _error: S)
+                    where
+                        S: Into<String> + Send,
+                    {
+                        self.errors += 1;
+                    }
+                }
+
+                let config = config();
+                let mut storage = storage();
+                let mut reporter = MockReporter::default();
+
+                let base = base_leaderboard();
+                storage.save(YEAR, LEADERBOARD_ID, &base).await.unwrap();
+
+                let ctx = mockable_helpers::get_leaderboard_context();
+                let returned_leaderboard = leaderboard_with_new_member();
+                ctx.expect()
+                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+
+                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                assert_matches!(result, Err(crate::Error::TestReportChangesError));
+                assert_eq!(reporter.errors, 1);
+            }
+
+            #[tokio::test]
+            #[serial(run_bot)]
+            async fn save_updated_error() {
+                let config = config();
+                let mut storage = MockStorage::new();
+                let mut reporter = spy_reporter();
+
+                let ctx = mockable_helpers::get_leaderboard_context();
+                let returned_leaderboard = leaderboard_with_new_member();
+                ctx.expect()
+                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+
+                storage
+                    .expect_load_previous()
+                    .with(eq(YEAR), eq(LEADERBOARD_ID))
+                    .times(1)
+                    .returning(move |_, _| Box::pin(ready(Ok(Some(base_leaderboard())))));
+                storage
+                    .expect_save()
+                    .with(eq(YEAR), eq(LEADERBOARD_ID), eq(leaderboard_with_new_member()))
+                    .times(1)
+                    .returning(move |_, _, _| {
+                        Box::pin(ready(Err(crate::Error::TestSaveUpdatedError)))
+                    });
+
+                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                assert_matches!(result, Err(crate::Error::TestSaveUpdatedError));
+                assert!(reporter.called());
+                assert_eq!(reporter.errors.len(), 1);
+                assert_eq!(reporter.errors[0], (YEAR, LEADERBOARD_ID, "test".to_string()));
+            }
+
+            #[tokio::test]
+            #[serial(run_bot)]
+            async fn save_base_error() {
+                let config = config();
+                let mut storage = MockStorage::new();
+                let mut reporter = spy_reporter();
+
+                let ctx = mockable_helpers::get_leaderboard_context();
+                let returned_leaderboard = base_leaderboard();
+                ctx.expect()
+                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+
+                storage
+                    .expect_load_previous()
+                    .with(eq(YEAR), eq(LEADERBOARD_ID))
+                    .times(1)
+                    .returning(move |_, _| Box::pin(ready(Ok(None))));
+                storage
+                    .expect_save()
+                    .with(eq(YEAR), eq(LEADERBOARD_ID), eq(base_leaderboard()))
+                    .times(1)
+                    .returning(move |_, _, _| {
+                        Box::pin(ready(Err(crate::Error::TestSaveBaseError)))
+                    });
+
+                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                assert_matches!(result, Err(crate::Error::TestSaveBaseError));
+                assert!(reporter.called());
+                assert_eq!(reporter.errors.len(), 1);
+                assert_eq!(reporter.errors[0], (YEAR, LEADERBOARD_ID, "test".to_string()));
             }
         }
     }
