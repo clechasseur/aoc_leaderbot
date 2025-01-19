@@ -37,7 +37,7 @@ config-env = ["config-mem"]
 storage-mem = []
 
 [dependencies]
-aoc_leaderboard = { path = "../aoc_leaderboard", features = ["http"] }
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0", features = ["http"] }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
 mockall_double = { workspace = true }
