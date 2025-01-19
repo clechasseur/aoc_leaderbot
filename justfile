@@ -43,37 +43,30 @@ run *extra_args:
 teach example_name *extra_args:
     {{cargo}} run {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} --example {{example_name}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
 
-# Run clippy and rustfmt on workspace files
+# Run `cargo hack clippy` for the feature powerset and rustfmt
 tidy: clippy fmt
 
-# Run `cargo hack clippy` for the feature powerset and rustfmt
-mega-tidy: mega-clippy fmt
-
-# Run clippy on workspace files
-clippy *extra_args:
-    {{cargo}} clippy {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
-
 # Run `cargo hack clippy` for the feature powerset
-mega-clippy *extra_args:
+clippy *extra_args:
     {{cargo_hack}} clippy {{workspace_flag}} {{all_targets_flag}} {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
 
-# Run rustfmt on workspace files
+# Run rustfmt
 fmt *extra_args:
     cargo +nightly fmt {{all_flag}} {{message_format_flag}} {{extra_args}}
 
-# Run `cargo check` on workspace
+# Run `cargo check`
 check *extra_args:
     {{cargo}} check {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo hack check` for the feature powerset
-mega-check *extra_args:
+check-powerset *extra_args:
     {{cargo_hack}} check {{workspace_flag}} --no-dev-deps --lib --bins {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
-# Run `cargo build` on workspace
+# Run `cargo build`
 build *extra_args:
     {{cargo}} build {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
-# Run `cargo test` on workspace
+# Run `cargo test`
 test *extra_args:
     {{cargo}} test {{workspace_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
@@ -137,11 +130,11 @@ _msrv-check *extra_args: (_rimraf "target/msrv-target")
 test-package package_name *extra_args:
     {{cargo}} publish --package {{package_name}} --dry-run {{extra_args}}
 
-# Run `cargo msrv-prep` on workspace
+# Run `cargo msrv-prep`
 prep *extra_args:
     {{cargo}} msrv-prep {{workspace_flag}} --backup-root-manifest {{extra_args}}
 
-# Run `cargo msrv-unprep` on workspace
+# Run `cargo msrv-unprep`
 unprep *extra_args:
     {{cargo}} msrv-unprep {{workspace_flag}} --backup-root-manifest {{extra_args}}
 

@@ -142,7 +142,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run checks on feature powerset
-        run: just mega-check
+        run: just check-powerset
 
       - name: Run tests
         run: just test
