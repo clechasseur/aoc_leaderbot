@@ -18,7 +18,7 @@ use crate::mockable_helpers;
 /// bot to monitor an [Advent of Code] leaderboard.
 ///
 /// [Advent of Code]: https://adventofcode.com/
-pub trait LeaderbotConfig {
+pub trait Config {
     /// Year for which we want to monitor the leaderboard.
     ///
     /// Defaults to the current year.
@@ -43,7 +43,7 @@ pub trait LeaderbotConfig {
 
 /// Trait that must be implemented to persist the data required by the bot
 /// in-between every invocation.
-pub trait LeaderbotStorage {
+pub trait Storage {
     /// Type of error used by this storage.
     type Err: std::error::Error + Send;
 
@@ -69,7 +69,7 @@ pub trait LeaderbotStorage {
 
 /// Changes to a leaderboard detected by the bot.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LeaderbotChanges {
+pub struct Changes {
     /// IDs of new members added to the leaderboard since last run.
     pub new_members: HashSet<u64>,
 
@@ -77,13 +77,13 @@ pub struct LeaderbotChanges {
     pub members_with_new_stars: HashSet<u64>,
 }
 
-impl LeaderbotChanges {
-    /// Creates a new [`LeaderbotChanges`].
+impl Changes {
+    /// Creates a [`Changes`].
     pub fn new(new_members: HashSet<u64>, members_with_new_stars: HashSet<u64>) -> Self {
         Self { new_members, members_with_new_stars }
     }
 
-    /// Creates a new [`LeaderbotChanges`] if there are new members and/or members
+    /// Creates a [`Changes`] if there are new members and/or members
     /// with new stars, otherwise returns `None`.
     pub fn if_needed(
         new_members: HashSet<u64>,
@@ -98,8 +98,8 @@ impl LeaderbotChanges {
 }
 
 /// Trait that must be implemented to report changes to the leaderboard.
-pub trait LeaderbotReporter {
-    /// Type of error used by this report.
+pub trait Reporter {
+    /// Type of error used by this reporter.
     type Err: std::error::Error + Send;
 
     /// Report changes to the leaderboard.
@@ -107,7 +107,7 @@ pub trait LeaderbotReporter {
     /// The method receives references to both the previous version of the leaderboard,
     /// the current version of the leaderboard, and the lists of changes detected.
     ///
-    /// IDs stored in the [`LeaderbotChanges`] point to [leaderboard members] found
+    /// IDs stored in the [`Changes`] point to [leaderboard members] found
     /// in the current version of the leaderboard.
     ///
     /// [leaderboard members]: Leaderboard::members
@@ -117,7 +117,7 @@ pub trait LeaderbotReporter {
         leaderboard_id: u64,
         previous_leaderboard: &Leaderboard,
         leaderboard: &Leaderboard,
-        changes: &LeaderbotChanges,
+        changes: &Changes,
     ) -> impl Future<Output = Result<(), Self::Err>> + Send;
 
     /// Report an error that occurred while the bot was running.
@@ -150,15 +150,15 @@ pub trait LeaderbotReporter {
 /// if the leaderboard has new members and/or members who got new stars and calls the
 /// [`reporter`] if some diff is found.
 ///
-/// [`config`]: LeaderbotConfig
-/// [`storage`]: LeaderbotStorage
-/// [`reporter`]: LeaderbotReporter
+/// [`config`]: Config
+/// [`storage`]: Storage
+/// [`reporter`]: Reporter
 pub async fn run_bot<C, S, R>(config: &C, storage: &mut S, reporter: &mut R) -> crate::Result<()>
 where
-    C: LeaderbotConfig,
-    S: LeaderbotStorage,
-    R: LeaderbotReporter,
-    crate::Error: From<<S as LeaderbotStorage>::Err> + From<<R as LeaderbotReporter>::Err>,
+    C: Config,
+    S: Storage,
+    R: Reporter,
+    crate::Error: From<<S as Storage>::Err> + From<<R as Reporter>::Err>,
 {
     async fn internal_run_bot<S, R>(
         year: i32,
@@ -168,9 +168,9 @@ where
         reporter: &mut R,
     ) -> crate::Result<()>
     where
-        S: LeaderbotStorage,
-        R: LeaderbotReporter,
-        crate::Error: From<<S as LeaderbotStorage>::Err> + From<<R as LeaderbotReporter>::Err>,
+        S: Storage,
+        R: Reporter,
+        crate::Error: From<<S as Storage>::Err> + From<<R as Reporter>::Err>,
     {
         let leaderboard =
             mockable_helpers::get_leaderboard(year, leaderboard_id, &aoc_session).await?;
@@ -213,7 +213,7 @@ where
 fn detect_changes(
     previous_leaderboard: &Leaderboard,
     leaderboard: &Leaderboard,
-) -> Option<LeaderbotChanges> {
+) -> Option<Changes> {
     let new_members = leaderboard
         .members
         .keys()
@@ -232,7 +232,7 @@ fn detect_changes(
         .map(|member| member.id)
         .collect();
 
-    LeaderbotChanges::if_needed(new_members, members_with_new_stars)
+    Changes::if_needed(new_members, members_with_new_stars)
 }
 
 #[cfg(test)]
@@ -248,8 +248,8 @@ mod tests {
         use serial_test::serial;
 
         use super::*;
-        use crate::leaderbot::config::mem::MemoryLeaderbotConfig;
-        use crate::leaderbot::storage::mem::MemoryLeaderbotStorage;
+        use crate::leaderbot::config::mem::MemoryConfig;
+        use crate::leaderbot::storage::mem::MemoryStorage;
 
         pub const YEAR: i32 = 2024;
         pub const LEADERBOARD_ID: u64 = 12345;
@@ -263,16 +263,16 @@ mod tests {
         pub struct SpiedChanges {
             pub previous_leaderboard: Leaderboard,
             pub leaderboard: Leaderboard,
-            pub changes: LeaderbotChanges,
+            pub changes: Changes,
         }
 
         #[derive(Debug, Default)]
-        pub struct SpyLeaderbotReporter {
+        pub struct SpyReporter {
             pub changes: Vec<(i32, u64, SpiedChanges)>,
             pub errors: Vec<(i32, u64, String)>,
         }
 
-        impl SpyLeaderbotReporter {
+        impl SpyReporter {
             pub fn calls(&self) -> usize {
                 self.changes.len() + self.errors.len()
             }
@@ -282,7 +282,7 @@ mod tests {
             }
         }
 
-        impl LeaderbotReporter for SpyLeaderbotReporter {
+        impl Reporter for SpyReporter {
             type Err = crate::Error;
 
             async fn report_changes(
@@ -291,7 +291,7 @@ mod tests {
                 leaderboard_id: u64,
                 previous_leaderboard: &Leaderboard,
                 leaderboard: &Leaderboard,
-                changes: &LeaderbotChanges,
+                changes: &Changes,
             ) -> Result<(), Self::Err> {
                 self.changes.push((
                     year,
@@ -314,8 +314,8 @@ mod tests {
             }
         }
 
-        fn config() -> MemoryLeaderbotConfig {
-            MemoryLeaderbotConfig::builder()
+        fn config() -> MemoryConfig {
+            MemoryConfig::builder()
                 .year(YEAR)
                 .leaderboard_id(LEADERBOARD_ID)
                 .aoc_session(AOC_SESSION)
@@ -323,12 +323,12 @@ mod tests {
                 .unwrap()
         }
 
-        fn storage() -> MemoryLeaderbotStorage {
-            MemoryLeaderbotStorage::new()
+        fn storage() -> MemoryStorage {
+            MemoryStorage::new()
         }
 
-        fn spy_reporter() -> SpyLeaderbotReporter {
-            SpyLeaderbotReporter::default()
+        fn spy_reporter() -> SpyReporter {
+            SpyReporter::default()
         }
 
         fn base_leaderboard() -> Leaderboard {
@@ -510,7 +510,7 @@ mod tests {
                 let expected = SpiedChanges {
                     previous_leaderboard: base.clone(),
                     leaderboard: leaderboard.clone(),
-                    changes: LeaderbotChanges {
+                    changes: Changes {
                         new_members: new_members.into_iter().collect(),
                         members_with_new_stars: members_with_new_stars.into_iter().collect(),
                     },

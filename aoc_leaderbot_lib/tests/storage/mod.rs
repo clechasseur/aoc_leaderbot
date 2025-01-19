@@ -1,7 +1,7 @@
 #[cfg(feature = "storage-mem")]
-mod memory_leaderbot_storage {
-    use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryLeaderbotStorage;
-    use aoc_leaderbot_lib::leaderbot::LeaderbotStorage;
+mod mem {
+    use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryStorage;
+    use aoc_leaderbot_lib::leaderbot::Storage;
 
     use crate::test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
 
@@ -10,7 +10,7 @@ mod memory_leaderbot_storage {
 
         #[tokio::test]
         async fn new() {
-            let storage = MemoryLeaderbotStorage::new();
+            let storage = MemoryStorage::new();
 
             let previous = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
             assert!(previous.is_none());
@@ -18,7 +18,7 @@ mod memory_leaderbot_storage {
 
         #[tokio::test]
         async fn default() {
-            let storage = MemoryLeaderbotStorage::default();
+            let storage = MemoryStorage::default();
 
             let previous = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
             assert!(previous.is_none());
@@ -30,7 +30,7 @@ mod memory_leaderbot_storage {
 
         #[tokio::test]
         async fn len_and_is_empty() {
-            let mut storage = MemoryLeaderbotStorage::new();
+            let mut storage = MemoryStorage::new();
 
             assert_eq!(storage.len(), 0);
             assert!(storage.is_empty());
@@ -50,7 +50,7 @@ mod memory_leaderbot_storage {
 
         #[tokio::test]
         async fn load_save() {
-            let mut storage = MemoryLeaderbotStorage::new();
+            let mut storage = MemoryStorage::new();
 
             let previous = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
             assert!(previous.is_none());

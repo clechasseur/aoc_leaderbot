@@ -1,4 +1,4 @@
-//! Implementations of [`LeaderbotStorage`](crate::leaderbot::LeaderbotStorage).
+//! Implementations of [`leaderbot::Storage`](crate::leaderbot::Storage).
 
 /// Bot storage keeping data in memory.
 #[cfg(feature = "storage-mem")]
@@ -9,17 +9,17 @@ pub mod mem {
     use aoc_leaderboard::aoc::Leaderboard;
     use serde::{Deserialize, Serialize};
 
-    use crate::leaderbot::LeaderbotStorage;
+    use crate::leaderbot::Storage;
 
     /// Bot storage that keeps data in memory.
     ///
     /// Can be persisted through [`serde`] if required.
     #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-    pub struct MemoryLeaderbotStorage {
+    pub struct MemoryStorage {
         previous: HashMap<u64, HashMap<i32, Leaderboard>>,
     }
 
-    impl MemoryLeaderbotStorage {
+    impl MemoryStorage {
         /// Creates a new instance without initial data.
         pub fn new() -> Self {
             Self::default()
@@ -36,7 +36,7 @@ pub mod mem {
         }
     }
 
-    impl LeaderbotStorage for MemoryLeaderbotStorage {
+    impl Storage for MemoryStorage {
         type Err = crate::Error;
 
         async fn load_previous(

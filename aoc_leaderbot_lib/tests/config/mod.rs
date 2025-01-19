@@ -1,13 +1,13 @@
 #[cfg(feature = "config-mem")]
-mod memory_leaderbot_config {
-    use aoc_leaderbot_lib::leaderbot::config::mem::MemoryLeaderbotConfig;
-    use aoc_leaderbot_lib::leaderbot::LeaderbotConfig;
+mod mem {
+    use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
+    use aoc_leaderbot_lib::leaderbot::Config;
 
     use crate::test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
 
     #[test]
     fn new() {
-        let actual = MemoryLeaderbotConfig::new(YEAR, LEADERBOARD_ID, AOC_SESSION);
+        let actual = MemoryConfig::new(YEAR, LEADERBOARD_ID, AOC_SESSION);
 
         assert_eq!(actual.year(), YEAR);
         assert_eq!(actual.leaderboard_id(), LEADERBOARD_ID);
@@ -25,7 +25,7 @@ mod memory_leaderbot_config {
 
         #[test]
         fn with_all_fields() {
-            let actual = MemoryLeaderbotConfig::builder()
+            let actual = MemoryConfig::builder()
                 .year(YEAR)
                 .leaderboard_id(LEADERBOARD_ID)
                 .aoc_session(AOC_SESSION)
@@ -39,7 +39,7 @@ mod memory_leaderbot_config {
 
         #[test]
         fn with_default_year() {
-            let actual = MemoryLeaderbotConfig::builder()
+            let actual = MemoryConfig::builder()
                 .leaderboard_id(LEADERBOARD_ID)
                 .aoc_session(AOC_SESSION)
                 .build()
@@ -52,26 +52,26 @@ mod memory_leaderbot_config {
 
         #[test]
         fn with_missing_leaderboard_id() {
-            let actual = MemoryLeaderbotConfig::builder()
+            let actual = MemoryConfig::builder()
                 .year(YEAR)
                 .aoc_session(AOC_SESSION)
                 .build();
 
             assert_matches!(actual, Err(Error::MissingField { target, field }) => {
-                assert_eq!(target, type_name::<MemoryLeaderbotConfig>());
+                assert_eq!(target, type_name::<MemoryConfig>());
                 assert_eq!(field, "leaderboard_id");
             });
         }
 
         #[test]
         fn with_missing_aoc_session() {
-            let actual = MemoryLeaderbotConfig::builder()
+            let actual = MemoryConfig::builder()
                 .year(YEAR)
                 .leaderboard_id(LEADERBOARD_ID)
                 .build();
 
             assert_matches!(actual, Err(Error::MissingField { target, field }) => {
-                assert_eq!(target, type_name::<MemoryLeaderbotConfig>());
+                assert_eq!(target, type_name::<MemoryConfig>());
                 assert_eq!(field, "aoc_session");
             });
         }
@@ -87,7 +87,7 @@ mod get_env_config {
         get_env_config, ENV_CONFIG_AOC_SESSION_SUFFIX, ENV_CONFIG_LEADERBOARD_ID_SUFFIX,
         ENV_CONFIG_YEAR_SUFFIX,
     };
-    use aoc_leaderbot_lib::leaderbot::LeaderbotConfig;
+    use aoc_leaderbot_lib::leaderbot::Config;
     use aoc_leaderbot_lib::Error;
     use assert_matches::assert_matches;
     use chrono::{Datelike, Local};

@@ -5,14 +5,14 @@ mod storage;
 pub(crate) mod test_helpers;
 
 mod leaderbot_config {
-    use aoc_leaderbot_lib::leaderbot::LeaderbotConfig;
+    use aoc_leaderbot_lib::leaderbot::Config;
     use chrono::{Datelike, Local};
 
     use crate::test_helpers::{AOC_SESSION, LEADERBOARD_ID};
 
     struct TestLeaderbotConfig;
 
-    impl LeaderbotConfig for TestLeaderbotConfig {
+    impl Config for TestLeaderbotConfig {
         fn leaderboard_id(&self) -> u64 {
             LEADERBOARD_ID
         }
@@ -35,7 +35,7 @@ mod leaderbot_config {
 mod leaderbot_changes {
     use std::collections::HashSet;
 
-    use aoc_leaderbot_lib::leaderbot::LeaderbotChanges;
+    use aoc_leaderbot_lib::leaderbot::Changes;
 
     mod with_changes {
         use assert_matches::assert_matches;
@@ -47,7 +47,7 @@ mod leaderbot_changes {
             let new_members = [42].iter().copied().collect();
             let members_with_new_stars = HashSet::new();
 
-            let changes = LeaderbotChanges::if_needed(new_members, members_with_new_stars);
+            let changes = Changes::if_needed(new_members, members_with_new_stars);
             assert_matches!(changes, Some(ch) => {
                 assert_eq!(ch.new_members.len(), 1);
                 assert!(ch.new_members.contains(&42));
@@ -60,7 +60,7 @@ mod leaderbot_changes {
             let new_members = HashSet::new();
             let members_with_new_stars = [23].iter().copied().collect();
 
-            let changes = LeaderbotChanges::if_needed(new_members, members_with_new_stars);
+            let changes = Changes::if_needed(new_members, members_with_new_stars);
             assert_matches!(changes, Some(ch) => {
                 assert!(ch.new_members.is_empty());
                 assert_eq!(ch.members_with_new_stars.len(), 1);
@@ -73,7 +73,7 @@ mod leaderbot_changes {
             let new_members = [42].iter().copied().collect();
             let members_with_new_stars = [23].iter().copied().collect();
 
-            let changes = LeaderbotChanges::if_needed(new_members, members_with_new_stars);
+            let changes = Changes::if_needed(new_members, members_with_new_stars);
             assert_matches!(changes, Some(ch) => {
                 assert_eq!(ch.new_members.len(), 1);
                 assert!(ch.new_members.contains(&42));
@@ -85,7 +85,7 @@ mod leaderbot_changes {
 
     #[test]
     fn without_changes() {
-        let changes = LeaderbotChanges::if_needed(HashSet::new(), HashSet::new());
+        let changes = Changes::if_needed(HashSet::new(), HashSet::new());
         assert!(changes.is_none());
     }
 }

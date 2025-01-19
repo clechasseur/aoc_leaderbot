@@ -1,4 +1,4 @@
-//! Implementations of [`LeaderbotConfig`](crate::leaderbot::LeaderbotConfig).
+//! Implementations of [`leaderbot::Config`](crate::leaderbot::Config).
 
 /// Memory-based bot config implementation
 #[cfg(feature = "config-mem")]
@@ -10,7 +10,7 @@ pub mod mem {
     use derive_builder::{Builder, UninitializedFieldError};
     use serde::{Deserialize, Serialize};
 
-    use crate::leaderbot::LeaderbotConfig;
+    use crate::leaderbot::Config;
 
     /// Bot config storing values in memory.
     #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Builder)]
@@ -18,7 +18,7 @@ pub mod mem {
         derive(Debug, PartialEq, Eq, Hash),
         build_fn(name = "build_internal", error = "UninitializedFieldError", private)
     )]
-    pub struct MemoryLeaderbotConfig {
+    pub struct MemoryConfig {
         /// Year for which to monitor the leaderboard.
         ///
         /// If not provided, the current year will be used.
@@ -27,20 +27,20 @@ pub mod mem {
 
         /// Leaderboard ID.
         ///
-        /// See [`LeaderbotConfig::leaderboard_id`] for info on this value.
+        /// See [`Config::leaderboard_id`] for info on this value.
         pub leaderboard_id: u64,
 
         /// AoC session token.
         ///
-        /// See [`LeaderbotConfig::aoc_session`] for info on this value.
+        /// See [`Config::aoc_session`] for info on this value.
         #[builder(setter(into))]
         pub aoc_session: String,
     }
 
-    impl MemoryLeaderbotConfig {
+    impl MemoryConfig {
         /// Creates a builder to initialize a new instance.
-        pub fn builder() -> MemoryLeaderbotConfigBuilder {
-            MemoryLeaderbotConfigBuilder::default()
+        pub fn builder() -> MemoryConfigBuilder {
+            MemoryConfigBuilder::default()
         }
 
         /// Creates a new instance with values for all fields.
@@ -52,26 +52,26 @@ pub mod mem {
         }
     }
 
-    impl MemoryLeaderbotConfigBuilder {
-        /// Builds a new [`MemoryLeaderbotConfig`].
+    impl MemoryConfigBuilder {
+        /// Builds a new [`MemoryConfig`].
         ///
         /// # Errors
         ///
         /// - [`Error::MissingField`]: if a required field was not specified
         ///
         /// [`Error::MissingField`]: crate::error::Error::MissingField
-        pub fn build(&self) -> crate::Result<MemoryLeaderbotConfig> {
+        pub fn build(&self) -> crate::Result<MemoryConfig> {
             match self.build_internal() {
                 Ok(config) => Ok(config),
                 Err(field_err) => Err(crate::Error::MissingField {
-                    target: type_name::<MemoryLeaderbotConfig>(),
+                    target: type_name::<MemoryConfig>(),
                     field: field_err.field_name(),
                 }),
             }
         }
     }
 
-    impl LeaderbotConfig for MemoryLeaderbotConfig {
+    impl Config for MemoryConfig {
         fn year(&self) -> i32 {
             self.year
         }
@@ -94,8 +94,8 @@ pub mod env {
 
     use crate::detail::{env_var, int_env_var};
     use crate::error::EnvVarError;
-    use crate::leaderbot::config::mem::MemoryLeaderbotConfig;
-    use crate::leaderbot::LeaderbotConfig;
+    use crate::leaderbot::config::mem::MemoryConfig;
+    use crate::leaderbot::Config;
 
     /// Environment variable name suffix for `year`. See [`get_env_config`].
     pub const ENV_CONFIG_YEAR_SUFFIX: &str = "YEAR";
@@ -115,9 +115,7 @@ pub mod env {
     /// | `{prefix}YEAR`           | `year`           | Current year  |
     /// | `{prefix}LEADERBOARD_ID` | `leaderboard_id` | -             |
     /// | `{prefix}AOC_SESSION`    | `aoc_session`    | -             |
-    pub fn get_env_config<S>(
-        env_var_prefix: S,
-    ) -> crate::Result<impl LeaderbotConfig + Send + Debug>
+    pub fn get_env_config<S>(env_var_prefix: S) -> crate::Result<impl Config + Send + Debug>
     where
         S: AsRef<str>,
     {
@@ -130,7 +128,7 @@ pub mod env {
             Err(err) => return Err(err),
         };
 
-        let mut builder = MemoryLeaderbotConfig::builder();
+        let mut builder = MemoryConfig::builder();
         if let Some(year) = year {
             builder.year(year);
         }
