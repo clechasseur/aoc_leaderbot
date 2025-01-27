@@ -62,7 +62,7 @@ jobs:
         package: [ "aoc_leaderboard", "aoc_leaderbot_lib" ]
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         include:
-          - toolchain: 1.75.0
+          - toolchain: 1.81.0
           - package: "aoc_leaderboard"
             toolchain: 1.70.0
     runs-on: ${{ matrix.os }}
@@ -98,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        toolchain: [ 1.75.0, stable, beta, nightly ]
+        toolchain: [ 1.81.0, stable, beta, nightly ]
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         ignore-lock: [ false, true ]
         include:
@@ -108,7 +108,7 @@ jobs:
           - toolchain: nightly
             experimental: true
         exclude:
-          - toolchain: 1.75.0
+          - toolchain: 1.81.0
             ignore-lock: true
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.experimental }}
@@ -141,6 +141,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
       - name: Run checks on feature powerset
         run: just check-powerset
 
@@ -166,6 +173,13 @@ jobs:
           tool: just,cargo-llvm-cov
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Run cargo-llvm-cov
         run: just llvm-cov

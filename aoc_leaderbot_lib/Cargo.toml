@@ -3,7 +3,7 @@ name = "aoc_leaderbot_lib"
 version = "0.2.0"
 authors.workspace = true
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.81.0"
 
 readme = "README.md"
 license.workspace = true
@@ -31,25 +31,33 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 [features]
 default = ["config-env"]
 
-config-mem = ["derive_builder"]
+aws-base = ["dep:aws-config"]
+aws-dynamo-base = ["aws-base", "dep:aws-sdk-dynamodb"]
+
+config-mem = ["dep:derive_builder"]
 config-env = ["config-mem"]
 
 storage-mem = []
+storage-dynamo = ["aws-dynamo-base"]
 
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0", features = ["http"] }
+aws-config = { workspace = true, optional = true, features = ["behavior-version-latest"] }
+aws-sdk-dynamodb = { workspace = true, optional = true }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
 mockall_double = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+futures = { workspace = true }
 mockall = { workspace = true }
-serde_json = { workspace = true }
 serial_test = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
+tokio = { workspace = true, features = ["macros", "test-util"] }
 uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]
