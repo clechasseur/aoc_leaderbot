@@ -91,7 +91,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run checks using cargo-minimal-versions
-        run: just toolchain=${{ matrix.toolchain }} check-minimal ${{ matrix.package }}
+        run: just toolchain=${{ matrix.toolchain }} package=${{ matrix.package }} check-minimal
 
   build:
     name: Build for Rust ${{ matrix.toolchain }}${{ matrix.experimental && ' (experimental)' || '' }} on ${{ matrix.os }}${{ matrix.ignore-lock && ' without Cargo.lock' || '' }}
