@@ -3,7 +3,9 @@ mod dynamo_storage {
     use std::panic::{resume_unwind, AssertUnwindSafe, UnwindSafe};
 
     use aoc_leaderboard::aoc::Leaderboard;
-    use aoc_leaderbot_lib::error::{AwsError, DynamoError, LoadPreviousDynamoError};
+    use aoc_leaderbot_lib::error::{
+        AwsError, CreateDynamoTableError, DynamoError, LoadPreviousDynamoError, SaveDynamoError,
+    };
     use aoc_leaderbot_lib::leaderbot::storage::dynamo::{
         DynamoStorage, HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
     };
@@ -322,6 +324,59 @@ mod dynamo_storage {
 
                         let actual_leaderboard = load_leaderboard(table_name).await;
                         assert_eq!(expected_leaderboard, actual_leaderboard);
+                    })
+                };
+
+                run_test(test).await;
+            }
+
+            mod errors {
+                use super::*;
+
+                #[tokio::test]
+                async fn put_item() {
+                    let table_name = random_table_name();
+                    let mut storage = DynamoStorage::new(table_name).await;
+
+                    let leaderboard = get_sample_leaderboard();
+                    let save_result = storage.save(YEAR, LEADERBOARD_ID, &leaderboard).await;
+                    assert_matches!(
+                        save_result,
+                        Err(aoc_leaderbot_lib::Error::Aws(
+                            AwsError::Dynamo(
+                                DynamoError::SaveLeaderboard {
+                                    leaderboard_id,
+                                    year,
+                                    source: SaveDynamoError::PutItem(_),
+                                }
+                            ))
+                        ) if leaderboard_id == LEADERBOARD_ID && year == YEAR
+                    );
+                }
+            }
+        }
+
+        mod create_table {
+            use super::*;
+
+            #[tokio::test]
+            async fn create_table() {
+                let test = |table_name: String| {
+                    AssertUnwindSafe(async move {
+                        let storage = DynamoStorage::new(table_name.clone()).await;
+
+                        let create_result = storage.create_table().await;
+                        assert_matches!(
+                            create_result,
+                            Err(aoc_leaderbot_lib::Error::Aws(
+                                AwsError::Dynamo(
+                                    DynamoError::CreateTable {
+                                        table_name: actual_table_name,
+                                        source: CreateDynamoTableError::CreateTable(_),
+                                    }
+                                ))
+                            ) if actual_table_name == table_name
+                        );
                     })
                 };
 
