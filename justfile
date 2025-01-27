@@ -22,8 +22,11 @@ release := "false"
 release_flag := if release == "true" { "--release" } else { "" }
 
 workspace := "true"
-workspace_flag := if workspace == "true" { "--workspace" } else { "" }
-all_flag := if workspace == "true" { "--all" } else { "" }
+package := ""
+workspace_flag := if workspace != "true" { "" } else if package != "" { "" } else { "--workspace" }
+all_flag := if workspace != "true" { "" } else if package != "" { "" } else { "--all" }
+package_flag := if package != "" { "--package " + package } else { workspace_flag }
+package_all_flag := if package != "" { "--package " + package } else { all_flag }
 
 warnings_as_errors := "true"
 clippy_flags := if warnings_as_errors == "true" { "-- -D warnings" } else { "" }
@@ -48,27 +51,27 @@ tidy: clippy fmt
 
 # Run `cargo hack clippy` for the feature powerset
 clippy *extra_args:
-    {{cargo_hack}} clippy {{workspace_flag}} {{all_targets_flag}} {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
+    {{cargo_hack}} clippy {{package_flag}} {{all_targets_flag}} {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{extra_args}} {{clippy_flags}}
 
 # Run rustfmt
 fmt *extra_args:
-    cargo +nightly fmt {{all_flag}} {{message_format_flag}} {{extra_args}}
+    cargo +nightly fmt {{package_all_flag}} {{message_format_flag}} {{extra_args}}
 
 # Run `cargo check`
 check *extra_args:
-    {{cargo}} check {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+    {{cargo}} check {{package_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo hack check` for the feature powerset
 check-powerset *extra_args:
-    {{cargo_hack}} check {{workspace_flag}} --no-dev-deps --lib --bins {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+    {{cargo_hack}} check {{package_flag}} --no-dev-deps --lib --bins {{feature_powerset_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo build`
 build *extra_args:
-    {{cargo}} build {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+    {{cargo}} build {{package_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo test`
 test *extra_args:
-    {{cargo}} test {{workspace_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+    {{cargo}} test {{package_flag}} {{all_features_flag}} {{message_format_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
 
 # Run `cargo update` to update dependencies in Cargo.lock
 update *extra_args:
@@ -89,54 +92,54 @@ update *extra_args:
 
 # Run `cargo llvm-cov` to produce code coverage
 llvm-cov *extra_args:
-    cargo +nightly llvm-cov --codecov --output-path codecov.json {{workspace_flag}} {{all_targets_flag}} {{all_features_flag}} {{target_tuple_flag}} {{extra_args}}
+    cargo +nightly llvm-cov --codecov --output-path codecov.json {{package_flag}} {{all_targets_flag}} {{all_features_flag}} {{target_tuple_flag}} {{extra_args}}
     cargo +nightly llvm-cov report --html {{ if env('CI', '') == '' { '--open' } else { '' } }}
 
 # Generate documentation with rustdoc
-doc package_name='': (_doc package_name)
+doc: _doc
 
-_doc package_name='' $RUSTDOCFLAGS="-D warnings":
-    {{cargo}} doc {{ if env('CI', '') != '' { '--no-deps' } else { '--open' } }} {{ if package_name != '' { '--package ' + package_name } else { workspace_flag } }} {{all_features_flag}} {{message_format_flag}}
+_doc $RUSTDOCFLAGS="-D warnings":
+    {{cargo}} doc {{ if env('CI', '') != '' { '--no-deps' } else { '--open' } }} {{package_flag}} {{all_features_flag}} {{message_format_flag}}
 
 # Check doc coverage with Nightly rustdoc
 doc-coverage: _doc-coverage
 
 _doc-coverage $RUSTDOCFLAGS="-Z unstable-options --show-coverage":
-    cargo +nightly doc --no-deps {{workspace_flag}} {{all_features_flag}} {{message_format_flag}}
+    cargo +nightly doc --no-deps {{package_flag}} {{all_features_flag}} {{message_format_flag}}
 
 [private]
 minimize:
-    {{cargo}} hack --remove-dev-deps {{workspace_flag}}
+    {{cargo}} hack --remove-dev-deps {{package_flag}}
     cargo +nightly update -Z minimal-versions
 
 # Run `cargo minimal-versions check`
-check-minimal package_name='': prep (_check-minimal-only package_name) && unprep
+check-minimal: prep _check-minimal-only && unprep
 
-_check-minimal-only package_name='': (_rimraf "target/check-minimal-target")
-    {{cargo}} minimal-versions check --target-dir target/check-minimal-target {{ if package_name != '' { '--package ' + package_name } else { workspace_flag } }} --lib --bins {{all_features_flag}} {{message_format_flag}}
+_check-minimal-only: (_rimraf "target/check-minimal-target")
+    {{cargo}} minimal-versions check --target-dir target/check-minimal-target {{package_flag}} --lib --bins {{all_features_flag}} {{message_format_flag}}
 
 # Run `cargo msrv` with `cargo minimal-versions check`
-msrv-minimal package_name='': (prep "--manifest-backup-suffix .msrv-prep.outer.bak") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
-    {{cargo}} msrv find -- just workspace="{{workspace}}" all_features="{{all_features}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _check-minimal-only {{package_name}}
+msrv-minimal: (prep "--manifest-backup-suffix .msrv-prep.outer.bak") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
+    {{cargo}} msrv find -- just workspace="{{workspace}}" package="{{package}}" all_features="{{all_features}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _check-minimal-only
 
 # Run `cargo msrv` with `cargo check`
 msrv *extra_args: (prep "--manifest-backup-suffix .msrv-prep.outer.bak --no-merge-pinned-dependencies") && (unprep "--manifest-backup-suffix .msrv-prep.outer.bak")
-    {{cargo}} msrv find -- just workspace="{{workspace}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _msrv-check {{extra_args}}
+    {{cargo}} msrv find -- just workspace="{{workspace}}" package="{{package}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" _msrv-check {{extra_args}}
 
 _msrv-check *extra_args: (_rimraf "target/msrv-target")
-    just workspace="{{workspace}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" check --target-dir target/msrv-target {{extra_args}}
+    just workspace="{{workspace}}" package="{{package}}" all_features="{{all_features}}" all_targets="{{all_targets}}" message_format="{{message_format}}" target_tuple="{{target_tuple}}" check --target-dir target/msrv-target {{extra_args}}
 
 # Perform `cargo publish` dry-run on a package
-test-package package_name *extra_args:
-    {{cargo}} publish --package {{package_name}} --dry-run {{extra_args}}
+test-package *extra_args:
+    {{cargo}} publish {{package_flag}} --dry-run {{extra_args}}
 
 # Run `cargo msrv-prep`
 prep *extra_args:
-    {{cargo}} msrv-prep {{workspace_flag}} --backup-root-manifest {{extra_args}}
+    {{cargo}} msrv-prep {{workspace_flag}} {{package_flag}} --backup-root-manifest {{extra_args}}
 
 # Run `cargo msrv-unprep`
 unprep *extra_args:
-    {{cargo}} msrv-unprep {{workspace_flag}} --backup-root-manifest {{extra_args}}
+    {{cargo}} msrv-unprep {{workspace_flag}} {{package_flag}} --backup-root-manifest {{extra_args}}
 
 # ----- Utilities -----
 

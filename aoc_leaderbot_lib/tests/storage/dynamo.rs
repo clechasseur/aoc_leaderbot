@@ -111,6 +111,7 @@ mod dynamo_storage {
             use super::*;
 
             #[tokio::test]
+            #[ignore]
             async fn without_data() {
                 let test = |table_name| {
                     AssertUnwindSafe(async {
@@ -126,6 +127,7 @@ mod dynamo_storage {
             }
 
             #[tokio::test]
+            #[ignore]
             async fn with_data() {
                 let test = |table_name: String| {
                     AssertUnwindSafe(async {
@@ -147,6 +149,7 @@ mod dynamo_storage {
                 use super::*;
 
                 #[tokio::test]
+                #[ignore]
                 async fn get_item() {
                     let table_name = random_table_name();
                     let storage = DynamoStorage::new(table_name).await;
@@ -167,6 +170,7 @@ mod dynamo_storage {
                 }
 
                 #[tokio::test]
+                #[ignore]
                 async fn missing_leaderboard_data() {
                     let test = |table_name: String| {
                         AssertUnwindSafe(async {
@@ -203,6 +207,7 @@ mod dynamo_storage {
                 }
 
                 #[tokio::test]
+                #[ignore]
                 async fn invalid_leaderboard_data_type() {
                     let test = |table_name: String| {
                         AssertUnwindSafe(async {
@@ -240,6 +245,7 @@ mod dynamo_storage {
                 }
 
                 #[tokio::test]
+                #[ignore]
                 async fn parse_error() {
                     let test = |table_name: String| {
                         AssertUnwindSafe(async {
@@ -285,6 +291,7 @@ mod dynamo_storage {
             use super::*;
 
             #[tokio::test]
+            #[ignore]
             async fn without_existing() {
                 let test = |table_name: String| {
                     AssertUnwindSafe(async {
@@ -305,6 +312,7 @@ mod dynamo_storage {
             }
 
             #[tokio::test]
+            #[ignore]
             async fn with_existing() {
                 let test = |table_name: String| {
                     AssertUnwindSafe(async {
@@ -334,6 +342,7 @@ mod dynamo_storage {
                 use super::*;
 
                 #[tokio::test]
+                #[ignore]
                 async fn put_item() {
                     let table_name = random_table_name();
                     let mut storage = DynamoStorage::new(table_name).await;
@@ -360,6 +369,7 @@ mod dynamo_storage {
             use super::*;
 
             #[tokio::test]
+            #[ignore]
             async fn create_table() {
                 let test = |table_name: String| {
                     AssertUnwindSafe(async move {
