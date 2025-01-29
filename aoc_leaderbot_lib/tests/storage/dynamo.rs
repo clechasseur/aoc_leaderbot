@@ -15,8 +15,7 @@ mod dynamo_storage {
     use aws_sdk_dynamodb::Client;
     use futures::FutureExt;
     use uuid::Uuid;
-
-    use crate::test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
+    use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
 
     async fn dynamo_client() -> Client {
         let config = aws_config::load_from_env().await;
@@ -108,6 +107,7 @@ mod dynamo_storage {
         use super::*;
 
         mod load_previous {
+            use aoc_leaderbot_test_helpers::get_sample_leaderboard;
             use super::*;
 
             #[tokio::test]
@@ -288,6 +288,7 @@ mod dynamo_storage {
         }
 
         mod save {
+            use aoc_leaderbot_test_helpers::get_sample_leaderboard;
             use super::*;
 
             #[tokio::test]

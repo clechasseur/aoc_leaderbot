@@ -75,6 +75,7 @@ name = "aoc_leaderbot_lib"
 version = "0.2.0"
 dependencies = [
  "aoc_leaderboard",
+ "aoc_leaderbot_test_helpers",
  "assert_matches",
  "aws-config",
  "aws-sdk-dynamodb",
@@ -90,6 +91,14 @@ dependencies = [
  "thiserror 2.0.11",
  "tokio",
  "uuid",
+]
+
+[[package]]
+name = "aoc_leaderbot_test_helpers"
+version = "0.1.0"
+dependencies = [
+ "aoc_leaderboard",
+ "serde_json",
 ]
 
 [[package]]

@@ -1,6 +1,14 @@
+//! Test helpers for the [`aoc_leaderbot`] project's crates.
+//!
+//! Not meant to be used outside the project; no guarantee on API stability.
+
+#![deny(rustdoc::missing_crate_level_docs)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+
 use std::fs;
 use std::path::PathBuf;
-
 use aoc_leaderboard::aoc::Leaderboard;
 
 pub const YEAR: i32 = 2024;

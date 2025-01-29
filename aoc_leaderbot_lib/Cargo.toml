@@ -53,6 +53,7 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "time"] }
 
 [dev-dependencies]
+aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers" }
 assert_matches = { workspace = true }
 futures = { workspace = true }
 mockall = { workspace = true }

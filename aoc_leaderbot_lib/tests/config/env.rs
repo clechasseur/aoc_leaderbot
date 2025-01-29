@@ -11,8 +11,7 @@ mod get_env_config {
     use assert_matches::assert_matches;
     use chrono::{Datelike, Local};
     use uuid::Uuid;
-
-    use crate::test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
+    use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
 
     fn random_env_var_prefix() -> String {
         format!("test_{}_", Uuid::new_v4())

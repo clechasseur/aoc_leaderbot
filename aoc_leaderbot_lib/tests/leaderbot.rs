@@ -2,13 +2,11 @@
 
 mod config;
 mod storage;
-pub(crate) mod test_helpers;
 
 mod leaderbot_config {
     use aoc_leaderbot_lib::leaderbot::Config;
     use chrono::{Datelike, Local};
-
-    use crate::test_helpers::{AOC_SESSION, LEADERBOARD_ID};
+    use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID};
 
     struct TestLeaderbotConfig;
 

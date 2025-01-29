@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["aoc_leaderboard", "aoc_leaderbot_lib"]
+members = ["aoc_leaderboard", "aoc_leaderbot_lib", "aoc_leaderbot_test_helpers"]
 
 [workspace.package]
 authors = [ "Charles Lechasseur <shiftingbeard@outlook.com>" ]

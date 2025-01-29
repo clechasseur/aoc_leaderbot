@@ -62,9 +62,11 @@ jobs:
         package: [ "aoc_leaderboard", "aoc_leaderbot_lib" ]
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         include:
-          - toolchain: 1.81.0
+          - toolchain: stable
           - package: "aoc_leaderboard"
             toolchain: 1.70.0
+          - package: "aoc_leaderbot_lib"
+            toolchain: 1.81.0
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
