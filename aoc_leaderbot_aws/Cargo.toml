@@ -3,6 +3,7 @@ name = "aoc_leaderbot_aws"
 version = "0.2.0"
 authors.workspace = true
 edition = "2021"
+rust-version = "1.81.0"
 
 readme = "README.md"
 license.workspace = true
@@ -32,8 +33,8 @@ default = ["dynamo"]
 
 dynamo = ["dynamo-base", "storage-dynamo"]
 
-dynamo-base = ["dep:aws-sdk-dynamodb", "dep:serde_json"]
-storage-dynamo = ["dynamo-base", "dep:tokio", "tokio/time"]
+dynamo-base = ["aws-sdk-dynamodb", "serde_json"]
+storage-dynamo = ["dynamo-base", "tokio/time"]
 
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }

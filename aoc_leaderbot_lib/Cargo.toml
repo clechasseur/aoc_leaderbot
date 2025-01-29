@@ -3,7 +3,7 @@ name = "aoc_leaderbot_lib"
 version = "0.2.0"
 authors.workspace = true
 edition = "2021"
-rust-version = "1.81.0"
+rust-version = "1.75.0"
 
 readme = "README.md"
 license.workspace = true
@@ -31,7 +31,7 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 [features]
 default = ["config-env"]
 
-config-mem = ["dep:derive_builder"]
+config-mem = ["derive_builder"]
 config-env = ["config-mem"]
 
 storage-mem = []
@@ -42,7 +42,6 @@ chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
 mockall_double = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
