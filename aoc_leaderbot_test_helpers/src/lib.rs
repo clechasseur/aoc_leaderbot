@@ -1,6 +1,8 @@
 //! Test helpers for the [`aoc_leaderbot`] project's crates.
 //!
 //! Not meant to be used outside the project; no guarantee on API stability.
+//! 
+//! [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 
 #![deny(rustdoc::missing_crate_level_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
