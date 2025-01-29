@@ -71,17 +71,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "aoc_leaderbot_aws"
+version = "0.2.0"
+dependencies = [
+ "aoc_leaderboard",
+ "aoc_leaderbot_lib",
+ "aoc_leaderbot_test_helpers",
+ "assert_matches",
+ "aws-config",
+ "aws-sdk-dynamodb",
+ "futures",
+ "rustc_version",
+ "serde_json",
+ "thiserror 2.0.11",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "aoc_leaderbot_lib"
 version = "0.2.0"
 dependencies = [
  "aoc_leaderboard",
  "aoc_leaderbot_test_helpers",
  "assert_matches",
- "aws-config",
- "aws-sdk-dynamodb",
  "chrono",
  "derive_builder",
- "futures",
  "mockall",
  "mockall_double",
  "rustc_version",
@@ -95,7 +110,7 @@ dependencies = [
 
 [[package]]
 name = "aoc_leaderbot_test_helpers"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aoc_leaderboard",
  "serde_json",

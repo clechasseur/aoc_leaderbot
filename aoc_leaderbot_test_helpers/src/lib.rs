@@ -1,7 +1,7 @@
 //! Test helpers for the [`aoc_leaderbot`] project's crates.
 //!
 //! Not meant to be used outside the project; no guarantee on API stability.
-//! 
+//!
 //! [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 
 #![deny(rustdoc::missing_crate_level_docs)]
@@ -11,6 +11,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+
 use aoc_leaderboard::aoc::Leaderboard;
 
 pub const YEAR: i32 = 2024;

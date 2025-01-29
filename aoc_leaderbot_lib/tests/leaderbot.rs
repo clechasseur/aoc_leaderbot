@@ -5,8 +5,8 @@ mod storage;
 
 mod leaderbot_config {
     use aoc_leaderbot_lib::leaderbot::Config;
-    use chrono::{Datelike, Local};
     use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID};
+    use chrono::{Datelike, Local};
 
     struct TestLeaderbotConfig;
 

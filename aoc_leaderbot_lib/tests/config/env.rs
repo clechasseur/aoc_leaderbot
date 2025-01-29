@@ -8,10 +8,10 @@ mod get_env_config {
     };
     use aoc_leaderbot_lib::leaderbot::Config;
     use aoc_leaderbot_lib::Error;
+    use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
     use assert_matches::assert_matches;
     use chrono::{Datelike, Local};
     use uuid::Uuid;
-    use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
 
     fn random_env_var_prefix() -> String {
         format!("test_{}_", Uuid::new_v4())

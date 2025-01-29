@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 use aoc_leaderboard::aoc::Leaderboard;
+use aoc_leaderbot_lib::leaderbot::Storage;
 use aws_config::SdkConfig;
 use aws_sdk_dynamodb::types::{
     AttributeDefinition, AttributeValue, BillingMode, KeySchemaElement, KeyType,
@@ -12,7 +13,6 @@ use aws_sdk_dynamodb::Client;
 use tokio::time::sleep;
 
 use crate::error::{DynamoError, LoadPreviousDynamoError};
-use crate::leaderbot::Storage;
 
 /// The hash key (aka partition key) used by [`DynamoStorage`].
 ///

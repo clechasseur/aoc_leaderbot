@@ -3,19 +3,19 @@ mod dynamo_storage {
     use std::panic::{resume_unwind, AssertUnwindSafe, UnwindSafe};
 
     use aoc_leaderboard::aoc::Leaderboard;
-    use aoc_leaderbot_lib::error::{
-        AwsError, CreateDynamoTableError, DynamoError, LoadPreviousDynamoError, SaveDynamoError,
+    use aoc_leaderbot_aws::error::{
+        CreateDynamoTableError, DynamoError, LoadPreviousDynamoError, SaveDynamoError,
     };
-    use aoc_leaderbot_lib::leaderbot::storage::dynamo::{
+    use aoc_leaderbot_aws::leaderbot::aws::dynamo::storage::{
         DynamoStorage, HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
     };
     use aoc_leaderbot_lib::leaderbot::Storage;
+    use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
     use assert_matches::assert_matches;
     use aws_sdk_dynamodb::types::AttributeValue;
     use aws_sdk_dynamodb::Client;
     use futures::FutureExt;
     use uuid::Uuid;
-    use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
 
     async fn dynamo_client() -> Client {
         let config = aws_config::load_from_env().await;
@@ -23,7 +23,7 @@ mod dynamo_storage {
     }
 
     fn random_table_name() -> String {
-        format!("aoc_leaderbot_lib_test_table_{}", Uuid::new_v4())
+        format!("aoc_leaderbot_aws_test_table_{}", Uuid::new_v4())
     }
 
     struct TestTable(String);
@@ -107,11 +107,9 @@ mod dynamo_storage {
         use super::*;
 
         mod load_previous {
-            use aoc_leaderbot_test_helpers::get_sample_leaderboard;
             use super::*;
 
             #[tokio::test]
-            #[ignore]
             async fn without_data() {
                 let test = |table_name| {
                     AssertUnwindSafe(async {
@@ -127,7 +125,6 @@ mod dynamo_storage {
             }
 
             #[tokio::test]
-            #[ignore]
             async fn with_data() {
                 let test = |table_name: String| {
                     AssertUnwindSafe(async {
@@ -149,7 +146,6 @@ mod dynamo_storage {
                 use super::*;
 
                 #[tokio::test]
-                #[ignore]
                 async fn get_item() {
                     let table_name = random_table_name();
                     let storage = DynamoStorage::new(table_name).await;
@@ -157,20 +153,17 @@ mod dynamo_storage {
                     let previous_leaderboard = storage.load_previous(YEAR, LEADERBOARD_ID).await;
                     assert_matches!(
                         previous_leaderboard,
-                        Err(aoc_leaderbot_lib::Error::Aws(
-                            AwsError::Dynamo(
-                                DynamoError::LoadPreviousLeaderboard {
-                                    leaderboard_id,
-                                    year,
-                                    source: LoadPreviousDynamoError::GetItem(_),
-                                }
-                            ))
-                        ) if leaderboard_id == LEADERBOARD_ID && year == YEAR
+                        Err(aoc_leaderbot_aws::Error::Dynamo(
+                            DynamoError::LoadPreviousLeaderboard {
+                                leaderboard_id,
+                                year,
+                                source: LoadPreviousDynamoError::GetItem(_),
+                            }
+                        )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
                 }
 
                 #[tokio::test]
-                #[ignore]
                 async fn missing_leaderboard_data() {
                     let test = |table_name: String| {
                         AssertUnwindSafe(async {
@@ -190,14 +183,12 @@ mod dynamo_storage {
                                 storage.load_previous(YEAR, LEADERBOARD_ID).await;
                             assert_matches!(
                                 previous_leaderboard,
-                                Err(aoc_leaderbot_lib::Error::Aws(
-                                    AwsError::Dynamo(
-                                        DynamoError::LoadPreviousLeaderboard {
-                                            leaderboard_id,
-                                            year,
-                                            source: LoadPreviousDynamoError::MissingLeaderboardData,
-                                        }
-                                    )
+                                Err(aoc_leaderbot_aws::Error::Dynamo(
+                                    DynamoError::LoadPreviousLeaderboard {
+                                        leaderboard_id,
+                                        year,
+                                        source: LoadPreviousDynamoError::MissingLeaderboardData,
+                                    }
                                 )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                             );
                         })
@@ -207,7 +198,6 @@ mod dynamo_storage {
                 }
 
                 #[tokio::test]
-                #[ignore]
                 async fn invalid_leaderboard_data_type() {
                     let test = |table_name: String| {
                         AssertUnwindSafe(async {
@@ -228,14 +218,12 @@ mod dynamo_storage {
                                 storage.load_previous(YEAR, LEADERBOARD_ID).await;
                             assert_matches!(
                                 previous_leaderboard,
-                                Err(aoc_leaderbot_lib::Error::Aws(
-                                    AwsError::Dynamo(
-                                        DynamoError::LoadPreviousLeaderboard {
-                                            leaderboard_id,
-                                            year,
-                                            source: LoadPreviousDynamoError::InvalidLeaderboardDataType,
-                                        }
-                                    )
+                                Err(aoc_leaderbot_aws::Error::Dynamo(
+                                    DynamoError::LoadPreviousLeaderboard {
+                                        leaderboard_id,
+                                        year,
+                                        source: LoadPreviousDynamoError::InvalidLeaderboardDataType,
+                                    }
                                 )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                             );
                         })
@@ -245,7 +233,6 @@ mod dynamo_storage {
                 }
 
                 #[tokio::test]
-                #[ignore]
                 async fn parse_error() {
                     let test = |table_name: String| {
                         AssertUnwindSafe(async {
@@ -269,14 +256,12 @@ mod dynamo_storage {
                                 storage.load_previous(YEAR, LEADERBOARD_ID).await;
                             assert_matches!(
                                 previous_leaderboard,
-                                Err(aoc_leaderbot_lib::Error::Aws(
-                                    AwsError::Dynamo(
-                                        DynamoError::LoadPreviousLeaderboard {
-                                            leaderboard_id,
-                                            year,
-                                            source: LoadPreviousDynamoError::ParseError(_),
-                                        }
-                                    )
+                                Err(aoc_leaderbot_aws::Error::Dynamo(
+                                    DynamoError::LoadPreviousLeaderboard {
+                                        leaderboard_id,
+                                        year,
+                                        source: LoadPreviousDynamoError::ParseError(_),
+                                    }
                                 )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                             );
                         })
@@ -288,11 +273,9 @@ mod dynamo_storage {
         }
 
         mod save {
-            use aoc_leaderbot_test_helpers::get_sample_leaderboard;
             use super::*;
 
             #[tokio::test]
-            #[ignore]
             async fn without_existing() {
                 let test = |table_name: String| {
                     AssertUnwindSafe(async {
@@ -313,7 +296,6 @@ mod dynamo_storage {
             }
 
             #[tokio::test]
-            #[ignore]
             async fn with_existing() {
                 let test = |table_name: String| {
                     AssertUnwindSafe(async {
@@ -343,7 +325,6 @@ mod dynamo_storage {
                 use super::*;
 
                 #[tokio::test]
-                #[ignore]
                 async fn put_item() {
                     let table_name = random_table_name();
                     let mut storage = DynamoStorage::new(table_name).await;
@@ -352,15 +333,13 @@ mod dynamo_storage {
                     let save_result = storage.save(YEAR, LEADERBOARD_ID, &leaderboard).await;
                     assert_matches!(
                         save_result,
-                        Err(aoc_leaderbot_lib::Error::Aws(
-                            AwsError::Dynamo(
-                                DynamoError::SaveLeaderboard {
-                                    leaderboard_id,
-                                    year,
-                                    source: SaveDynamoError::PutItem(_),
-                                }
-                            ))
-                        ) if leaderboard_id == LEADERBOARD_ID && year == YEAR
+                        Err(aoc_leaderbot_aws::Error::Dynamo(
+                            DynamoError::SaveLeaderboard {
+                                leaderboard_id,
+                                year,
+                                source: SaveDynamoError::PutItem(_),
+                            }
+                        )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
                 }
             }
@@ -370,7 +349,6 @@ mod dynamo_storage {
             use super::*;
 
             #[tokio::test]
-            #[ignore]
             async fn create_table() {
                 let test = |table_name: String| {
                     AssertUnwindSafe(async move {
@@ -379,14 +357,12 @@ mod dynamo_storage {
                         let create_result = storage.create_table().await;
                         assert_matches!(
                             create_result,
-                            Err(aoc_leaderbot_lib::Error::Aws(
-                                AwsError::Dynamo(
-                                    DynamoError::CreateTable {
-                                        table_name: actual_table_name,
-                                        source: CreateDynamoTableError::CreateTable(_),
-                                    }
-                                ))
-                            ) if actual_table_name == table_name
+                            Err(aoc_leaderbot_aws::Error::Dynamo(
+                                DynamoError::CreateTable {
+                                    table_name: actual_table_name,
+                                    source: CreateDynamoTableError::CreateTable(_),
+                                }
+                            )) if actual_table_name == table_name
                         );
                     })
                 };
