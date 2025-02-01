@@ -67,7 +67,7 @@ jobs:
             toolchain: 1.70.0
           - package: "aoc_leaderbot_lib"
             toolchain: 1.75.0
-          - package: "aoc_leaderbot_aws"
+          - package: "aoc_leaderbot_aws_lib"
             toolchain: 1.81.0
     runs-on: ${{ matrix.os }}
     steps:
