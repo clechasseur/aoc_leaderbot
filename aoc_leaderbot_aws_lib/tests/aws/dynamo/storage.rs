@@ -1,3 +1,5 @@
+// These tests require Docker, which only seems to work reliably on Linux in GitHub workflows.
+#[cfg(any(not(ci), target_os = "linux"))]
 mod dynamo_storage {
     use aoc_leaderboard::aoc::Leaderboard;
     use aoc_leaderbot_aws_lib::error::{
