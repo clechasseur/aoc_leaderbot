@@ -1,5 +1,5 @@
 [package]
-name = "aoc_leaderbot_aws"
+name = "aoc_leaderbot_aws_lib"
 version = "0.2.0"
 authors.workspace = true
 edition = "2021"
@@ -49,6 +49,7 @@ tokio = { workspace = true, optional = true, features = ["rt-multi-thread"] }
 aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.2.0" }
 assert_matches = { workspace = true }
 futures = { workspace = true }
+testcontainers-modules = { workspace = true, features = ["dynamodb"] }
 tokio = { workspace = true, features = ["macros", "test-util"] }
 uuid = { workspace = true, features = ["v4"] }
 

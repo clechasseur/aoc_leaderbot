@@ -31,8 +31,22 @@ package_all_flag := if package != "" { "--package " + package } else { all_flag 
 warnings_as_errors := "true"
 clippy_flags := if warnings_as_errors == "true" { "-- -D warnings" } else { "" }
 
+lambda_package_flag := "--package " + (if package != "" { package } else { "aoc_leaderbot_aws_lambda_impl" })
+
+function_name := "_"
+
+data_format := "ascii"
+data_format_flag := "--data-" + data_format
+
+output_format := ""
+output_format_flag := if output_format != "" { "--output-format " + output_format } else { "" }
+
+arm64 := "true"
+arm64_flag := if arm64 == "true" { "--arm64" } else { "" }
+
 cargo_tarpaulin := tool + " tarpaulin"
 cargo_hack := tool + " hack"
+cargo_lambda := tool + " lambda"
 
 [private]
 default:
@@ -76,6 +90,18 @@ test *extra_args:
 # Run `cargo update` to update dependencies in Cargo.lock
 update *extra_args:
     {{cargo}} update {{extra_args}}
+
+# Run `cargo lambda watch` to start the lambda locally
+watch *extra_args:
+    {{cargo_lambda}} watch {{lambda_package_flag}} {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+
+# Run `cargo lambda build`
+build-lambda *extra_args:
+    {{cargo_lambda}} build {{lambda_package_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{release_flag}} {{arm64_flag}} {{extra_args}}
+
+# Run `cargo lambda deploy` using `.env.aws-lambda` file
+deploy-lambda *extra_args:
+    {{cargo_lambda}} deploy {{output_format_flag}} --env-file .env.aws-lambda {{extra_args}}
 
 # Run `cargo tarpaulin` to produce code coverage
 @tarpaulin *extra_args:

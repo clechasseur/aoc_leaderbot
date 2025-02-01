@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [ "aoc_leaderboard", "aoc_leaderbot_lib", "aoc_leaderbot_aws" ]
+        package: [ "aoc_leaderboard", "aoc_leaderbot_lib", "aoc_leaderbot_aws_lib" ]
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         include:
           - toolchain: stable
