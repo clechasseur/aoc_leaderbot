@@ -138,6 +138,9 @@ jobs:
           key: ignore-lock-${{ matrix.ignore-lock }}
           cache-on-failure: true
 
+      - name: Install Docker
+        uses: docker/setup-docker-action@v4.1.0
+
       - name: Install required tools
         uses: taiki-e/install-action@333ea3e9a483e78588ef8e157263f263a7640903 # v2.47.12
         with:
