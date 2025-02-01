@@ -22,10 +22,6 @@ memory = 512 # MB
 timeout = 120 # seconds
 tracing = "active"
 
-[[bin]]
-name = "aoc_leaderbot"
-path = "src/main.rs"
-
 [dependencies]
 lambda_runtime = { workspace = true }
 serde = { workspace = true }
