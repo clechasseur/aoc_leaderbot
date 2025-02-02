@@ -11,45 +11,11 @@ mod dynamo_storage {
     use aoc_leaderbot_lib::leaderbot::Storage;
     use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
     use assert_matches::assert_matches;
-    use aws_config::SdkConfig;
     use aws_sdk_dynamodb::types::AttributeValue;
     use aws_sdk_dynamodb::Client;
-    use testcontainers_modules::dynamodb_local::DynamoDb;
-    use testcontainers_modules::testcontainers::runners::AsyncRunner;
-    use testcontainers_modules::testcontainers::{ContainerAsync, ImageExt};
     use uuid::Uuid;
 
-    const DYNAMODB_LOCAL_TAG: &str = "2.5.4";
-
-    #[derive(Debug)]
-    struct LocalDynamo {
-        _container: ContainerAsync<DynamoDb>,
-        config: SdkConfig,
-    }
-
-    impl LocalDynamo {
-        pub async fn new() -> Self {
-            let container = DynamoDb::default()
-                .with_tag(DYNAMODB_LOCAL_TAG)
-                .start()
-                .await
-                .unwrap();
-            let host = container.get_host().await.unwrap();
-            let port = container.get_host_port_ipv4(8000).await.unwrap();
-
-            let config = aws_config::load_from_env()
-                .await
-                .to_builder()
-                .endpoint_url(format!("http://{host}:{port}"))
-                .build();
-
-            Self { _container: container, config }
-        }
-
-        pub fn config(&self) -> &SdkConfig {
-            &self.config
-        }
-    }
+    const LOCAL_ENDPOINT_URL: &str = "http://localhost:8000";
 
     struct LocalTable {
         name: String,
@@ -58,17 +24,23 @@ mod dynamo_storage {
     }
 
     impl LocalTable {
-        pub async fn without_table(local_dynamo: &LocalDynamo) -> Self {
+        pub async fn without_table() -> Self {
             let name = Self::random_table_name();
 
-            let client = Client::new(local_dynamo.config());
-            let storage = DynamoStorage::with_config(local_dynamo.config(), name.clone()).await;
+            let config = aws_config::load_from_env()
+                .await
+                .to_builder()
+                .endpoint_url(LOCAL_ENDPOINT_URL)
+                .build();
 
-            Self { client, name, storage }
+            let client = Client::new(&config);
+            let storage = DynamoStorage::with_config(&config, name.clone()).await;
+
+            Self { name, client, storage }
         }
 
-        pub async fn with_table(local_dynamo: &LocalDynamo) -> Self {
-            let mut table = Self::without_table(local_dynamo).await;
+        pub async fn with_table() -> Self {
+            let mut table = Self::without_table().await;
             table.create().await;
             table
         }
@@ -132,15 +104,17 @@ mod dynamo_storage {
         pub mod load_previous {
             use super::*;
 
-            pub async fn without_data(local_dynamo: &LocalDynamo) {
-                let mut table = LocalTable::with_table(local_dynamo).await;
+            #[tokio::test]
+            async fn without_data() {
+                let mut table = LocalTable::with_table().await;
                 let previous_leaderboard =
                     table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
                 assert_matches!(previous_leaderboard, Ok(None));
             }
 
-            pub async fn with_data(local_dynamo: &LocalDynamo) {
-                let mut table = LocalTable::with_table(local_dynamo).await;
+            #[tokio::test]
+            async fn with_data() {
+                let mut table = LocalTable::with_table().await;
                 let expected_leaderboard = get_sample_leaderboard();
                 table.save_leaderboard(&expected_leaderboard).await;
 
@@ -152,8 +126,9 @@ mod dynamo_storage {
             pub mod errors {
                 use super::*;
 
-                pub async fn get_item(local_dynamo: &LocalDynamo) {
-                    let mut table = LocalTable::without_table(local_dynamo).await;
+                #[tokio::test]
+                async fn get_item() {
+                    let mut table = LocalTable::without_table().await;
                     let previous_leaderboard =
                         table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
                     assert_matches!(
@@ -168,8 +143,9 @@ mod dynamo_storage {
                     );
                 }
 
-                pub async fn missing_leaderboard_data(local_dynamo: &LocalDynamo) {
-                    let mut table = LocalTable::with_table(local_dynamo).await;
+                #[tokio::test]
+                async fn missing_leaderboard_data() {
+                    let mut table = LocalTable::with_table().await;
                     table
                         .client()
                         .put_item()
@@ -194,8 +170,9 @@ mod dynamo_storage {
                     );
                 }
 
-                pub async fn invalid_leaderboard_data_type(local_dynamo: &LocalDynamo) {
-                    let mut table = LocalTable::with_table(local_dynamo).await;
+                #[tokio::test]
+                async fn invalid_leaderboard_data_type() {
+                    let mut table = LocalTable::with_table().await;
                     table
                         .client()
                         .put_item()
@@ -221,8 +198,9 @@ mod dynamo_storage {
                     );
                 }
 
-                pub async fn parse_error(local_dynamo: &LocalDynamo) {
-                    let mut table = LocalTable::with_table(local_dynamo).await;
+                #[tokio::test]
+                async fn parse_error() {
+                    let mut table = LocalTable::with_table().await;
                     table
                         .client()
                         .put_item()
@@ -256,10 +234,11 @@ mod dynamo_storage {
         pub mod save {
             use super::*;
 
-            pub async fn without_existing(local_dynamo: &LocalDynamo) {
+            #[tokio::test]
+            async fn without_existing() {
                 let expected_leaderboard = get_sample_leaderboard();
 
-                let mut table = LocalTable::with_table(local_dynamo).await;
+                let mut table = LocalTable::with_table().await;
                 table
                     .storage()
                     .save(YEAR, LEADERBOARD_ID, &expected_leaderboard)
@@ -270,8 +249,9 @@ mod dynamo_storage {
                 assert_eq!(expected_leaderboard, actual_leaderboard);
             }
 
-            pub async fn with_existing(local_dynamo: &LocalDynamo) {
-                let mut table = LocalTable::with_table(local_dynamo).await;
+            #[tokio::test]
+            async fn with_existing() {
+                let mut table = LocalTable::with_table().await;
                 let previous_leaderboard = get_sample_leaderboard();
                 table.save_leaderboard(&previous_leaderboard).await;
 
@@ -292,8 +272,9 @@ mod dynamo_storage {
             pub mod errors {
                 use super::*;
 
-                pub async fn put_item(local_dynamo: &LocalDynamo) {
-                    let mut table = LocalTable::without_table(local_dynamo).await;
+                #[tokio::test]
+                async fn put_item() {
+                    let mut table = LocalTable::without_table().await;
                     let leaderboard = get_sample_leaderboard();
                     let save_result = table
                         .storage()
@@ -319,8 +300,9 @@ mod dynamo_storage {
             pub mod errors {
                 use super::*;
 
-                pub async fn create_table(local_dynamo: &LocalDynamo) {
-                    let mut table = LocalTable::with_table(local_dynamo).await;
+                #[tokio::test]
+                async fn create_table() {
+                    let mut table = LocalTable::with_table().await;
                     let create_result = table.storage().create_table().await;
                     assert_matches!(
                         create_result,
@@ -334,25 +316,5 @@ mod dynamo_storage {
                 }
             }
         }
-    }
-
-    #[tokio::test]
-    async fn all_tests() {
-        let local_dynamo = LocalDynamo::new().await;
-
-        storage_impl::load_previous::without_data(&local_dynamo).await;
-        storage_impl::load_previous::with_data(&local_dynamo).await;
-
-        storage_impl::load_previous::errors::get_item(&local_dynamo).await;
-        storage_impl::load_previous::errors::missing_leaderboard_data(&local_dynamo).await;
-        storage_impl::load_previous::errors::invalid_leaderboard_data_type(&local_dynamo).await;
-        storage_impl::load_previous::errors::parse_error(&local_dynamo).await;
-
-        storage_impl::save::without_existing(&local_dynamo).await;
-        storage_impl::save::with_existing(&local_dynamo).await;
-
-        storage_impl::save::errors::put_item(&local_dynamo).await;
-
-        storage_impl::create_table::errors::create_table(&local_dynamo).await;
     }
 }

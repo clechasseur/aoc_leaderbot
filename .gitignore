@@ -30,6 +30,3 @@ codecov.json
 
 # AWS lambda environment variables
 .env.aws-lambda
-
-# Local Docker storage
-docker/

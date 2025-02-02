@@ -24,19 +24,19 @@ release_flag := if release == "true" { "--release" } else { "" }
 workspace := "true"
 package := ""
 workspace_flag := if workspace != "true" { "" } else if package != "" { "" } else { "--workspace" }
-all_flag := if workspace != "true" { "" } else if package != "" { "" } else { "--all" }
+all_flag := if workspace_flag == "" { "" } else { "--all" }
 package_flag := if package != "" { "--package " + package } else { workspace_flag }
 package_all_flag := if package != "" { "--package " + package } else { all_flag }
 
 warnings_as_errors := "true"
 clippy_flags := if warnings_as_errors == "true" { "-- -D warnings" } else { "" }
 
+cargo_tarpaulin := cargo + " tarpaulin"
+cargo_hack := cargo + " hack"
+
+# ----- Project-specific variables -----
+
 lambda_package_flag := "--package " + (if package != "" { package } else { "aoc_leaderbot_aws_lambda_impl" })
-
-function_name := "_"
-
-data_format := "ascii"
-data_format_flag := "--data-" + data_format
 
 output_format := ""
 output_format_flag := if output_format != "" { "--output-format " + output_format } else { "" }
@@ -44,8 +44,6 @@ output_format_flag := if output_format != "" { "--output-format " + output_forma
 arm64 := "true"
 arm64_flag := if arm64 == "true" { "--arm64" } else { "" }
 
-cargo_tarpaulin := tool + " tarpaulin"
-cargo_hack := tool + " hack"
 cargo_lambda := tool + " lambda"
 
 [private]
@@ -91,21 +89,9 @@ test *extra_args:
 update *extra_args:
     {{cargo}} update {{extra_args}}
 
-# Run `cargo lambda watch` to start the lambda locally
-watch *extra_args:
-    {{cargo_lambda}} watch {{lambda_package_flag}} {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
-
-# Run `cargo lambda build`
-build-lambda *extra_args:
-    {{cargo_lambda}} build {{lambda_package_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{release_flag}} {{arm64_flag}} {{extra_args}}
-
-# Run `cargo lambda deploy` using `.env.aws-lambda` file
-deploy-lambda *extra_args:
-    {{cargo_lambda}} deploy {{output_format_flag}} --env-file .env.aws-lambda {{extra_args}}
-
 # Run `cargo tarpaulin` to produce code coverage
 @tarpaulin *extra_args:
-    @{{cargo_tarpaulin}} --target-dir target-tarpaulin {{extra_args}}
+    @{{cargo_tarpaulin}} --target-dir target/tarpaulin-target {{extra_args}}
     {{ if env('CI', '') == '' { `just _open-tarpaulin` } else { ` ` } }}
 
 [unix]
@@ -179,3 +165,21 @@ unprep *extra_args:
 [windows]
 @_rimraf-it target_dir:
     Remove-Item "{{target_dir}}" -Recurse
+
+# ----- Project-specific recipes -----
+
+# Run `docker compose <command>` to start/stop local Dynamo
+dynamo command *extra_args:
+    docker compose {{ if command == "up" { 'up -d' } else { command } }} {{extra_args}}
+
+# Run `cargo lambda watch` to start the lambda locally
+watch *extra_args:
+    {{cargo_lambda}} watch {{lambda_package_flag}} {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} {{extra_args}}
+
+# Run `cargo lambda build`
+build-lambda *extra_args:
+    {{cargo_lambda}} build {{lambda_package_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{release_flag}} {{arm64_flag}} {{extra_args}}
+
+# Run `cargo lambda deploy` using `.env.aws-lambda` file
+deploy-lambda *extra_args:
+    {{cargo_lambda}} deploy {{output_format_flag}} --env-file .env.aws-lambda {{extra_args}}
