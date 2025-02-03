@@ -44,7 +44,7 @@ output_format_flag := if output_format != "" { "--output-format " + output_forma
 arm64 := "true"
 arm64_flag := if arm64 == "true" { "--arm64" } else { "" }
 
-cargo_lambda := tool + " lambda"
+cargo_lambda := cargo + " lambda"
 
 [private]
 default:
