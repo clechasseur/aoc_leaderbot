@@ -1,6 +1,13 @@
 [workspace]
 resolver = "2"
-members = ["aoc_leaderboard", "aoc_leaderbot_lib"]
+members = [
+    "aoc_leaderboard",
+    "aoc_leaderbot_aws_lambda_impl",
+    "aoc_leaderbot_aws_lib",
+    "aoc_leaderbot_lib",
+    "aoc_leaderbot_slack_lib",
+    "aoc_leaderbot_test_helpers",
+]
 
 [workspace.package]
 authors = [ "Charles Lechasseur <shiftingbeard@outlook.com>" ]
@@ -14,11 +21,11 @@ repository = "https://github.com/clechasseur/aoc_leaderbot"
 anyhow = "1.0.95"
 assert_matches = "1.5.0"
 aws-config = "1.5.15"
-aws-sdk-dynamodb = "1.62.0"
+aws-sdk-dynamodb = "1.63.0"
 chrono = "0.4.39"
 derive_builder = "0.20.2"
 dotenvy = "0.15.7"
-futures = "0.3.31"
+lambda_runtime = "0.13.0"
 mockall = "0.13.1"
 mockall_double = "0.3.1"
 reqwest = "0.12.12"

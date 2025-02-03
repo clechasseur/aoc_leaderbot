@@ -1,20 +1,20 @@
 [package]
-name = "aoc_leaderbot_lib"
+name = "aoc_leaderbot_aws_lib"
 version = "0.2.0"
 authors.workspace = true
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.81.0"
 
 readme = "README.md"
 license.workspace = true
 
 homepage.workspace = true
 repository.workspace = true
-documentation = "https://docs.rs/aoc_leaderbot_lib/"
+documentation = "https://docs.rs/aoc_leaderbot_aws_lib/"
 
-description = "Support library for aoc_leaderbot, an Advent of Code leaderboard-watching bot"
+description = "AWS-specific support library for aoc_leaderbot, an Advent of Code leaderboard-watching bot"
 
-keywords = [ "aoc", "advent-of-code" ]
+keywords = [ "aoc", "advent-of-code", "aws" ]
 categories = [ "asynchronous" ]
 
 include = [ "src/**/*", "tests/**/*", "build.rs", "LICENSE", "README.md" ]
@@ -29,26 +29,25 @@ level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
 [features]
-default = ["config-env"]
+default = ["dynamodb"]
 
-config-mem = ["derive_builder"]
-config-env = ["config-mem"]
+dynamodb = ["dynamodb-base", "storage-dynamodb"]
 
-storage-mem = []
+dynamodb-base = ["aws-sdk-dynamodb", "serde_json"]
+storage-dynamodb = ["dynamodb-base", "tokio/time"]
 
 [dependencies]
-aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0", features = ["http"] }
-chrono = { workspace = true }
-derive_builder = { workspace = true, optional = true }
-mockall_double = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }
+aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.2.0" }
+aws-config = { workspace = true, features = ["behavior-version-latest"] }
+aws-sdk-dynamodb = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
 thiserror = { workspace = true }
+tokio = { workspace = true, optional = true, features = ["rt-multi-thread"] }
 
 [dev-dependencies]
 aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.2.0" }
 assert_matches = { workspace = true }
-mockall = { workspace = true }
-serial_test = { workspace = true }
 tokio = { workspace = true, features = ["macros", "test-util"] }
 uuid = { workspace = true, features = ["v4"] }
 
