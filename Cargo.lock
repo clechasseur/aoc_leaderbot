@@ -116,6 +116,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "aoc_leaderbot_slack_lib"
+version = "0.1.0"
+dependencies = [
+ "aoc_leaderboard",
+ "aoc_leaderbot_lib",
+ "derive_builder",
+ "reqwest",
+ "rustc_version",
+ "thiserror 2.0.11",
+]
+
+[[package]]
 name = "aoc_leaderbot_test_helpers"
 version = "0.2.0"
 dependencies = [

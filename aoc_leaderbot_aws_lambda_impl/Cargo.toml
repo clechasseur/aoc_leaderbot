@@ -8,7 +8,7 @@ license.workspace = true
 
 homepage.workspace = true
 repository.workspace = true
-documentation = "https://docs.rs/aoc_leaderbot_aws_lambda/"
+documentation = "https://docs.rs/aoc_leaderbot_aws_lambda_impl/"
 
 description = "Implementation of an Advent of Code leaderboard-watching bot running in AWS Lambda"
 

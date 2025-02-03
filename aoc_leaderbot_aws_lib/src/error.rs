@@ -8,19 +8,19 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[non_exhaustive]
 pub enum Error {
     /// DynamoDB error.
-    #[cfg(feature = "dynamo-base")]
-    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamo-base")))]
+    #[cfg(feature = "dynamodb-base")]
+    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
     #[error(transparent)]
-    Dynamo(#[from] DynamoError),
+    Dynamo(#[from] DynamoDbError),
 }
 
 /// Errors pertaining to the [AWS DynamoDB] service.
 ///
 /// [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
-#[cfg(feature = "dynamo-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamo-base")))]
+#[cfg(feature = "dynamodb-base")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
 #[derive(Debug, thiserror::Error)]
-pub enum DynamoError {
+pub enum DynamoDbError {
     /// Error occurred while loading previous leaderboard from DynamoDB table.
     #[error(
         "failed to load previous leaderboard with id {leaderboard_id} for year {year}: {source}"
@@ -33,7 +33,7 @@ pub enum DynamoError {
         year: i32,
 
         /// The error that occurred while trying to load previous leaderboard.
-        source: LoadPreviousDynamoError,
+        source: LoadPreviousDynamoDbError,
     },
 
     /// Error occurred while saving leaderboard in DynamoDB table.
@@ -46,7 +46,7 @@ pub enum DynamoError {
         year: i32,
 
         /// The error that occurred while trying to save leaderboard.
-        source: SaveDynamoError,
+        source: SaveDynamoDbError,
     },
 
     /// Error occurred while creating a table to store leaderboard data
@@ -56,15 +56,15 @@ pub enum DynamoError {
         table_name: String,
 
         /// The error that occurred while trying to create the table.
-        source: CreateDynamoTableError,
+        source: CreateDynamoDbTableError,
     },
 }
 
 /// Error pertaining to loading leaderboard data from DynamoDB.
-#[cfg(feature = "dynamo-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamo-base")))]
+#[cfg(feature = "dynamodb-base")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
 #[derive(Debug, thiserror::Error)]
-pub enum LoadPreviousDynamoError {
+pub enum LoadPreviousDynamoDbError {
     /// Error that occurred while trying to load previous leaderboard data from DynamoDB.
     #[error("error loading leaderboard data: {0}")]
     GetItem(
@@ -79,7 +79,7 @@ pub enum LoadPreviousDynamoError {
     #[error("leaderboard data not found")]
     MissingLeaderboardData,
 
-    /// The leaderboard data was fetched, but it wasn't persisted in a string.
+    /// The leaderboard data was fetched, but it wasn't persisted as a string.
     #[error("leaderboard data should be a string")]
     InvalidLeaderboardDataType,
 
@@ -89,10 +89,10 @@ pub enum LoadPreviousDynamoError {
 }
 
 /// Error pertaining to saving leaderboard data in DynamoDB.
-#[cfg(feature = "dynamo-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamo-base")))]
+#[cfg(feature = "dynamodb-base")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
 #[derive(Debug, thiserror::Error)]
-pub enum SaveDynamoError {
+pub enum SaveDynamoDbError {
     /// Error that occurred while trying to save leaderboard data in DynamoDB.
     #[error("error saving leaderboard data: {0}")]
     PutItem(
@@ -109,10 +109,10 @@ pub enum SaveDynamoError {
 }
 
 /// Error pertaining to creating a DynamoDB table to store leaderboard data.
-#[cfg(feature = "dynamo-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamo-base")))]
+#[cfg(feature = "dynamodb-base")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
 #[derive(Debug, thiserror::Error)]
-pub enum CreateDynamoTableError {
+pub enum CreateDynamoDbTableError {
     /// Error that occurred while trying to create DynamoDB table.
     #[error("error creating table: {0}")]
     CreateTable(

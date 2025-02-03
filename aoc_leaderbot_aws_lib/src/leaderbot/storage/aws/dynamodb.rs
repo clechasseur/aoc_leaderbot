@@ -1,4 +1,6 @@
-//! Bot storage keeping data in an AWS DynamoDB table.
+//! [`leaderbot::Storage`](Storage) keeping data in an [AWS DynamoDB] table.
+//!
+//! [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 
 use std::time::Duration;
 
@@ -12,31 +14,31 @@ use aws_sdk_dynamodb::types::{
 use aws_sdk_dynamodb::Client;
 use tokio::time::sleep;
 
-use crate::error::{DynamoError, LoadPreviousDynamoError};
+use crate::error::{DynamoDbError, LoadPreviousDynamoDbError};
 
-/// The hash key (aka partition key) used by [`DynamoStorage`].
+/// The hash key (aka partition key) used by [`DynamoDbStorage`].
 ///
 /// Stores the `leaderboard_id`.
 pub const HASH_KEY: &str = "leaderboard_id";
 
-/// The range key used by [`DynamoStorage`].
+/// The range key used by [`DynamoDbStorage`].
 ///
-/// Stores the `year.
+/// Stores the `year`.
 pub const RANGE_KEY: &str = "year";
 
-/// The column storing leaderboard data in the [`DynamoStorage`].
+/// The column storing leaderboard data in the [`DynamoDbStorage`].
 pub const LEADERBOARD_DATA: &str = "leaderboard_data";
 
 /// Bot storage that keeps data in an [AWS DynamoDB] table.
 ///
 /// [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 #[derive(Debug, Clone)]
-pub struct DynamoStorage {
+pub struct DynamoDbStorage {
     client: Client,
     table_name: String,
 }
 
-impl DynamoStorage {
+impl DynamoDbStorage {
     /// Creates a new DynamoDB bot storage.
     ///
     /// The only parameter required is the DynamoDB table name.
@@ -63,7 +65,7 @@ impl DynamoStorage {
     /// waits until the table is created before returning.
     pub async fn create_table(&self) -> crate::Result<()> {
         let create_table_error =
-            |source| DynamoError::CreateTable { table_name: self.table_name.clone(), source };
+            |source| DynamoDbError::CreateTable { table_name: self.table_name.clone(), source };
 
         let output = self
             .client
@@ -125,7 +127,7 @@ impl DynamoStorage {
     }
 }
 
-impl Storage for DynamoStorage {
+impl Storage for DynamoDbStorage {
     type Err = crate::Error;
 
     async fn load_previous(
@@ -134,7 +136,7 @@ impl Storage for DynamoStorage {
         leaderboard_id: u64,
     ) -> Result<Option<Leaderboard>, Self::Err> {
         let load_previous_error =
-            |source| DynamoError::LoadPreviousLeaderboard { leaderboard_id, year, source };
+            |source| DynamoDbError::LoadPreviousLeaderboard { leaderboard_id, year, source };
 
         let output = self
             .client
@@ -150,7 +152,8 @@ impl Storage for DynamoStorage {
             None => Ok(None),
             Some(item) => match item.get(LEADERBOARD_DATA) {
                 None => {
-                    Err(load_previous_error(LoadPreviousDynamoError::MissingLeaderboardData).into())
+                    Err(load_previous_error(LoadPreviousDynamoDbError::MissingLeaderboardData)
+                        .into())
                 },
                 Some(AttributeValue::S(data)) => {
                     let leaderboard = serde_json::from_str(data)
@@ -158,7 +161,7 @@ impl Storage for DynamoStorage {
                     Ok(Some(leaderboard))
                 },
                 Some(_) => {
-                    Err(load_previous_error(LoadPreviousDynamoError::InvalidLeaderboardDataType)
+                    Err(load_previous_error(LoadPreviousDynamoDbError::InvalidLeaderboardDataType)
                         .into())
                 },
             },
@@ -171,7 +174,7 @@ impl Storage for DynamoStorage {
         leaderboard_id: u64,
         leaderboard: &Leaderboard,
     ) -> Result<(), Self::Err> {
-        let save_error = |source| DynamoError::SaveLeaderboard { leaderboard_id, year, source };
+        let save_error = |source| DynamoDbError::SaveLeaderboard { leaderboard_id, year, source };
 
         let leaderboard_data =
             serde_json::to_string(&leaderboard).map_err(|err| save_error(err.into()))?;

@@ -10,7 +10,7 @@ license.workspace = true
 
 homepage.workspace = true
 repository.workspace = true
-documentation = "https://docs.rs/aoc_leaderbot_aws/"
+documentation = "https://docs.rs/aoc_leaderbot_aws_lib/"
 
 description = "AWS-specific support library for aoc_leaderbot, an Advent of Code leaderboard-watching bot"
 
@@ -29,12 +29,12 @@ level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
 [features]
-default = ["dynamo"]
+default = ["dynamodb"]
 
-dynamo = ["dynamo-base", "storage-dynamo"]
+dynamodb = ["dynamodb-base", "storage-dynamodb"]
 
-dynamo-base = ["aws-sdk-dynamodb", "serde_json"]
-storage-dynamo = ["dynamo-base", "tokio/time"]
+dynamodb-base = ["aws-sdk-dynamodb", "serde_json"]
+storage-dynamodb = ["dynamodb-base", "tokio/time"]
 
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }

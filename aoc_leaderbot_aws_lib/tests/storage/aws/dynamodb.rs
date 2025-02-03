@@ -3,10 +3,10 @@
 mod dynamo_storage {
     use aoc_leaderboard::aoc::Leaderboard;
     use aoc_leaderbot_aws_lib::error::{
-        CreateDynamoTableError, DynamoError, LoadPreviousDynamoError, SaveDynamoError,
+        CreateDynamoDbTableError, DynamoDbError, LoadPreviousDynamoDbError, SaveDynamoDbError,
     };
-    use aoc_leaderbot_aws_lib::leaderbot::aws::dynamo::storage::{
-        DynamoStorage, HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
+    use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::{
+        DynamoDbStorage, HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
     };
     use aoc_leaderbot_lib::leaderbot::Storage;
     use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
@@ -20,7 +20,7 @@ mod dynamo_storage {
     struct LocalTable {
         name: String,
         client: Client,
-        storage: DynamoStorage,
+        storage: DynamoDbStorage,
     }
 
     impl LocalTable {
@@ -34,7 +34,7 @@ mod dynamo_storage {
                 .build();
 
             let client = Client::new(&config);
-            let storage = DynamoStorage::with_config(&config, name.clone()).await;
+            let storage = DynamoDbStorage::with_config(&config, name.clone()).await;
 
             Self { name, client, storage }
         }
@@ -57,7 +57,7 @@ mod dynamo_storage {
             &self.client
         }
 
-        pub fn storage(&mut self) -> &mut DynamoStorage {
+        pub fn storage(&mut self) -> &mut DynamoDbStorage {
             &mut self.storage
         }
 
@@ -134,10 +134,10 @@ mod dynamo_storage {
                     assert_matches!(
                         previous_leaderboard,
                         Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoError::LoadPreviousLeaderboard {
+                            DynamoDbError::LoadPreviousLeaderboard {
                                 leaderboard_id,
                                 year,
-                                source: LoadPreviousDynamoError::GetItem(_),
+                                source: LoadPreviousDynamoDbError::GetItem(_),
                             }
                         )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
@@ -161,10 +161,10 @@ mod dynamo_storage {
                     assert_matches!(
                         previous_leaderboard,
                         Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoError::LoadPreviousLeaderboard {
+                            DynamoDbError::LoadPreviousLeaderboard {
                                 leaderboard_id,
                                 year,
-                                source: LoadPreviousDynamoError::MissingLeaderboardData,
+                                source: LoadPreviousDynamoDbError::MissingLeaderboardData,
                             }
                         )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
@@ -189,10 +189,10 @@ mod dynamo_storage {
                     assert_matches!(
                         previous_leaderboard,
                         Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoError::LoadPreviousLeaderboard {
+                            DynamoDbError::LoadPreviousLeaderboard {
                                 leaderboard_id,
                                 year,
-                                source: LoadPreviousDynamoError::InvalidLeaderboardDataType,
+                                source: LoadPreviousDynamoDbError::InvalidLeaderboardDataType,
                             }
                         )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
@@ -220,10 +220,10 @@ mod dynamo_storage {
                     assert_matches!(
                         previous_leaderboard,
                         Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoError::LoadPreviousLeaderboard {
+                            DynamoDbError::LoadPreviousLeaderboard {
                                 leaderboard_id,
                                 year,
-                                source: LoadPreviousDynamoError::ParseError(_),
+                                source: LoadPreviousDynamoDbError::ParseError(_),
                             }
                         )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
@@ -283,10 +283,10 @@ mod dynamo_storage {
                     assert_matches!(
                         save_result,
                         Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoError::SaveLeaderboard {
+                            DynamoDbError::SaveLeaderboard {
                                 leaderboard_id,
                                 year,
-                                source: SaveDynamoError::PutItem(_),
+                                source: SaveDynamoDbError::PutItem(_),
                             }
                         )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
@@ -307,9 +307,9 @@ mod dynamo_storage {
                     assert_matches!(
                         create_result,
                         Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoError::CreateTable {
+                            DynamoDbError::CreateTable {
                                 table_name: actual_table_name,
-                                source: CreateDynamoTableError::CreateTable(_),
+                                source: CreateDynamoDbTableError::CreateTable(_),
                             }
                         )) if actual_table_name == table.name()
                     );
