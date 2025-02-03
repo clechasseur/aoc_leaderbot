@@ -65,11 +65,11 @@ impl SlackWebhookReporterBuilder {
     }
 
     fn default_webhook_url() -> Result<String, String> {
-        Self::env_var(WEBHOOK_URL_ENV_VAR)
+        Self::env_var(WEBHOOK_URL_ENV_VAR, "webhook_url")
     }
 
     fn default_channel() -> Result<String, String> {
-        Self::env_var(CHANNEL_ENV_VAR)
+        Self::env_var(CHANNEL_ENV_VAR, "channel")
     }
 
     fn default_http_client() -> Result<Client, String> {
@@ -79,9 +79,10 @@ impl SlackWebhookReporterBuilder {
             .map_err(|err| format!("error building HTTP client: {err}"))
     }
 
-    fn env_var(var_name: &str) -> Result<String, String> {
-        env::var(var_name)
-            .map_err(|err| format!("error reading environment variable {var_name}: {err}"))
+    fn env_var(var_name: &str, field_name: &str) -> Result<String, String> {
+        env::var(var_name).map_err(|err| {
+            format!("error reading environment variable {var_name} (needed for default value of field {field_name}: {err}")
+        })
     }
 }
 
