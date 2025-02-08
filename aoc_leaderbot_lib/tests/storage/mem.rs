@@ -1,8 +1,7 @@
 mod memory_storage {
     use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryStorage;
     use aoc_leaderbot_lib::leaderbot::Storage;
-
-    use crate::test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
+    use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
 
     mod new {
         use super::*;

@@ -1,0 +1,29 @@
+[package]
+name = "aoc_leaderbot_aws_lambda_impl"
+version = "0.2.0"
+authors.workspace = true
+edition = "2021"
+rust-version = "1.81.0"
+
+license.workspace = true
+
+homepage.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/aoc_leaderbot_aws_lambda_impl/"
+
+description = "Implementation of an Advent of Code leaderboard-watching bot running in AWS Lambda"
+
+keywords = [ "aoc", "advent-of-code", "aws" ]
+categories = [ "asynchronous" ]
+
+include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
+
+[package.metadata.lambda.deploy]
+memory = 512 # MB
+timeout = 120 # seconds
+tracing = "active"
+
+[dependencies]
+lambda_runtime = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true, features = ["macros"] }

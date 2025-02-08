@@ -1,0 +1,29 @@
+[package]
+name = "aoc_leaderbot_test_helpers"
+version = "0.2.0"
+authors.workspace = true
+edition = "2021"
+
+readme = "README.md"
+license.workspace = true
+
+homepage.workspace = true
+repository.workspace = true
+documentation = "https://docs.rs/aoc_leaderbot_test_helpers/"
+
+description = "Test helpers for aoc_leaderbot and related projects"
+
+include = [ "src/**/*", "tests/**/*", "resources/tests/**/*", "LICENSE", "README.md" ]
+
+[package.metadata.docs.rs]
+all-features = true
+targets = [ "x86_64-unknown-linux-gnu" ]
+rustc-args = [ "--cfg", "docsrs" ]
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+
+[dependencies]
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }
+serde_json = { workspace = true }

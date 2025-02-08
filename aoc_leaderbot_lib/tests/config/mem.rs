@@ -1,8 +1,7 @@
 mod memory_config {
     use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
     use aoc_leaderbot_lib::leaderbot::Config;
-
-    use crate::test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
+    use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
 
     #[test]
     fn new() {
