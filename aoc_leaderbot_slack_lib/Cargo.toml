@@ -28,18 +28,29 @@ rustc-args = [ "--cfg", "docsrs" ]
 level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
+[features]
+default = ["webhook"]
+
+webhook = ["webhook-base", "reporter-webhook"]
+
+webhook-base = ["derive_builder", "serde"]
+reporter-webhook = ["webhook-base", "itertools", "pad", "reqwest", "strum"]
+
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }
 aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.2.0" }
-derive_builder = { workspace = true }
-itertools = { workspace = true }
-pad = { workspace = true }
-reqwest = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-strum = { workspace = true, features = ["derive"] }
+derive_builder = { workspace = true, optional = true }
+itertools = { workspace = true, optional = true }
+pad = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+serde = { workspace = true, optional = true, features = ["derive"] }
+strum = { workspace = true, optional = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
 serial_test = { workspace = true }
+
+[build-dependencies]
+rustc_version = { workspace = true }

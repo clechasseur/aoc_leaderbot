@@ -15,14 +15,17 @@ use serde::{Deserialize, Serialize};
 pub struct WebhookMessage {
     /// Name of Slack channel to post the message to.
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[builder(default)]
     pub channel: Option<String>,
 
     /// Username to use when posting the message to Slack.
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[builder(default)]
     pub username: Option<String>,
 
     /// URL of an icon to use for the Slack user posting the message.
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[builder(default)]
     pub icon_url: Option<String>,
 
     /// Message text content.

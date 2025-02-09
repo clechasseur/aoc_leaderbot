@@ -1,4 +1,7 @@
-//! Implementations of [`Reporter`] using [Slack webhooks](https://api.slack.com/messaging/webhooks).
+//! Implementations of [`leaderbot::Reporter`] using [Slack webhooks].
+//!
+//! [`leaderbot::Reporter`]: Reporter
+//! [Slack webhooks]: https://api.slack.com/messaging/webhooks
 
 use std::cmp::Ordering;
 use std::env;

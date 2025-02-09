@@ -126,6 +126,7 @@ dependencies = [
  "itertools",
  "pad",
  "reqwest",
+ "rustc_version",
  "serde",
  "serial_test",
  "strum",

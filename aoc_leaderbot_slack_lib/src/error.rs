@@ -1,8 +1,5 @@
 //! Custom error type definition.
 
-use crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError;
-use crate::slack::webhook::WebhookMessageBuilderError;
-
 /// Custom [`Result`](std::result::Result) type that defaults to this crate's [`Error`] type.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
@@ -11,20 +8,30 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[non_exhaustive]
 pub enum Error {
     /// Error related to a Slack webhook.
+    #[cfg(feature = "webhook-base")]
+    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
     #[error(transparent)]
     Webhook(#[from] WebhookError),
 }
 
 /// Error type used for problems related to Slack webhooks.
+#[cfg(feature = "webhook-base")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
 #[derive(Debug, thiserror::Error)]
 pub enum WebhookError {
     /// Error returned when failing to build a [`SlackWebhookReporter`].
     ///
     /// [`SlackWebhookReporter`]: crate::leaderbot::reporter::slack::webhook::SlackWebhookReporter
+    #[cfg(feature = "reporter-webhook")]
+    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "reporter-webhook")))]
     #[error("error building Slack webhook reporter: {0}")]
-    ReporterBuilder(#[from] SlackWebhookReporterBuilderError),
+    ReporterBuilder(
+        #[from] crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError,
+    ),
 
     /// An error occurred while trying to report leaderboard changes to a Slack webhook.
+    #[cfg(feature = "reporter-webhook")]
+    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "reporter-webhook")))]
     #[error(
         "error reporting changes to leaderboard id {leaderboard_id} for year {year}: {source}"
     )]
@@ -49,31 +56,39 @@ pub enum WebhookError {
     ///
     /// [`WebhookMessage`]: crate::slack::webhook::WebhookMessage
     #[error("error building Slack webhook message: {0}")]
-    MessageBuilder(#[from] WebhookMessageBuilderError),
+    MessageBuilder(#[from] crate::slack::webhook::WebhookMessageBuilderError),
 }
 
-impl From<SlackWebhookReporterBuilderError> for Error {
-    fn from(value: SlackWebhookReporterBuilderError) -> Self {
+#[cfg(feature = "reporter-webhook")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "reporter-webhook")))]
+impl From<crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError> for Error {
+    fn from(
+        value: crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError,
+    ) -> Self {
         WebhookError::from(value).into()
     }
 }
 
-impl From<WebhookMessageBuilderError> for Error {
-    fn from(value: WebhookMessageBuilderError) -> Self {
+#[cfg(feature = "webhook-base")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
+impl From<crate::slack::webhook::WebhookMessageBuilderError> for Error {
+    fn from(value: crate::slack::webhook::WebhookMessageBuilderError) -> Self {
         WebhookError::from(value).into()
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "webhook-base"))]
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use assert_matches::assert_matches;
-    use serial_test::serial;
 
     use super::*;
 
+    #[cfg(feature = "reporter-webhook")]
     mod from_slack_webhook_reporter_builder_error_for_error {
         use std::env;
+
+        use serial_test::serial;
 
         use super::*;
         use crate::leaderbot::reporter::slack::webhook::{
