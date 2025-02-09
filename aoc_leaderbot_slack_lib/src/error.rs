@@ -65,6 +65,7 @@ impl From<WebhookMessageBuilderError> for Error {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use assert_matches::assert_matches;
     use serial_test::serial;
