@@ -11,11 +11,12 @@
 #![deny(rustdoc::missing_crate_level_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
-#![cfg_attr(any(nightly_rustc, docsrs), feature(doc_cfg))]
-#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 pub mod error;
 pub mod leaderbot;
+pub mod slack;
 
 pub use error::Error;
 pub use error::Result;
+#[doc(hidden)]
+pub use reqwest;
