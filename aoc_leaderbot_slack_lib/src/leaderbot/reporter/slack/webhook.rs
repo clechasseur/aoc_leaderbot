@@ -267,7 +267,8 @@ impl Reporter for SlackWebhookReporter {
             .username(self.username.clone())
             .icon_url(self.icon_url.clone())
             .text(self.message_text(leaderboard, changes))
-            .build()?;
+            .build()
+            .expect("webhook message should have valid fields");
         trace!(?message);
 
         let response = self
