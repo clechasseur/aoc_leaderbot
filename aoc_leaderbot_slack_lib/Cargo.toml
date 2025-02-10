@@ -17,7 +17,7 @@ description = "Slack-specific support library for aoc_leaderbot, an Advent of Co
 keywords = [ "aoc", "advent-of-code", "slack" ]
 categories = [ "asynchronous" ]
 
-include = [ "src/**/*", "tests/**/*", "build.rs", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -28,12 +28,33 @@ rustc-args = [ "--cfg", "docsrs" ]
 level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
+[features]
+default = ["webhook"]
+
+webhook = ["webhook-base", "reporter-webhook"]
+
+webhook-base = ["derive_builder", "serde"]
+reporter-webhook = ["webhook-base", "itertools", "reqwest", "strum"]
+
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }
 aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.2.0" }
-derive_builder = { workspace = true }
-reqwest = { workspace = true }
+derive_builder = { workspace = true, optional = true }
+itertools = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+serde = { workspace = true, optional = true, features = ["derive"] }
+strum = { workspace = true, optional = true, features = ["derive"] }
 thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.2.0" }
+assert_matches = { workspace = true }
+serde_json = { workspace = true }
+serial_test = { workspace = true }
+test-log = { workspace = true, default-features = false, features = ["trace"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
+wiremock = { workspace = true }
 
 [build-dependencies]
 rustc_version = { workspace = true }

@@ -7,7 +7,6 @@
 #![deny(rustdoc::missing_crate_level_docs)]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
-#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
 use std::fs;
 use std::path::PathBuf;

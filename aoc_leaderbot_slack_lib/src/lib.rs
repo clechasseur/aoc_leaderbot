@@ -16,6 +16,10 @@
 
 pub mod error;
 pub mod leaderbot;
+pub mod slack;
 
 pub use error::Error;
 pub use error::Result;
+#[cfg(feature = "reporter-webhook")]
+#[doc(hidden)]
+pub use reqwest;
