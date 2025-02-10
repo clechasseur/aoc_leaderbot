@@ -366,10 +366,12 @@ mod slack_webhook_reporter {
         const ICON_URL: &str = "https://www.adventofcode.com/favicon.ico";
 
         const OWNER_NAME: &str = "Ford Prefect";
-        const OWNER_ID: u64 = 2;
+        const OWNER_ID: u64 = 1;
 
-        const NEW_MEMBER_NAME: &str = "Arthur Dent";
-        const NEW_MEMBER_ID: u64 = 1;
+        const PROGRESSING_MEMBER_NAME: &str = "Zaphod Beeblebrox";
+        const PROGRESSING_MEMBER_ID: u64 = 2;
+
+        const NEW_MEMBER_ID: u64 = 3;
 
         async fn working_mock_server() -> MockServer {
             let mock_server = MockServer::start().await;
@@ -411,17 +413,25 @@ mod slack_webhook_reporter {
         }
 
         fn owner() -> LeaderboardMember {
-            let owner_json = json!({
+            let member_json = json!({
                 "name": OWNER_NAME,
                 "id": OWNER_ID,
             });
 
-            serde_json::from_value(owner_json).unwrap()
+            serde_json::from_value(member_json).unwrap()
+        }
+
+        fn progressing_member() -> LeaderboardMember {
+            let member_json = json!({
+                "name": PROGRESSING_MEMBER_NAME,
+                "id": PROGRESSING_MEMBER_ID,
+            });
+
+            serde_json::from_value(member_json).unwrap()
         }
 
         fn new_member(stars: u32, local_score: u64) -> LeaderboardMember {
             let member_json = json!({
-                "name": NEW_MEMBER_NAME,
                 "id": NEW_MEMBER_ID,
                 "stars": stars,
                 "local_score": local_score,
@@ -443,21 +453,27 @@ mod slack_webhook_reporter {
                     let mut reporter = reporter(&mock_server, sort_order);
 
                     let owner = owner();
+                    let progressing_member = progressing_member();
                     let previous_leaderboard = Leaderboard {
                         year: YEAR,
                         owner_id: owner.id,
                         day1_ts: 0,
-                        members: [(owner.id, owner)].into(),
+                        members: [(owner.id, owner), (progressing_member.id, progressing_member)]
+                            .into(),
                     };
 
                     let new_member = new_member(42, 100);
                     let mut leaderboard = previous_leaderboard.clone();
                     leaderboard.members.insert(new_member.id, new_member);
-                    leaderboard.members.get_mut(&OWNER_ID).unwrap().stars += 1;
+                    leaderboard
+                        .members
+                        .get_mut(&PROGRESSING_MEMBER_ID)
+                        .unwrap()
+                        .stars += 1;
 
                     let changes = Changes {
                         new_members: [NEW_MEMBER_ID].into(),
-                        members_with_new_stars: [OWNER_ID].into(),
+                        members_with_new_stars: [PROGRESSING_MEMBER_ID].into(),
                     };
 
                     let result = reporter
