@@ -34,14 +34,13 @@ default = ["webhook"]
 webhook = ["webhook-base", "reporter-webhook"]
 
 webhook-base = ["derive_builder", "serde"]
-reporter-webhook = ["webhook-base", "itertools", "pad", "reqwest", "strum"]
+reporter-webhook = ["webhook-base", "itertools", "reqwest", "strum"]
 
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }
 aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.2.0" }
 derive_builder = { workspace = true, optional = true }
 itertools = { workspace = true, optional = true }
-pad = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive"] }
 strum = { workspace = true, optional = true, features = ["derive"] }
@@ -50,6 +49,7 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
+serde_json = { workspace = true }
 serial_test = { workspace = true }
 
 [build-dependencies]

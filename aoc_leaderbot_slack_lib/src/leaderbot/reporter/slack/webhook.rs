@@ -3,6 +3,8 @@
 //! [`leaderbot::Reporter`]: Reporter
 //! [Slack webhooks]: https://api.slack.com/messaging/webhooks
 
+mod detail;
+
 use std::cmp::Ordering;
 use std::env;
 
@@ -10,11 +12,11 @@ use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
 use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
 use derive_builder::Builder;
 use itertools::Itertools;
-use pad::PadStr;
 use strum::{Display, EnumProperty, EnumString};
 use tracing::{error, instrument, trace};
 
 use crate::error::WebhookError;
+use crate::leaderbot::reporter::slack::webhook::detail::SlackWebhookReporterStringExt;
 use crate::leaderbot::reporter::slack::USER_AGENT;
 use crate::slack::webhook::WebhookMessage;
 
@@ -92,14 +94,12 @@ impl LeaderboardSortOrder {
             Self::Score => member.local_score.to_string(),
         };
 
-        value_text.pad_to_width_with_char(12, '\u{2007}')
+        value_text.right_pad(12, '\u{2007}')
     }
 
     /// Returns the header text to display in a message when this sort order is used.
     pub fn header_text(&self) -> String {
-        self.get_str("header")
-            .unwrap()
-            .pad_to_width_with_char(12, '\u{2007}')
+        self.get_str("header").unwrap().right_pad(12, '\u{2007}')
     }
 }
 
