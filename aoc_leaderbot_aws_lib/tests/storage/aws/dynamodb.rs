@@ -11,6 +11,7 @@ mod dynamo_storage {
     use aoc_leaderbot_lib::leaderbot::Storage;
     use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
     use assert_matches::assert_matches;
+    use aws_config::BehaviorVersion;
     use aws_sdk_dynamodb::types::AttributeValue;
     use aws_sdk_dynamodb::Client;
     use uuid::Uuid;
@@ -27,11 +28,12 @@ mod dynamo_storage {
         pub async fn without_table() -> Self {
             let name = Self::random_table_name();
 
-            let config = aws_config::load_from_env()
-                .await
-                .to_builder()
+            let config = aws_config::defaults(BehaviorVersion::latest())
+                .region("ca-central-1")
+                .test_credentials()
                 .endpoint_url(LOCAL_ENDPOINT_URL)
-                .build();
+                .load()
+                .await;
 
             let client = Client::new(&config);
             let storage = DynamoDbStorage::with_config(&config, name.clone()).await;
