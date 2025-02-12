@@ -7,6 +7,7 @@ use std::time::Duration;
 use aoc_leaderboard::aoc::Leaderboard;
 use aoc_leaderbot_lib::leaderbot::Storage;
 use aws_config::SdkConfig;
+use aws_sdk_dynamodb::operation::create_table::CreateTableOutput;
 use aws_sdk_dynamodb::types::{
     AttributeDefinition, AttributeValue, BillingMode, KeySchemaElement, KeyType,
     ScalarAttributeType, TableDescription, TableStatus,
@@ -43,6 +44,7 @@ impl DynamoDbStorage {
     ///
     /// The only parameter required is the DynamoDB table name.
     /// AWS SDK config will be loaded from the environment.
+    #[cfg_attr(coverage_nightly, coverage(off))]
     pub async fn new<T>(table_name: T) -> Self
     where
         T: Into<String>,
@@ -64,9 +66,6 @@ impl DynamoDbStorage {
     /// The table name passed at construction time will be used. The function
     /// waits until the table is created before returning.
     pub async fn create_table(&self) -> crate::Result<()> {
-        let create_table_error =
-            |source| DynamoDbError::CreateTable { table_name: self.table_name.clone(), source };
-
         let output = self
             .client
             .create_table()
@@ -82,29 +81,12 @@ impl DynamoDbStorage {
             .billing_mode(BillingMode::PayPerRequest)
             .send()
             .await
-            .map_err(|err| create_table_error(err.into()))?;
-        let mut status = output
-            .table_description()
-            .and_then(TableDescription::table_status)
-            .cloned();
+            .map_err(|source| DynamoDbError::CreateTable {
+                table_name: self.table_name.clone(),
+                source: source.into(),
+            })?;
 
-        while let Some(TableStatus::Creating) = status {
-            sleep(Duration::from_millis(100)).await;
-
-            let output = self
-                .client
-                .describe_table()
-                .table_name(self.table_name.clone())
-                .send()
-                .await
-                .map_err(|err| create_table_error(err.into()))?;
-            status = output
-                .table()
-                .and_then(TableDescription::table_status)
-                .cloned();
-        }
-
-        Ok(())
+        self.wait_for_table_creation(&output).await
     }
 
     fn attribute_definition(
@@ -124,6 +106,38 @@ impl DynamoDbStorage {
             .key_type(key_type)
             .build()
             .expect("all attributes for key schema element should be set")
+    }
+
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    async fn wait_for_table_creation(
+        &self,
+        create_output: &CreateTableOutput,
+    ) -> crate::Result<()> {
+        let mut status = create_output
+            .table_description()
+            .and_then(TableDescription::table_status)
+            .cloned();
+
+        while let Some(TableStatus::Creating) = status {
+            sleep(Duration::from_millis(100)).await;
+
+            let output = self
+                .client
+                .describe_table()
+                .table_name(self.table_name.clone())
+                .send()
+                .await
+                .map_err(|source| DynamoDbError::CreateTable {
+                    table_name: self.table_name.clone(),
+                    source: source.into(),
+                })?;
+            status = output
+                .table()
+                .and_then(TableDescription::table_status)
+                .cloned();
+        }
+
+        Ok(())
     }
 }
 
