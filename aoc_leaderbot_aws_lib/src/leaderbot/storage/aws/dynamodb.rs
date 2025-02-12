@@ -108,6 +108,9 @@ impl DynamoDbStorage {
             .expect("all attributes for key schema element should be set")
     }
 
+    // Note: we disable code coverage for this method because there's no guarantee
+    // the creation will take so long we'll have to wait, which means coverage might
+    // be inconsistent between runs.
     #[cfg_attr(coverage_nightly, coverage(off))]
     async fn wait_for_table_creation(
         &self,
