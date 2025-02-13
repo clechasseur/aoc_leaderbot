@@ -35,7 +35,7 @@ pub enum WebhookError {
     #[error(
         "error reporting changes to leaderboard id {leaderboard_id} for year {year}: {source}"
     )]
-    ReportChangesError {
+    ReportChanges {
         /// Year of leaderboard that changed.
         year: i32,
 

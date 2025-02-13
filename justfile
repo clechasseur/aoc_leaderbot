@@ -27,6 +27,7 @@ workspace_flag := if workspace != "true" { "" } else if package != "" { "" } els
 all_flag := if workspace_flag == "" { "" } else { "--all" }
 package_flag := if package != "" { "--package " + package } else { workspace_flag }
 package_all_flag := if package != "" { "--package " + package } else { all_flag }
+package_only_flag := if package != "" { "--package " + package } else { "" }
 
 warnings_as_errors := "true"
 clippy_flags := if warnings_as_errors == "true" { "-- -D warnings" } else { "" }
@@ -50,13 +51,14 @@ cargo_lambda := cargo + " lambda"
 default:
     @just --list
 
-# Run main executable
-run *extra_args:
-    {{cargo}} run {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
+# Run an executable
+run bin_name *extra_args: (_run-it "--bin" bin_name extra_args)
 
 # Run an example
-teach example_name *extra_args:
-    {{cargo}} run {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} --example {{example_name}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
+teach example_name *extra_args: (_run-it "--example" example_name extra_args)
+
+_run-it run_param run_param_value *extra_args:
+    {{cargo}} run {{package_only_flag}} {{all_features_flag}} {{target_tuple_flag}} {{release_flag}} {{run_param}} {{run_param_value}} {{ if extra_args != '' { '-- ' + extra_args } else { '' } }}
 
 # Run `cargo hack clippy` for the feature powerset and rustfmt
 tidy: clippy fmt
@@ -183,3 +185,6 @@ build-lambda *extra_args:
 # Run `cargo lambda deploy` using `.env.aws-lambda` file
 deploy-lambda *extra_args:
     {{cargo_lambda}} deploy {{output_format_flag}} --env-file .env.aws-lambda {{extra_args}}
+
+# Run tool to post test message to Slack
+slack *extra_args: (teach "post_test_message_to_slack" extra_args)

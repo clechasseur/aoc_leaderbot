@@ -49,6 +49,7 @@ pub const SORT_ORDER_ENV_VAR: &str = "SLACK_LEADERBOARD_SORT_ORDER";
     EnumProperty,
     EnumString,
 )]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum LeaderboardSortOrder {
     /// Sort leaderboard members by number of stars, descending.
     #[default]
@@ -239,6 +240,7 @@ impl SlackWebhookReporterBuilder {
     fn default_http_client() -> Result<reqwest::Client, String> {
         reqwest::Client::builder()
             .user_agent(USER_AGENT)
+            .cookie_store(true)
             .build()
             .map_err(|err| format!("error building HTTP client: {err}"))
     }
@@ -280,7 +282,7 @@ impl Reporter for SlackWebhookReporter {
             .and_then(reqwest::Response::error_for_status);
         match response {
             Ok(_) => Ok(()),
-            Err(source) => Err(WebhookError::ReportChangesError {
+            Err(source) => Err(WebhookError::ReportChanges {
                 year,
                 leaderboard_id,
                 webhook_url: self.webhook_url.clone(),
