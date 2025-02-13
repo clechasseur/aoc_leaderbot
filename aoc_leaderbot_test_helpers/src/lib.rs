@@ -12,6 +12,9 @@ use std::fs;
 use std::path::PathBuf;
 
 use aoc_leaderboard::aoc::Leaderboard;
+use reqwest::{header, Method, StatusCode};
+use wiremock::matchers::{header, method, path};
+use wiremock::{Mock, MockServer, ResponseTemplate};
 
 pub const YEAR: i32 = 2024;
 pub const LEADERBOARD_ID: u64 = 12345;
@@ -29,4 +32,19 @@ pub fn get_test_leaderboard(file_name: &str) -> Leaderboard {
 
 pub fn get_sample_leaderboard() -> Leaderboard {
     get_test_leaderboard("sample_leaderboard.json")
+}
+
+//noinspection DuplicatedCode
+pub async fn get_mock_server_with_leaderboard() -> MockServer {
+    let mock_server = MockServer::start().await;
+
+    let leaderboard = get_sample_leaderboard();
+    Mock::given(method(Method::GET))
+        .and(path(format!("/{YEAR}/leaderboard/private/view/{LEADERBOARD_ID}.json")))
+        .and(header(header::COOKIE, format!("session={AOC_SESSION}")))
+        .respond_with(ResponseTemplate::new(StatusCode::OK).set_body_json(leaderboard))
+        .mount(&mock_server)
+        .await;
+
+    mock_server
 }

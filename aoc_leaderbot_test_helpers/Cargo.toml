@@ -26,4 +26,9 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }
+reqwest = { workspace = true, features = ["json"] }
 serde_json = { workspace = true }
+wiremock = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
