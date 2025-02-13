@@ -68,7 +68,15 @@ impl Leaderboard {
             .await
     }
 
-    async fn get_from<B, S>(
+    /// Fetches this leaderboard's data from the [Advent of Code] website
+    /// using the provided http client and base website URL.
+    ///
+    /// In general, this method shouldn't be used directly; instead, use [`get`].
+    /// See that method's documentation for more details.
+    ///
+    /// [Advent of Code]: https://adventofcode.com/
+    /// [`get`]: Self::get
+    pub async fn get_from<B, S>(
         http_client: reqwest::Client,
         base: B,
         year: i32,
@@ -92,8 +100,15 @@ impl Leaderboard {
         }
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
-    fn http_client() -> crate::Result<reqwest::Client> {
+    /// Returns an HTTP [`Client`](reqwest::Client) that can be used to
+    /// fetch data from the [Advent of Code] website.
+    ///
+    /// In general, this method shouldn't be used directly; instead, use [`get`],
+    /// which creates the HTTP client automatically.
+    ///
+    /// [Advent of Code]: https://adventofcode.com/
+    /// [`get`]: Self::get
+    pub fn http_client() -> crate::Result<reqwest::Client> {
         // When trying to fetch the data of a private leaderboard you do
         // not have access to, the AoC website redirects to the main leaderboard,
         // so we won't follow redirect and consider that an unauthorized error.
@@ -103,7 +118,6 @@ impl Leaderboard {
             .build()?)
     }
 
-    #[cfg_attr(coverage_nightly, coverage(off))]
     fn http_user_agent() -> String {
         format!("clechasseur/{}@{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
     }

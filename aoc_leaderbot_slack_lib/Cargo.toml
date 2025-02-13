@@ -28,6 +28,10 @@ rustc-args = [ "--cfg", "docsrs" ]
 level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
+[[example]]
+name = "post_test_message_to_slack"
+required-features = ["reporter-webhook", "clap"]
+
 [features]
 default = ["webhook"]
 
@@ -39,21 +43,27 @@ reporter-webhook = ["webhook-base", "itertools", "reqwest", "strum"]
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }
 aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.2.0" }
+clap = { workspace = true, optional = true, features = ["derive"] }
 derive_builder = { workspace = true, optional = true }
 itertools = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true, features = ["cookies"] }
 serde = { workspace = true, optional = true, features = ["derive"] }
 strum = { workspace = true, optional = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
+anyhow = { workspace = true }
 aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.2.0" }
 assert_matches = { workspace = true }
+chrono = { workspace = true }
+clap-verbosity-flag = { workspace = true, features = ["tracing"] }
+dotenvy = { workspace = true }
 serde_json = { workspace = true }
 serial_test = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
+tracing-subscriber = { workspace = true }
 wiremock = { workspace = true }
 
 [build-dependencies]
