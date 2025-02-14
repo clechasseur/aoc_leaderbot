@@ -240,7 +240,6 @@ impl SlackWebhookReporterBuilder {
     fn default_http_client() -> Result<reqwest::Client, String> {
         reqwest::Client::builder()
             .user_agent(USER_AGENT)
-            .cookie_store(true)
             .build()
             .map_err(|err| format!("error building HTTP client: {err}"))
     }
