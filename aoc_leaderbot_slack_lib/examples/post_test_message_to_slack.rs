@@ -4,6 +4,9 @@
 //!
 //! [Advent of Code]: https://adventofcode.com/
 
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
+
 use std::env;
 use std::env::VarError;
 use std::str::FromStr;

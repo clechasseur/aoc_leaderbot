@@ -99,7 +99,7 @@ checksum = "34ac096ce696dc2fcabef30516bb13c0a68a11d30131d3df6f04711467681b04"
 
 [[package]]
 name = "aoc_leaderboard"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "aoc_leaderbot_aws_lambda_impl"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "lambda_runtime",
  "serde",
@@ -125,7 +125,7 @@ dependencies = [
 
 [[package]]
 name = "aoc_leaderbot_aws_lib"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "aoc_leaderboard",
  "aoc_leaderbot_lib",
@@ -142,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "aoc_leaderbot_lib"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "aoc_leaderboard",
  "aoc_leaderbot_test_helpers",
@@ -161,7 +161,7 @@ dependencies = [
 
 [[package]]
 name = "aoc_leaderbot_slack_lib"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "aoc_leaderboard",
@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "aoc_leaderbot_test_helpers"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "aoc_leaderboard",
  "reqwest",

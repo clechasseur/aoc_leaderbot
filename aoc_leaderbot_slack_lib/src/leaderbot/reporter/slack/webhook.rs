@@ -151,14 +151,19 @@ impl SlackWebhookReporter {
         SlackWebhookReporterBuilder::default()
     }
 
-    fn message_text(&self, leaderboard: &Leaderboard, changes: &Changes) -> String {
+    fn message_text(
+        &self,
+        leaderboard_id: u64,
+        leaderboard: &Leaderboard,
+        changes: &Changes,
+    ) -> String {
         let mut member_rows = leaderboard
             .members
             .values()
             .sorted_by(|lhs, rhs| self.sort_order.cmp_members(lhs, rhs))
             .map(|member| self.member_row_text(member, changes));
 
-        format!("{}\n{}", self.header_row_text(leaderboard), member_rows.join("\n"))
+        format!("{}\n{}", self.header_row_text(leaderboard_id, leaderboard), member_rows.join("\n"))
     }
 
     fn member_row_text(&self, member: &LeaderboardMember, changes: &Changes) -> String {
@@ -188,14 +193,18 @@ impl SlackWebhookReporter {
         }
     }
 
-    fn header_row_text(&self, leaderboard: &Leaderboard) -> String {
-        format!("*{}{}*", self.sort_order.header_text(), self.leaderboard_link(leaderboard))
+    fn header_row_text(&self, leaderboard_id: u64, leaderboard: &Leaderboard) -> String {
+        format!(
+            "*{}{}*",
+            self.sort_order.header_text(),
+            self.leaderboard_link(leaderboard_id, leaderboard)
+        )
     }
 
-    fn leaderboard_link(&self, leaderboard: &Leaderboard) -> String {
+    fn leaderboard_link(&self, leaderboard_id: u64, leaderboard: &Leaderboard) -> String {
         format!(
-            "<https://adventofcode.com/{}/leaderboard/private/view?order={}|*Leaderboard*>",
-            leaderboard.year, self.sort_order
+            "<https://adventofcode.com/{}/leaderboard/private/view/{}?order={}|*Leaderboard*>",
+            leaderboard.year, leaderboard_id, self.sort_order
         )
     }
 }
@@ -267,7 +276,7 @@ impl Reporter for SlackWebhookReporter {
             .channel(self.channel.clone())
             .username(self.username.clone())
             .icon_url(self.icon_url.clone())
-            .text(self.message_text(leaderboard, changes))
+            .text(self.message_text(leaderboard_id, leaderboard, changes))
             .build()
             .expect("webhook message should have valid fields");
         trace!(?message);

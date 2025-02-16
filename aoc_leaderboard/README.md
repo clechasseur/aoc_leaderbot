@@ -10,13 +10,14 @@ Add `aoc_leaderboard` to your dependencies:
 
 ```toml
 [dependencies]
-aoc_leaderboard = "1.0.0"
+# Enable http feature to be able to fetch leaderboard data
+aoc_leaderboard = { version = "0.3.0", features = ["http"] }
 ```
 
 or by running:
 
 ```bash
-cargo add aoc_leaderboard
+cargo add aoc_leaderboard --features http
 ```
 
 ## Example
