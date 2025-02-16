@@ -251,6 +251,51 @@ fn detect_changes(
 mod tests {
     use super::*;
 
+    mod reporter {
+        use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
+
+        use super::*;
+
+        struct TestReporter;
+
+        impl Reporter for TestReporter {
+            type Err = crate::Error;
+
+            async fn report_changes(
+                &mut self,
+                year: i32,
+                leaderboard_id: u64,
+                _previous_leaderboard: &Leaderboard,
+                _leaderboard: &Leaderboard,
+                changes: &Changes,
+            ) -> Result<(), Self::Err> {
+                println!(
+                    "Leaderboard {leaderboard_id} (for year {year}) has changed: {} new members added, {} members got new stars",
+                    changes.new_members.len(),
+                    changes.members_with_new_stars.len()
+                );
+                Ok(())
+            }
+        }
+
+        #[tokio::test]
+        async fn default_impl_works() {
+            let mut reporter = TestReporter;
+
+            let leaderboard = get_sample_leaderboard();
+            let changes = Changes::new([42, 23].into(), [11, 7].into());
+
+            reporter
+                .report_changes(YEAR, LEADERBOARD_ID, &leaderboard, &leaderboard, &changes)
+                .await
+                .unwrap();
+
+            reporter
+                .report_error(YEAR, LEADERBOARD_ID, "Something went wrong")
+                .await;
+        }
+    }
+
     mod run_bot {
         use std::collections::HashMap;
         use std::future::ready;
