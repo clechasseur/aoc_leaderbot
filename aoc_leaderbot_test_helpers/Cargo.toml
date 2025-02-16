@@ -7,7 +7,7 @@ edition = "2021"
 readme = "README.md"
 license.workspace = true
 
-homepage.workspace = true
+homepage = "https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot_test_helpers#readme"
 repository.workspace = true
 documentation = "https://docs.rs/aoc_leaderbot_test_helpers/"
 
