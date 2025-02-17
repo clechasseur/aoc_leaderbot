@@ -1,6 +1,6 @@
 [package]
 name = "aoc_leaderboard"
-version = "0.2.0"
+version = "0.3.0"
 authors.workspace = true
 edition = "2021"
 rust-version = "1.70.0"
@@ -8,7 +8,7 @@ rust-version = "1.70.0"
 readme = "README.md"
 license.workspace = true
 
-homepage.workspace = true
+homepage = "https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderboard#readme"
 repository.workspace = true
 documentation = "https://docs.rs/aoc_leaderboard/"
 
@@ -36,7 +36,7 @@ required-features = ["http"]
 http = ["dep:reqwest", "dep:serde_json"]
 
 [dependencies]
-reqwest = { workspace = true, optional = true, features = ["json", "rustls-tls"] }
+reqwest = { workspace = true, optional = true, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, optional = true }
 serde_with = { workspace = true }

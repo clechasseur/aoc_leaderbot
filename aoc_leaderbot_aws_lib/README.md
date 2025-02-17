@@ -4,4 +4,34 @@
 
 Library implementing AWS-specific helpers for [`aoc_leaderbot`](https://github.com/clechasseur/aoc_leaderbot), a bot that can watch an [Advent of Code](https://adventofcode.com/) private leaderboard for changes and report them to various channels like Slack.
 
-This library is mostly internal, so it provides no guarantee on API stability.
+## Installing
+
+Add `aoc_leaderbot_aws_lib` to your dependencies:
+
+```toml
+[dependencies]
+aoc_leaderbot_aws_lib = "0.3.0"
+```
+
+or by running:
+
+```bash
+cargo add aoc_leaderbot_aws_lib
+```
+
+## Trait implementations
+
+This library includes implementations of the traits found in [`aoc_leaderbot_lib`](https://crates.io/crates/aoc_leaderbot_lib).
+
+### [`DynamoDbStorage`](https://docs.rs/aoc_leaderbot_aws_lib/latest/aoc_leaderbot_aws_lib/leaderbot/storage/aws/dynamodb/struct.DynamoDbStorage.html)
+
+Required feature: `storage-dynamodb` (enabled by default)
+
+An implementation of the [`Storage`](https://docs.rs/aoc_leaderbot_lib/latest/aoc_leaderbot_lib/leaderbot/trait.Storage.html) trait that stores data in an [AWS DynamoDB](https://aws.amazon.com/dynamodb/) table.
+
+The only thing that the storage needs is the name of the table where to store data.
+If that table does not yet exist, it's possible to create it via the [`create_table`](https://docs.rs/aoc_leaderbot_aws_lib/latest/aoc_leaderbot_aws_lib/leaderbot/storage/aws/dynamodb/struct.DynamoDbStorage.html#tymethod.create_table).
+
+## Minimum Rust version
+
+`aoc_leaderbot_aws_lib` currently builds on Rust 1.81 or newer.

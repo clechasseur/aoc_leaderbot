@@ -1,6 +1,6 @@
 [package]
 name = "aoc_leaderbot_slack_lib"
-version = "0.2.0"
+version = "0.3.0"
 authors.workspace = true
 edition = "2021"
 rust-version = "1.75.0"
@@ -8,7 +8,7 @@ rust-version = "1.75.0"
 readme = "README.md"
 license.workspace = true
 
-homepage.workspace = true
+homepage = "https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot_slack_lib#readme"
 repository.workspace = true
 documentation = "https://docs.rs/aoc_leaderbot_slack_lib/"
 
@@ -17,7 +17,7 @@ description = "Slack-specific support library for aoc_leaderbot, an Advent of Co
 keywords = [ "aoc", "advent-of-code", "slack" ]
 categories = [ "asynchronous" ]
 
-include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "examples/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -28,6 +28,10 @@ rustc-args = [ "--cfg", "docsrs" ]
 level = "warn"
 check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
+[[example]]
+name = "post_test_message_to_slack"
+required-features = ["reporter-webhook", "clap"]
+
 [features]
 default = ["webhook"]
 
@@ -37,8 +41,9 @@ webhook-base = ["derive_builder", "serde"]
 reporter-webhook = ["webhook-base", "itertools", "reqwest", "strum"]
 
 [dependencies]
-aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0" }
-aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.2.0" }
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0" }
+aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.3.0" }
+clap = { workspace = true, optional = true, features = ["derive"] }
 derive_builder = { workspace = true, optional = true }
 itertools = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true }
@@ -48,12 +53,17 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
-aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.2.0" }
+anyhow = { workspace = true }
+aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.3.0" }
 assert_matches = { workspace = true }
+chrono = { workspace = true }
+clap-verbosity-flag = { workspace = true, features = ["tracing"] }
+dotenvy = { workspace = true }
 serde_json = { workspace = true }
 serial_test = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
+tracing-subscriber = { workspace = true }
 wiremock = { workspace = true }
 
 [build-dependencies]

@@ -1,6 +1,6 @@
 [package]
 name = "aoc_leaderbot_lib"
-version = "0.2.0"
+version = "0.3.0"
 authors.workspace = true
 edition = "2021"
 rust-version = "1.75.0"
@@ -8,7 +8,7 @@ rust-version = "1.75.0"
 readme = "README.md"
 license.workspace = true
 
-homepage.workspace = true
+homepage = "https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot_lib#readme"
 repository.workspace = true
 documentation = "https://docs.rs/aoc_leaderbot_lib/"
 
@@ -37,7 +37,7 @@ config-env = ["config-mem"]
 storage-mem = []
 
 [dependencies]
-aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.2.0", features = ["http"] }
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["http"] }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
 mockall_double = { workspace = true }
@@ -45,7 +45,7 @@ serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 
 [dev-dependencies]
-aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.2.0" }
+aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.3.0" }
 assert_matches = { workspace = true }
 mockall = { workspace = true }
 serial_test = { workspace = true }

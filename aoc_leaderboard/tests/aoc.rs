@@ -5,8 +5,8 @@ mod real_endpoint {
     use aoc_leaderboard::aoc::Leaderboard;
     use assert_matches::assert_matches;
 
-    fn token() -> Option<String> {
-        env::var("AOC_TOKEN").ok()
+    fn aoc_session() -> Option<String> {
+        env::var("AOC_SESSION").ok()
     }
 
     fn leaderboard_id() -> Option<u64> {
@@ -27,10 +27,11 @@ mod real_endpoint {
         // (we're not supposed to ping a leaderboard's API URL more that once every 15 minutes).
         let _ = dotenvy::dotenv();
 
-        if let (Some(token), Some(leaderboard_id), Some(year)) = (token(), leaderboard_id(), year())
+        if let (Some(aoc_session), Some(leaderboard_id), Some(year)) =
+            (aoc_session(), leaderboard_id(), year())
         {
             println!("test_with_real_endpoint executed");
-            let leaderboard = Leaderboard::get(year, leaderboard_id, token).await;
+            let leaderboard = Leaderboard::get(year, leaderboard_id, aoc_session).await;
             assert_matches!(leaderboard, Ok(leaderboard) => {
                 let clechasseur = leaderboard.members.values().find(|m| m.name == Some("clechasseur".into()));
                 assert_matches!(clechasseur, Some(clechasseur) => {

@@ -5,7 +5,7 @@
 pub mod webhook;
 
 /// Default username used when posting messages to Slack.
-pub const DEFAULT_USERNAME: &str = "Advent of Code";
+pub const DEFAULT_USERNAME: &str = "Advent of Code Leaderbot 🤖";
 
 /// Default icon URL used when posting messages to Slack.
 pub const DEFAULT_ICON_URL: &str = "https://raw.githubusercontent.com/clechasseur/aoc_leaderbot/31004b36b4cff53ba4d741734f6db45d338708e5/resources/aoc_xmas.png";

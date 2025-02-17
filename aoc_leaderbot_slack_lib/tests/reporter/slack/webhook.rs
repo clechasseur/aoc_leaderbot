@@ -207,6 +207,96 @@ mod leaderboard_sort_order {
 }
 
 mod slack_webhook_reporter {
+    use aoc_leaderboard::aoc::LeaderboardMember;
+    use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
+        LeaderboardSortOrder, SlackWebhookReporter,
+    };
+    use reqwest::Method;
+    use serde_json::json;
+    use serial_test::serial;
+    use wiremock::matchers::{header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    const WEBHOOK_PATH: &str = "/webhook";
+    const CHANNEL: &str = "#aoc_leaderbot_test";
+    const USERNAME: &str = "AoC Leaderbot (test)";
+    const ICON_URL: &str = "https://www.adventofcode.com/favicon.ico";
+
+    const OWNER_NAME: &str = "Ford Prefect";
+    const OWNER_ID: u64 = 1;
+
+    const PROGRESSING_MEMBER_NAME: &str = "Zaphod Beeblebrox";
+    const PROGRESSING_MEMBER_ID: u64 = 2;
+
+    const NEW_MEMBER_ID: u64 = 3;
+
+    async fn working_mock_server() -> MockServer {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method(Method::POST))
+            .and(path(WEBHOOK_PATH))
+            .and(header("Content-Type", "application/json"))
+            .respond_with(ResponseTemplate::new(200))
+            .mount(&mock_server)
+            .await;
+
+        mock_server
+    }
+
+    fn reporter(
+        mock_server: &MockServer,
+        sort_order: Option<LeaderboardSortOrder>,
+    ) -> SlackWebhookReporter {
+        let mut builder = SlackWebhookReporter::builder();
+        builder
+            .webhook_url(format!("{}{}", mock_server.uri(), WEBHOOK_PATH))
+            .channel(CHANNEL)
+            .username(USERNAME)
+            .icon_url(ICON_URL);
+        if let Some(sort_order) = sort_order {
+            builder.sort_order(sort_order);
+        }
+        builder.build().unwrap()
+    }
+
+    fn offline_reporter(mock_server: &MockServer) -> SlackWebhookReporter {
+        SlackWebhookReporter::builder()
+            .webhook_url(format!("{}{}", mock_server.uri(), "/invalid-path"))
+            .channel(CHANNEL)
+            .username(USERNAME)
+            .icon_url(ICON_URL)
+            .build()
+            .unwrap()
+    }
+
+    fn owner() -> LeaderboardMember {
+        let member_json = json!({
+            "name": OWNER_NAME,
+            "id": OWNER_ID,
+        });
+
+        serde_json::from_value(member_json).unwrap()
+    }
+
+    fn progressing_member() -> LeaderboardMember {
+        let member_json = json!({
+            "name": PROGRESSING_MEMBER_NAME,
+            "id": PROGRESSING_MEMBER_ID,
+        });
+
+        serde_json::from_value(member_json).unwrap()
+    }
+
+    fn new_member(stars: u32, local_score: u64) -> LeaderboardMember {
+        let member_json = json!({
+            "id": NEW_MEMBER_ID,
+            "stars": stars,
+            "local_score": local_score,
+        });
+
+        serde_json::from_value(member_json).unwrap()
+    }
+
     mod builder {
         use std::env;
 
@@ -343,102 +433,17 @@ mod slack_webhook_reporter {
     mod reporter {
         use std::env;
 
-        use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
+        use aoc_leaderboard::aoc::Leaderboard;
         use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
         use aoc_leaderbot_slack_lib::error::WebhookError;
+        use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::LeaderboardSortOrder;
         use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::SORT_ORDER_ENV_VAR;
-        use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
-            LeaderboardSortOrder, SlackWebhookReporter,
-        };
         use aoc_leaderbot_slack_lib::Error;
         use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
         use assert_matches::assert_matches;
         use reqwest::StatusCode;
-        use serde_json::json;
-        use serial_test::serial;
-        use wiremock::http::Method;
-        use wiremock::matchers::{header, method, path};
-        use wiremock::{Mock, MockServer, ResponseTemplate};
 
-        const WEBHOOK_PATH: &str = "/webhook";
-        const CHANNEL: &str = "#aoc_leaderbot_test";
-        const USERNAME: &str = "AoC Leaderbot (test)";
-        const ICON_URL: &str = "https://www.adventofcode.com/favicon.ico";
-
-        const OWNER_NAME: &str = "Ford Prefect";
-        const OWNER_ID: u64 = 1;
-
-        const PROGRESSING_MEMBER_NAME: &str = "Zaphod Beeblebrox";
-        const PROGRESSING_MEMBER_ID: u64 = 2;
-
-        const NEW_MEMBER_ID: u64 = 3;
-
-        async fn working_mock_server() -> MockServer {
-            let mock_server = MockServer::start().await;
-
-            Mock::given(method(Method::POST))
-                .and(path(WEBHOOK_PATH))
-                .and(header("Content-Type", "application/json"))
-                .respond_with(ResponseTemplate::new(200))
-                .mount(&mock_server)
-                .await;
-
-            mock_server
-        }
-
-        fn reporter(
-            mock_server: &MockServer,
-            sort_order: Option<LeaderboardSortOrder>,
-        ) -> SlackWebhookReporter {
-            let mut builder = SlackWebhookReporter::builder();
-            builder
-                .webhook_url(format!("{}{}", mock_server.uri(), WEBHOOK_PATH))
-                .channel(CHANNEL)
-                .username(USERNAME)
-                .icon_url(ICON_URL);
-            if let Some(sort_order) = sort_order {
-                builder.sort_order(sort_order);
-            }
-            builder.build().unwrap()
-        }
-
-        fn offline_reporter(mock_server: &MockServer) -> SlackWebhookReporter {
-            SlackWebhookReporter::builder()
-                .webhook_url(format!("{}{}", mock_server.uri(), "/invalid-path"))
-                .channel(CHANNEL)
-                .username(USERNAME)
-                .icon_url(ICON_URL)
-                .build()
-                .unwrap()
-        }
-
-        fn owner() -> LeaderboardMember {
-            let member_json = json!({
-                "name": OWNER_NAME,
-                "id": OWNER_ID,
-            });
-
-            serde_json::from_value(member_json).unwrap()
-        }
-
-        fn progressing_member() -> LeaderboardMember {
-            let member_json = json!({
-                "name": PROGRESSING_MEMBER_NAME,
-                "id": PROGRESSING_MEMBER_ID,
-            });
-
-            serde_json::from_value(member_json).unwrap()
-        }
-
-        fn new_member(stars: u32, local_score: u64) -> LeaderboardMember {
-            let member_json = json!({
-                "id": NEW_MEMBER_ID,
-                "stars": stars,
-                "local_score": local_score,
-            });
-
-            serde_json::from_value(member_json).unwrap()
-        }
+        use super::*;
 
         mod report_changes {
             use super::*;
@@ -547,7 +552,7 @@ mod slack_webhook_reporter {
                         .await;
                     assert_matches!(
                         result,
-                        Err(Error::Webhook(WebhookError::ReportChangesError {
+                        Err(Error::Webhook(WebhookError::ReportChanges {
                             year,
                             leaderboard_id,
                             webhook_url,

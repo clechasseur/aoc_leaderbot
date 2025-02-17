@@ -6,7 +6,7 @@ pub mod config;
 pub mod storage;
 
 use std::collections::HashSet;
-use std::future::Future;
+use std::future::{ready, Future};
 
 use aoc_leaderboard::aoc::Leaderboard;
 use chrono::{Datelike, Local};
@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::mockable_helpers;
 
-/// Trait that can be implemented to provide the parameters required by the
+/// Trait that must be implemented to provide the parameters required by the
 /// bot to monitor an [Advent of Code] leaderboard.
 ///
 /// [Advent of Code]: https://adventofcode.com/
@@ -30,6 +30,8 @@ pub trait Config {
     ///
     /// This ID is the last part of the leaderboard's URL, in the form:
     /// `https://adventofcode.com/{year}/leaderboard/private/view/{leaderboard_id}`
+    ///
+    /// It also corresponds to the leaderboard's [`owner_id`](Leaderboard::owner_id).
     fn leaderboard_id(&self) -> u64;
 
     /// Advent of Code session token.
@@ -48,7 +50,7 @@ pub trait Storage {
     /// Type of error used by this storage.
     type Err: std::error::Error + Send;
 
-    /// Loads any previous leaderboard data persisted by a previous bot run.
+    /// Loads any leaderboard data persisted by a previous bot run.
     ///
     /// If loading was successful but no previous data exists, this method
     /// should return `Ok(None)`.
@@ -127,6 +129,8 @@ pub trait Reporter {
     /// the one where we send the leaderboard changes, so that the
     /// bot owner can fix the issue.
     ///
+    /// The default implementation prints the error to `stderr`.
+    ///
     /// # Notes
     ///
     /// This method doesn't allow returning an error, because it
@@ -140,7 +144,12 @@ pub trait Reporter {
         error: S,
     ) -> impl Future<Output = ()> + Send
     where
-        S: Into<String> + Send;
+        S: Into<String> + Send,
+    {
+        let error = error.into();
+        eprintln!("Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}");
+        ready(())
+    }
 }
 
 /// Runs the bot's core functionality.
@@ -241,6 +250,51 @@ fn detect_changes(
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use super::*;
+
+    mod reporter {
+        use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
+
+        use super::*;
+
+        struct TestReporter;
+
+        impl Reporter for TestReporter {
+            type Err = crate::Error;
+
+            async fn report_changes(
+                &mut self,
+                year: i32,
+                leaderboard_id: u64,
+                _previous_leaderboard: &Leaderboard,
+                _leaderboard: &Leaderboard,
+                changes: &Changes,
+            ) -> Result<(), Self::Err> {
+                println!(
+                    "Leaderboard {leaderboard_id} (for year {year}) has changed: {} new members added, {} members got new stars",
+                    changes.new_members.len(),
+                    changes.members_with_new_stars.len()
+                );
+                Ok(())
+            }
+        }
+
+        #[tokio::test]
+        async fn default_impl_works() {
+            let mut reporter = TestReporter;
+
+            let leaderboard = get_sample_leaderboard();
+            let changes = Changes::new([42, 23].into(), [11, 7].into());
+
+            reporter
+                .report_changes(YEAR, LEADERBOARD_ID, &leaderboard, &leaderboard, &changes)
+                .await
+                .unwrap();
+
+            reporter
+                .report_error(YEAR, LEADERBOARD_ID, "Something went wrong")
+                .await;
+        }
+    }
 
     mod run_bot {
         use std::collections::HashMap;

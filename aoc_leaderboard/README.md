@@ -10,13 +10,14 @@ Add `aoc_leaderboard` to your dependencies:
 
 ```toml
 [dependencies]
-aoc_leaderboard = "1.0.0"
+# Enable http feature to be able to fetch leaderboard data
+aoc_leaderboard = { version = "0.3.0", features = ["http"] }
 ```
 
 or by running:
 
 ```bash
-cargo add aoc_leaderboard
+cargo add aoc_leaderboard --features http
 ```
 
 ## Example
@@ -29,17 +30,17 @@ use dotenvy::dotenv;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Maybe your AoC token lives in a `.env` file?
+    // Maybe your AoC session token lives in a `.env` file?
     let _ = dotenv();
 
     // Fetch AoC session token and leaderboard ID from the environment.
-    let aoc_token = env::var("AOC_TOKEN")?;
+    let aoc_session = env::var("AOC_SESSION")?;
     let leaderboard_id = env::var("AOC_LEADERBOARD_ID")?.parse()?;
 
     // Load the leaderboard from the AoC website.
     // Careful not to call this more than once every **15 minutes**.
     let year = 2024;
-    let leaderboard = Leaderboard::get(year, leaderboard_id, aoc_token).await?;
+    let leaderboard = Leaderboard::get(year, leaderboard_id, aoc_session).await?;
 
     // Do something useful.
     println!("Leaderboard for year {year} has {} members.", leaderboard.members.len());

@@ -49,6 +49,7 @@ pub const SORT_ORDER_ENV_VAR: &str = "SLACK_LEADERBOARD_SORT_ORDER";
     EnumProperty,
     EnumString,
 )]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 pub enum LeaderboardSortOrder {
     /// Sort leaderboard members by number of stars, descending.
     #[default]
@@ -112,14 +113,28 @@ impl LeaderboardSortOrder {
 #[builder(derive(Debug), build_fn(name = "build_internal", private))]
 pub struct SlackWebhookReporter {
     /// Slack webhook URL used to send leaderboard updates.
+    ///
+    /// If not specified, defaults to the value of the [`SLACK_WEBHOOK_URL`]
+    /// environment variable.
+    ///
+    /// [`SLACK_WEBHOOK_URL`]: WEBHOOK_URL_ENV_VAR
     #[builder(setter(into), default = "Self::default_webhook_url()?")]
     pub webhook_url: String,
 
     /// Slack channel to post leaderboard updates to.
+    ///
+    /// If not specified, defaults to the value of the [`SLACK_CHANNEL`]
+    /// environment variable.
+    ///
+    /// [`SLACK_CHANNEL`]: CHANNEL_ENV_VAR
     #[builder(setter(into), default = "Self::default_channel()?")]
     pub channel: String,
 
     /// Username used when posting messages to Slack.
+    ///
+    /// If not specified, defaults to [`DEFAULT_USERNAME`].
+    ///
+    /// [`DEFAULT_USERNAME`]: crate::leaderbot::reporter::slack::DEFAULT_USERNAME
     #[builder(
         setter(into),
         default = "crate::leaderbot::reporter::slack::DEFAULT_USERNAME.into()"
@@ -127,6 +142,10 @@ pub struct SlackWebhookReporter {
     pub username: String,
 
     /// URL of an icon to use to post messages to Slack.
+    ///
+    /// If not specified, a [default icon] will be used.
+    ///
+    /// [default icon]: crate::leaderbot::reporter::slack::DEFAULT_ICON_URL
     #[builder(
         setter(into),
         default = "crate::leaderbot::reporter::slack::DEFAULT_ICON_URL.into()"
@@ -135,7 +154,11 @@ pub struct SlackWebhookReporter {
 
     /// Sort order of leaderboard members. Used when [reporting changes](Reporter::report_changes).
     ///
-    /// Defaults to [`Stars`](LeaderboardSortOrder::Stars).
+    /// If not specified, defaults to the value set in the [`SLACK_LEADERBOARD_SORT_ORDER`]
+    /// environment variable if it is set, otherwise to [`Stars`].
+    ///
+    /// [`SLACK_LEADERBOARD_SORT_ORDER`]: SORT_ORDER_ENV_VAR
+    /// [`Stars`]: LeaderboardSortOrder::Stars
     #[builder(default = "Self::default_sort_order()?")]
     pub sort_order: LeaderboardSortOrder,
 
@@ -150,14 +173,19 @@ impl SlackWebhookReporter {
         SlackWebhookReporterBuilder::default()
     }
 
-    fn message_text(&self, leaderboard: &Leaderboard, changes: &Changes) -> String {
+    fn message_text(
+        &self,
+        leaderboard_id: u64,
+        leaderboard: &Leaderboard,
+        changes: &Changes,
+    ) -> String {
         let mut member_rows = leaderboard
             .members
             .values()
             .sorted_by(|lhs, rhs| self.sort_order.cmp_members(lhs, rhs))
             .map(|member| self.member_row_text(member, changes));
 
-        format!("{}\n{}", self.header_row_text(leaderboard), member_rows.join("\n"))
+        format!("{}\n{}", self.header_row_text(leaderboard_id, leaderboard), member_rows.join("\n"))
     }
 
     fn member_row_text(&self, member: &LeaderboardMember, changes: &Changes) -> String {
@@ -187,14 +215,18 @@ impl SlackWebhookReporter {
         }
     }
 
-    fn header_row_text(&self, leaderboard: &Leaderboard) -> String {
-        format!("*{}{}*", self.sort_order.header_text(), self.leaderboard_link(leaderboard))
+    fn header_row_text(&self, leaderboard_id: u64, leaderboard: &Leaderboard) -> String {
+        format!(
+            "*{}{}*",
+            self.sort_order.header_text(),
+            self.leaderboard_link(leaderboard_id, leaderboard)
+        )
     }
 
-    fn leaderboard_link(&self, leaderboard: &Leaderboard) -> String {
+    fn leaderboard_link(&self, leaderboard_id: u64, leaderboard: &Leaderboard) -> String {
         format!(
-            "<https://adventofcode.com/{}/leaderboard/private/view?order={}|*Leaderboard*>",
-            leaderboard.year, self.sort_order
+            "<https://adventofcode.com/{}/leaderboard/private/view/{}?order={}|*Leaderboard*>",
+            leaderboard.year, leaderboard_id, self.sort_order
         )
     }
 }
@@ -266,7 +298,7 @@ impl Reporter for SlackWebhookReporter {
             .channel(self.channel.clone())
             .username(self.username.clone())
             .icon_url(self.icon_url.clone())
-            .text(self.message_text(leaderboard, changes))
+            .text(self.message_text(leaderboard_id, leaderboard, changes))
             .build()
             .expect("webhook message should have valid fields");
         trace!(?message);
@@ -280,7 +312,7 @@ impl Reporter for SlackWebhookReporter {
             .and_then(reqwest::Response::error_for_status);
         match response {
             Ok(_) => Ok(()),
-            Err(source) => Err(WebhookError::ReportChangesError {
+            Err(source) => Err(WebhookError::ReportChanges {
                 year,
                 leaderboard_id,
                 webhook_url: self.webhook_url.clone(),
