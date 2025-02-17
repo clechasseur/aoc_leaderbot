@@ -33,7 +33,7 @@ default = ["dynamodb"]
 
 dynamodb = ["dynamodb-base", "storage-dynamodb"]
 
-dynamodb-base = ["aws-sdk-dynamodb", "serde_json"]
+dynamodb-base = ["aws-sdk-dynamodb"]
 storage-dynamodb = ["dynamodb-base", "tokio/time"]
 
 [dependencies]
@@ -41,7 +41,8 @@ aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0" }
 aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.3.0" }
 aws-config = { workspace = true, features = ["behavior-version-latest"] }
 aws-sdk-dynamodb = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_dynamo = { workspace = true, features = ["aws-sdk-dynamodb+1"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true, features = ["rt-multi-thread"] }
 

@@ -5,7 +5,6 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Custom error type used by this crate's API.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum Error {
     /// DynamoDB error.
     #[cfg(feature = "dynamodb-base")]
@@ -75,17 +74,9 @@ pub enum LoadPreviousDynamoDbError {
         >,
     ),
 
-    /// The leaderboard row was fetched without issue, but it did not contain the leaderboard data.
-    #[error("leaderboard data not found")]
-    MissingLeaderboardData,
-
-    /// The leaderboard data was fetched, but it wasn't persisted as a string.
-    #[error("leaderboard data should be a string")]
-    InvalidLeaderboardDataType,
-
-    /// Failed to parse leaderboard data.
-    #[error("failed to parse leaderboard data: {0}")]
-    ParseError(#[from] serde_json::Error),
+    /// Failed to deserialize leaderboard data.
+    #[error("failed to deserialize leaderboard data: {0}")]
+    Deserialize(#[from] serde_dynamo::Error),
 }
 
 /// Error pertaining to saving leaderboard data in DynamoDB.
@@ -105,7 +96,7 @@ pub enum SaveDynamoDbError {
 
     /// Failed to serialize leaderboard data.
     #[error("failed to serialize leaderboard data: {0}")]
-    ParseError(#[from] serde_json::Error),
+    Serialize(#[from] serde_dynamo::Error),
 }
 
 /// Error pertaining to creating a DynamoDB table to store leaderboard data.
