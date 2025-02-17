@@ -12,6 +12,7 @@ use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
 use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
 use derive_builder::Builder;
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use strum::{Display, EnumProperty, EnumString};
 use tracing::{error, instrument, trace};
 
@@ -45,11 +46,14 @@ pub const SORT_ORDER_ENV_VAR: &str = "SLACK_LEADERBOARD_SORT_ORDER";
     PartialOrd,
     Ord,
     Hash,
+    Serialize,
+    Deserialize,
     Display,
     EnumProperty,
     EnumString,
 )]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "snake_case")]
 pub enum LeaderboardSortOrder {
     /// Sort leaderboard members by number of stars, descending.
     #[default]
@@ -57,6 +61,7 @@ pub enum LeaderboardSortOrder {
     Stars,
 
     /// Sort leaderboard members by score, descending.
+    #[serde(rename = "local_score")]
     #[strum(serialize = "local_score", props(header = "Score #"))]
     Score,
 }
