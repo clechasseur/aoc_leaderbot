@@ -27,6 +27,3 @@ codecov.json
 
 # Local environment overrides
 .env
-
-# AWS lambda environment variables
-.env.aws-lambda
