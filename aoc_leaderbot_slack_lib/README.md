@@ -36,8 +36,8 @@ Although most have default values, at least two must be specified explicitly:
 * [`channel`](https://docs.rs/aoc_leaderbot_slack_lib/latest/aoc_leaderbot_slack_lib/leaderbot/reporter/slack/webhook/struct.SlackWebhookReporterBuilder.html#method.channel): Slack channel where to post message reporting changes.
 
 There are other optional properties that can be specified.
-The easiest way to create a reporter instance would be via the [`builder`](https://docs.rs/aoc_leaderbot_slack_lib/latest/aoc_leaderbot_slack_lib/leaderbot/reporter/slack/webhook/struct.SlackWebhookReporterBuilder.html).
-The buil
+The easiest way to create a reporter instance would be via the [`builder`](https://docs.rs/aoc_leaderbot_slack_lib/latest/aoc_leaderbot_slack_lib/leaderbot/reporter/slack/webhook/struct.SlackWebhookReporter.html#method.builder).
+Many properties will also default to reading their values from environment variables (see each property's documentation for details).
 
 ## Minimum Rust version
 

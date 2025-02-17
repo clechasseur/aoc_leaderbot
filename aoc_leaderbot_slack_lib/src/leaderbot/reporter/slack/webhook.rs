@@ -113,14 +113,28 @@ impl LeaderboardSortOrder {
 #[builder(derive(Debug), build_fn(name = "build_internal", private))]
 pub struct SlackWebhookReporter {
     /// Slack webhook URL used to send leaderboard updates.
+    ///
+    /// If not specified, defaults to the value of the [`SLACK_WEBHOOK_URL`]
+    /// environment variable.
+    ///
+    /// [`SLACK_WEBHOOK_URL`]: WEBHOOK_URL_ENV_VAR
     #[builder(setter(into), default = "Self::default_webhook_url()?")]
     pub webhook_url: String,
 
     /// Slack channel to post leaderboard updates to.
+    ///
+    /// If not specified, defaults to the value of the [`SLACK_CHANNEL`]
+    /// environment variable.
+    ///
+    /// [`SLACK_CHANNEL`]: CHANNEL_ENV_VAR
     #[builder(setter(into), default = "Self::default_channel()?")]
     pub channel: String,
 
     /// Username used when posting messages to Slack.
+    ///
+    /// If not specified, defaults to [`DEFAULT_USERNAME`].
+    ///
+    /// [`DEFAULT_USERNAME`]: crate::leaderbot::reporter::slack::DEFAULT_USERNAME
     #[builder(
         setter(into),
         default = "crate::leaderbot::reporter::slack::DEFAULT_USERNAME.into()"
@@ -128,6 +142,10 @@ pub struct SlackWebhookReporter {
     pub username: String,
 
     /// URL of an icon to use to post messages to Slack.
+    ///
+    /// If not specified, a [default icon] will be used.
+    ///
+    /// [default icon]: crate::leaderbot::reporter::slack::DEFAULT_ICON_URL
     #[builder(
         setter(into),
         default = "crate::leaderbot::reporter::slack::DEFAULT_ICON_URL.into()"
@@ -136,7 +154,11 @@ pub struct SlackWebhookReporter {
 
     /// Sort order of leaderboard members. Used when [reporting changes](Reporter::report_changes).
     ///
-    /// Defaults to [`Stars`](LeaderboardSortOrder::Stars).
+    /// If not specified, defaults to the value set in the [`SLACK_LEADERBOARD_SORT_ORDER`]
+    /// environment variable if it is set, otherwise to [`Stars`].
+    ///
+    /// [`SLACK_LEADERBOARD_SORT_ORDER`]: SORT_ORDER_ENV_VAR
+    /// [`Stars`]: LeaderboardSortOrder::Stars
     #[builder(default = "Self::default_sort_order()?")]
     pub sort_order: LeaderboardSortOrder,
 
