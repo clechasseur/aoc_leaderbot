@@ -6,12 +6,17 @@ pub mod config;
 pub mod storage;
 
 use std::collections::HashSet;
+use std::error::Error;
+use std::fmt::Debug;
 use std::future::{ready, Future};
 
+use anyhow::anyhow;
 use aoc_leaderboard::aoc::Leaderboard;
 use chrono::{Datelike, Local};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
 
+use crate::error::{ReporterError, StorageError};
 use crate::mockable_helpers;
 
 /// Trait that must be implemented to provide the parameters required by the
@@ -163,12 +168,14 @@ pub trait Reporter {
 /// [`config`]: Config
 /// [`storage`]: Storage
 /// [`reporter`]: Reporter
+#[instrument(skip_all, err)]
 pub async fn run_bot<C, S, R>(config: &C, storage: &mut S, reporter: &mut R) -> crate::Result<()>
 where
     C: Config,
     S: Storage,
+    <S as Storage>::Err: Error + Sync + 'static,
     R: Reporter,
-    crate::Error: From<<S as Storage>::Err> + From<<R as Reporter>::Err>,
+    <R as Reporter>::Err: Error + Sync + 'static,
 {
     async fn internal_run_bot<S, R>(
         year: i32,
@@ -179,13 +186,18 @@ where
     ) -> crate::Result<()>
     where
         S: Storage,
+        <S as Storage>::Err: Error + Sync + 'static,
         R: Reporter,
-        crate::Error: From<<S as Storage>::Err> + From<<R as Reporter>::Err>,
+        <R as Reporter>::Err: Error + Sync + 'static,
     {
         let leaderboard =
             mockable_helpers::get_leaderboard(year, leaderboard_id, &aoc_session).await?;
 
-        match storage.load_previous(year, leaderboard_id).await? {
+        let load_result = storage
+            .load_previous(year, leaderboard_id)
+            .await
+            .map_err(|err| StorageError::LoadPrevious(anyhow!(err)))?;
+        match load_result {
             Some(previous_leaderboard) => {
                 if let Some(changes) = detect_changes(&previous_leaderboard, &leaderboard) {
                     reporter
@@ -196,11 +208,18 @@ where
                             &leaderboard,
                             &changes,
                         )
-                        .await?;
-                    storage.save(year, leaderboard_id, &leaderboard).await?;
+                        .await
+                        .map_err(|err| ReporterError::ReportChanges(anyhow!(err)))?;
+                    storage
+                        .save(year, leaderboard_id, &leaderboard)
+                        .await
+                        .map_err(|err| StorageError::Save(anyhow!(err)))?;
                 }
             },
-            None => storage.save(year, leaderboard_id, &leaderboard).await?,
+            None => storage
+                .save(year, leaderboard_id, &leaderboard)
+                .await
+                .map_err(|err| StorageError::Save(anyhow!(err)))?,
         }
 
         Ok(())
@@ -220,6 +239,7 @@ where
     }
 }
 
+#[instrument(ret)]
 fn detect_changes(
     previous_leaderboard: &Leaderboard,
     leaderboard: &Leaderboard,
@@ -659,10 +679,17 @@ mod tests {
                     });
 
                 let result = run_bot(&config, &mut storage, &mut reporter).await;
-                assert_matches!(result, Err(crate::Error::TestLoadPreviousError));
+                assert_matches!(result, Err(crate::Error::Storage(StorageError::LoadPrevious(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
-                assert_eq!(reporter.errors[0], (YEAR, LEADERBOARD_ID, "test".to_string()));
+                assert_eq!(
+                    reporter.errors[0],
+                    (
+                        YEAR,
+                        LEADERBOARD_ID,
+                        "failed to load previous leaderboard data: test".to_string()
+                    )
+                );
             }
 
             #[tokio::test]
@@ -708,7 +735,10 @@ mod tests {
                     .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
 
                 let result = run_bot(&config, &mut storage, &mut reporter).await;
-                assert_matches!(result, Err(crate::Error::TestReportChangesError));
+                assert_matches!(
+                    result,
+                    Err(crate::Error::Reporter(ReporterError::ReportChanges(_)))
+                );
                 assert_eq!(reporter.errors, 1);
             }
 
@@ -738,10 +768,13 @@ mod tests {
                     });
 
                 let result = run_bot(&config, &mut storage, &mut reporter).await;
-                assert_matches!(result, Err(crate::Error::TestSaveUpdatedError));
+                assert_matches!(result, Err(crate::Error::Storage(StorageError::Save(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
-                assert_eq!(reporter.errors[0], (YEAR, LEADERBOARD_ID, "test".to_string()));
+                assert_eq!(
+                    reporter.errors[0],
+                    (YEAR, LEADERBOARD_ID, "failed to save leaderboard data: test".to_string())
+                );
             }
 
             #[tokio::test]
@@ -770,10 +803,13 @@ mod tests {
                     });
 
                 let result = run_bot(&config, &mut storage, &mut reporter).await;
-                assert_matches!(result, Err(crate::Error::TestSaveBaseError));
+                assert_matches!(result, Err(crate::Error::Storage(StorageError::Save(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
-                assert_eq!(reporter.errors[0], (YEAR, LEADERBOARD_ID, "test".to_string()));
+                assert_eq!(
+                    reporter.errors[0],
+                    (YEAR, LEADERBOARD_ID, "failed to save leaderboard data: test".to_string())
+                );
             }
         }
     }

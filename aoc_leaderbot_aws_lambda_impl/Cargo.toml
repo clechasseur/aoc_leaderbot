@@ -7,7 +7,7 @@ rust-version = "1.81.0"
 
 license.workspace = true
 
-homepage.workspace = true
+homepage = "https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot_aws_lambda_impl#readme"
 repository.workspace = true
 documentation = "https://docs.rs/aoc_leaderbot_aws_lambda_impl/"
 
@@ -18,12 +18,32 @@ categories = [ "asynchronous" ]
 
 include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
 
+[package.metadata.docs.rs]
+all-features = true
+targets = [ "x86_64-unknown-linux-gnu" ]
+rustc-args = [ "--cfg", "docsrs" ]
+
 [package.metadata.lambda.deploy]
 memory = 512 # MB
-timeout = 120 # seconds
+timeout = 640 # seconds
 tracing = "active"
 
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+
+[[bin]]
+name = "prepare_dynamodb"
+required-features = ["clap"]
+
 [dependencies]
+anyhow = { workspace = true }
+aoc_leaderbot_aws_lib = { path = "../aoc_leaderbot_aws_lib", version = "0.3.0" }
+aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.3.0" }
+aoc_leaderbot_slack_lib = { path = "../aoc_leaderbot_slack_lib", version = "0.3.0" }
+clap = { workspace = true, optional = true, features = ["derive"] }
+dotenvy = { workspace = true }
 lambda_runtime = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
+tracing = { workspace = true }
