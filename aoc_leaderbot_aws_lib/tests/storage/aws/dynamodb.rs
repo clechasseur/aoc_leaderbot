@@ -6,7 +6,7 @@ mod dynamo_storage {
         CreateDynamoDbTableError, DynamoDbError, LoadPreviousDynamoDbError, SaveDynamoDbError,
     };
     use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::{
-        DynamoDbStorage, HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
+        DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
     };
     use aoc_leaderbot_lib::leaderbot::Storage;
     use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
@@ -64,14 +64,17 @@ mod dynamo_storage {
         }
 
         pub async fn save_leaderboard(&self, leaderboard: &Leaderboard) {
-            let leaderboard_data = serde_json::to_string(leaderboard).unwrap();
+            let leaderboard_data = DynamoDbLeaderboardData {
+                leaderboard_id: LEADERBOARD_ID,
+                year: YEAR,
+                leaderboard_data: leaderboard.clone(),
+            };
+            let item = serde_dynamo::to_item(leaderboard_data).unwrap();
 
             self.client()
                 .put_item()
                 .table_name(self.name())
-                .item(HASH_KEY, AttributeValue::N(LEADERBOARD_ID.to_string()))
-                .item(RANGE_KEY, AttributeValue::N(YEAR.to_string()))
-                .item(LEADERBOARD_DATA, AttributeValue::S(leaderboard_data))
+                .set_item(Some(item))
                 .send()
                 .await
                 .unwrap();
@@ -86,12 +89,11 @@ mod dynamo_storage {
                 .send()
                 .await
                 .unwrap()
-                .item()
-                .unwrap()
-                .get(LEADERBOARD_DATA)
-                .unwrap()
-                .as_s()
-                .map(|s| serde_json::from_str(s).unwrap())
+                .item
+                .map(|item| {
+                    let data: DynamoDbLeaderboardData = serde_dynamo::from_item(item).unwrap();
+                    data.leaderboard_data
+                })
                 .unwrap()
         }
 
@@ -166,7 +168,7 @@ mod dynamo_storage {
                             DynamoDbError::LoadPreviousLeaderboard {
                                 leaderboard_id,
                                 year,
-                                source: LoadPreviousDynamoDbError::MissingLeaderboardData,
+                                source: LoadPreviousDynamoDbError::Deserialize(_),
                             }
                         )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
@@ -194,7 +196,7 @@ mod dynamo_storage {
                             DynamoDbError::LoadPreviousLeaderboard {
                                 leaderboard_id,
                                 year,
-                                source: LoadPreviousDynamoDbError::InvalidLeaderboardDataType,
+                                source: LoadPreviousDynamoDbError::Deserialize(_),
                             }
                         )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
@@ -225,7 +227,7 @@ mod dynamo_storage {
                             DynamoDbError::LoadPreviousLeaderboard {
                                 leaderboard_id,
                                 year,
-                                source: LoadPreviousDynamoDbError::ParseError(_),
+                                source: LoadPreviousDynamoDbError::Deserialize(_),
                             }
                         )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
                     );
