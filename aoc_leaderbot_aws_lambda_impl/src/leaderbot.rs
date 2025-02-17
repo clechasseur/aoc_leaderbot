@@ -104,6 +104,8 @@ pub struct OutgoingMessage {}
 pub const CONFIG_ENV_VAR_PREFIX: &str = "AOC_LEADERBOT_AWS_";
 
 /// Default name of DynamoDB table used for the bot [`Storage`] (see [`DynamoDbStorage`]).
+///
+/// [`Storage`]: aoc_leaderbot_lib::leaderbot::Storage
 pub const DEFAULT_DYNAMODB_TABLE_NAME: &str = "aoc_leaderbot";
 
 /// [AWS Lambda] function handler that will be called to monitor an AoC leaderboard.
