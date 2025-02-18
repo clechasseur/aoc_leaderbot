@@ -47,3 +47,4 @@ lambda_runtime = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
+veil = { workspace = true }

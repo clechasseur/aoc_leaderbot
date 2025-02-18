@@ -196,14 +196,18 @@ impl BotOutput {
 /// if the leaderboard has new members and/or members who got new stars and calls the
 /// [`reporter`] if some diff is found.
 ///
+/// If the `dry_run` parameter is set to `true`, then the bot will fetch data and compute
+/// changes but will not persist or report them.
+///
 /// [`config`]: Config
 /// [`storage`]: Storage
 /// [`reporter`]: Reporter
-#[instrument(skip_all, ret, err)]
+#[instrument(skip(config, storage, reporter), ret, err)]
 pub async fn run_bot<C, S, R>(
     config: &C,
     storage: &mut S,
     reporter: &mut R,
+    dry_run: bool,
 ) -> crate::Result<BotOutput>
 where
     C: Config,
@@ -215,9 +219,10 @@ where
     async fn internal_run_bot<S, R>(
         year: i32,
         leaderboard_id: u64,
-        aoc_session: String,
+        aoc_session: &str,
         storage: &mut S,
         reporter: &mut R,
+        dry_run: bool,
     ) -> crate::Result<BotOutput>
     where
         S: Storage,
@@ -225,8 +230,10 @@ where
         R: Reporter,
         <R as Reporter>::Err: Error + Sync + 'static,
     {
+        let reporter: &mut R = reporter;
+
         let leaderboard =
-            mockable_helpers::get_leaderboard(year, leaderboard_id, &aoc_session).await?;
+            mockable_helpers::get_leaderboard(year, leaderboard_id, aoc_session).await?;
         let mut output = BotOutput::new(year, leaderboard_id, leaderboard.clone());
 
         let load_result = storage
@@ -240,22 +247,25 @@ where
                 if let Some(changes) = detect_changes(&previous_leaderboard, &leaderboard) {
                     output.changes = Some(changes.clone());
 
-                    reporter
-                        .report_changes(
-                            year,
-                            leaderboard_id,
-                            &previous_leaderboard,
-                            &leaderboard,
-                            &changes,
-                        )
-                        .await
-                        .map_err(|err| ReporterError::ReportChanges(anyhow!(err)))?;
-                    storage
-                        .save(year, leaderboard_id, &leaderboard)
-                        .await
-                        .map_err(|err| StorageError::Save(anyhow!(err)))?;
+                    if !dry_run {
+                        reporter
+                            .report_changes(
+                                year,
+                                leaderboard_id,
+                                &previous_leaderboard,
+                                &leaderboard,
+                                &changes,
+                            )
+                            .await
+                            .map_err(|err| ReporterError::ReportChanges(anyhow!(err)))?;
+                        storage
+                            .save(year, leaderboard_id, &leaderboard)
+                            .await
+                            .map_err(|err| StorageError::Save(anyhow!(err)))?;
+                    }
                 }
             },
+            None if dry_run => (),
             None => storage
                 .save(year, leaderboard_id, &leaderboard)
                 .await
@@ -268,7 +278,7 @@ where
     let (year, leaderboard_id, aoc_session) =
         (config.year(), config.leaderboard_id(), config.aoc_session());
 
-    match internal_run_bot(year, leaderboard_id, aoc_session, storage, reporter).await {
+    match internal_run_bot(year, leaderboard_id, &aoc_session, storage, reporter, dry_run).await {
         Ok(output) => Ok(output),
         Err(err) => {
             reporter
@@ -594,7 +604,7 @@ mod tests {
                 ctx.expect().returning(|_, _, _| Ok(base_leaderboard()));
 
                 let expected = base_leaderboard();
-                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
                 assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
                     assert_eq!(year, YEAR);
                     assert_eq!(leaderboard_id, LEADERBOARD_ID);
@@ -643,7 +653,7 @@ mod tests {
                     },
                 };
 
-                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
                 assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard: output_leaderboard, changes }) => {
                     assert_eq!(year, YEAR);
                     assert_eq!(leaderboard_id, LEADERBOARD_ID);
@@ -709,7 +719,7 @@ mod tests {
                 ctx.expect()
                     .returning(move |_, _, _| Err(aoc_leaderboard::Error::NoAccess));
 
-                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
                 assert_matches!(
                     result,
                     Err(crate::Error::Leaderboard(aoc_leaderboard::Error::NoAccess))
@@ -739,7 +749,7 @@ mod tests {
                         Box::pin(ready(Err(crate::Error::TestLoadPreviousError)))
                     });
 
-                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
                 assert_matches!(result, Err(crate::Error::Storage(StorageError::LoadPrevious(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
@@ -795,7 +805,7 @@ mod tests {
                 ctx.expect()
                     .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
 
-                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
                 assert_matches!(
                     result,
                     Err(crate::Error::Reporter(ReporterError::ReportChanges(_)))
@@ -828,7 +838,7 @@ mod tests {
                         Box::pin(ready(Err(crate::Error::TestSaveUpdatedError)))
                     });
 
-                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
                 assert_matches!(result, Err(crate::Error::Storage(StorageError::Save(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
@@ -863,7 +873,7 @@ mod tests {
                         Box::pin(ready(Err(crate::Error::TestSaveBaseError)))
                     });
 
-                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
                 assert_matches!(result, Err(crate::Error::Storage(StorageError::Save(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);

@@ -15,6 +15,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumProperty, EnumString};
 use tracing::{error, instrument, trace};
+use veil::Redact;
 
 use crate::error::WebhookError;
 use crate::leaderbot::reporter::slack::webhook::detail::SlackWebhookReporterStringExt;
@@ -114,8 +115,8 @@ impl LeaderboardSortOrder {
 ///
 /// [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 /// [Slack webhook]: https://api.slack.com/messaging/webhooks
-#[derive(Debug, Clone, Builder)]
-#[builder(derive(Debug), build_fn(name = "build_internal", private))]
+#[derive(Redact, Clone, Builder)]
+#[builder(derive(Redact), build_fn(name = "build_internal", private))]
 pub struct SlackWebhookReporter {
     /// Slack webhook URL used to send leaderboard updates.
     ///
@@ -123,7 +124,9 @@ pub struct SlackWebhookReporter {
     /// environment variable.
     ///
     /// [`SLACK_WEBHOOK_URL`]: WEBHOOK_URL_ENV_VAR
+    #[redact(partial)]
     #[builder(setter(into), default = "Self::default_webhook_url()?")]
+    #[builder_field_attr(redact(partial))]
     pub webhook_url: String,
 
     /// Slack channel to post leaderboard updates to.

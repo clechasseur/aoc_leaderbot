@@ -37,7 +37,7 @@ default = ["webhook"]
 
 webhook = ["webhook-base", "reporter-webhook"]
 
-webhook-base = ["derive_builder", "serde"]
+webhook-base = ["derive_builder", "serde", "veil"]
 reporter-webhook = ["webhook-base", "itertools", "reqwest", "strum"]
 
 [dependencies]
@@ -51,6 +51,7 @@ serde = { workspace = true, optional = true, features = ["derive"] }
 strum = { workspace = true, optional = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
+veil = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
