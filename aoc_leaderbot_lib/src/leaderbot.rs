@@ -53,7 +53,7 @@ pub trait Config {
 #[cfg_attr(test, mockall::automock(type Err=crate::Error;))]
 pub trait Storage {
     /// Type of error used by this storage.
-    type Err: std::error::Error + Send;
+    type Err: Error + Send;
 
     /// Loads any leaderboard data persisted by a previous bot run.
     ///
@@ -108,7 +108,7 @@ impl Changes {
 /// Trait that must be implemented to report changes to the leaderboard.
 pub trait Reporter {
     /// Type of error used by this reporter.
-    type Err: std::error::Error + Send;
+    type Err: Error + Send;
 
     /// Report changes to the leaderboard.
     ///
@@ -157,6 +157,37 @@ pub trait Reporter {
     }
 }
 
+/// Output returned by the [`run_bot`] function. Contains the bot's output.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BotOutput {
+    /// Year for which the bot was run.
+    pub year: i32,
+
+    /// ID of leaderboard checked by the bot.
+    pub leaderboard_id: u64,
+
+    /// Leaderboard data from previous run, if any.
+    ///
+    /// If this was the first bot run, will be set to `None`.
+    pub previous_leaderboard: Option<Leaderboard>,
+
+    /// Current leaderboard data.
+    pub leaderboard: Leaderboard,
+
+    /// Changes detected, if any.
+    pub changes: Option<Changes>,
+}
+
+impl BotOutput {
+    /// Creates a new [`BotOutput`] with current leaderboard data.
+    ///
+    /// The [`previous_leaderboard`](Self::previous_leaderboard) and
+    /// [`changes`](Self::changes) field will both be set to `None`.
+    pub fn new(year: i32, leaderboard_id: u64, leaderboard: Leaderboard) -> Self {
+        Self { year, leaderboard_id, previous_leaderboard: None, leaderboard, changes: None }
+    }
+}
+
 /// Runs the bot's core functionality.
 ///
 /// Reads the [`config`], fetches the current leaderboard data, then fetches the previous
@@ -168,8 +199,12 @@ pub trait Reporter {
 /// [`config`]: Config
 /// [`storage`]: Storage
 /// [`reporter`]: Reporter
-#[instrument(skip_all, err)]
-pub async fn run_bot<C, S, R>(config: &C, storage: &mut S, reporter: &mut R) -> crate::Result<()>
+#[instrument(skip_all, ret, err)]
+pub async fn run_bot<C, S, R>(
+    config: &C,
+    storage: &mut S,
+    reporter: &mut R,
+) -> crate::Result<BotOutput>
 where
     C: Config,
     S: Storage,
@@ -183,7 +218,7 @@ where
         aoc_session: String,
         storage: &mut S,
         reporter: &mut R,
-    ) -> crate::Result<()>
+    ) -> crate::Result<BotOutput>
     where
         S: Storage,
         <S as Storage>::Err: Error + Sync + 'static,
@@ -192,6 +227,7 @@ where
     {
         let leaderboard =
             mockable_helpers::get_leaderboard(year, leaderboard_id, &aoc_session).await?;
+        let mut output = BotOutput::new(year, leaderboard_id, leaderboard.clone());
 
         let load_result = storage
             .load_previous(year, leaderboard_id)
@@ -199,7 +235,11 @@ where
             .map_err(|err| StorageError::LoadPrevious(anyhow!(err)))?;
         match load_result {
             Some(previous_leaderboard) => {
+                output.previous_leaderboard = Some(previous_leaderboard.clone());
+
                 if let Some(changes) = detect_changes(&previous_leaderboard, &leaderboard) {
+                    output.changes = Some(changes.clone());
+
                     reporter
                         .report_changes(
                             year,
@@ -222,14 +262,14 @@ where
                 .map_err(|err| StorageError::Save(anyhow!(err)))?,
         }
 
-        Ok(())
+        Ok(output)
     }
 
     let (year, leaderboard_id, aoc_session) =
         (config.year(), config.leaderboard_id(), config.aoc_session());
 
     match internal_run_bot(year, leaderboard_id, aoc_session, storage, reporter).await {
-        Ok(()) => Ok(()),
+        Ok(output) => Ok(output),
         Err(err) => {
             reporter
                 .report_error(year, leaderboard_id, err.to_string())
@@ -342,6 +382,13 @@ mod tests {
             pub previous_leaderboard: Leaderboard,
             pub leaderboard: Leaderboard,
             pub changes: Changes,
+        }
+
+        impl SpiedChanges {
+            pub fn has_changes(&self) -> bool {
+                !self.changes.new_members.is_empty()
+                    || !self.changes.members_with_new_stars.is_empty()
+            }
         }
 
         #[derive(Debug, Default)]
@@ -546,12 +593,18 @@ mod tests {
                 let ctx = mockable_helpers::get_leaderboard_context();
                 ctx.expect().returning(|_, _, _| Ok(base_leaderboard()));
 
+                let expected = base_leaderboard();
                 let result = run_bot(&config, &mut storage, &mut reporter).await;
-                assert!(result.is_ok());
+                assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
+                    assert_eq!(year, YEAR);
+                    assert_eq!(leaderboard_id, LEADERBOARD_ID);
+                    assert!(previous_leaderboard.is_none());
+                    assert_eq!(leaderboard, expected);
+                    assert!(changes.is_none());
+                });
                 assert_eq!(storage.len(), 1);
                 assert!(!reporter.called());
 
-                let expected = base_leaderboard();
                 let actual = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
                 assert_eq!(actual, Some(expected));
             }
@@ -581,10 +634,6 @@ mod tests {
                 ctx.expect()
                     .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
 
-                let result = run_bot(&config, &mut storage, &mut reporter).await;
-                assert!(result.is_ok());
-                assert_eq!(storage.len(), 1);
-
                 let expected = SpiedChanges {
                     previous_leaderboard: base.clone(),
                     leaderboard: leaderboard.clone(),
@@ -593,10 +642,22 @@ mod tests {
                         members_with_new_stars: members_with_new_stars.into_iter().collect(),
                     },
                 };
-                if expected.changes.new_members.len()
-                    + expected.changes.members_with_new_stars.len()
-                    != 0
-                {
+
+                let result = run_bot(&config, &mut storage, &mut reporter).await;
+                assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard: output_leaderboard, changes }) => {
+                    assert_eq!(year, YEAR);
+                    assert_eq!(leaderboard_id, LEADERBOARD_ID);
+                    assert_eq!(previous_leaderboard.as_ref(), Some(&base));
+                    assert_eq!(output_leaderboard, leaderboard);
+                    if expected.has_changes() {
+                        assert_eq!(changes.as_ref(), Some(&expected.changes));
+                    } else {
+                        assert!(changes.is_none());
+                    }
+                });
+                assert_eq!(storage.len(), 1);
+
+                if expected.has_changes() {
                     assert!(reporter.called());
                     let (actual_year, actual_leaderboard_id, actual) = &reporter.changes[0];
                     assert_eq!(*actual_year, YEAR);

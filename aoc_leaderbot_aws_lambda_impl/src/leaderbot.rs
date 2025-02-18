@@ -8,7 +8,7 @@ use std::fmt::Debug;
 use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::DynamoDbStorage;
 use aoc_leaderbot_lib::leaderbot::config::env::get_env_config;
 use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
-use aoc_leaderbot_lib::leaderbot::{run_bot, Config};
+use aoc_leaderbot_lib::leaderbot::{run_bot, BotOutput, Config};
 use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
     LeaderboardSortOrder, SlackWebhookReporter,
 };
@@ -98,7 +98,10 @@ pub struct IncomingSlackWebhookReporterInput {
 ///
 /// [AWS Lambda]: https://aws.amazon.com/lambda/
 #[derive(Debug, Clone, Serialize)]
-pub struct OutgoingMessage {}
+pub struct OutgoingMessage {
+    /// [Output](BotOutput) of the bot's run.
+    pub output: BotOutput,
+}
 
 /// Prefix of environment variables used for the bot [`Config`] (see [`get_env_config`]).
 pub const CONFIG_ENV_VAR_PREFIX: &str = "AOC_LEADERBOT_AWS_";
@@ -129,9 +132,9 @@ pub async fn bot_lambda_handler(
     let mut storage = get_storage(&input).await?;
     let mut reporter = get_reporter(&input)?;
 
-    run_bot(&config, &mut storage, &mut reporter).await?;
+    let output = run_bot(&config, &mut storage, &mut reporter).await?;
 
-    Ok(OutgoingMessage {})
+    Ok(OutgoingMessage { output })
 }
 
 #[instrument(err)]
