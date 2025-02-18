@@ -3,18 +3,20 @@
 //! [AWS Lambda]: https://aws.amazon.com/lambda/
 //! [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 
+use std::borrow::Cow;
 use std::fmt::Debug;
 
 use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::DynamoDbStorage;
 use aoc_leaderbot_lib::leaderbot::config::env::get_env_config;
 use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
-use aoc_leaderbot_lib::leaderbot::{run_bot, BotOutput, Config};
+use aoc_leaderbot_lib::leaderbot::{run_bot, BotOutput, Config, Reporter};
 use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
     LeaderboardSortOrder, SlackWebhookReporter,
 };
 use lambda_runtime::{Error, LambdaEvent};
 use serde::{Deserialize, Serialize};
-use tracing::{instrument, trace};
+use tracing::instrument;
+use veil::Redact;
 
 /// Struct used to deserialize the incoming message passed
 /// to our [AWS Lambda] function.
@@ -23,7 +25,7 @@ use tracing::{instrument, trace};
 /// other related parameters.
 ///
 /// [AWS Lambda]: https://aws.amazon.com/lambda/
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Redact, Default, Clone, Deserialize)]
 pub struct IncomingMessage {
     /// Year of leaderboard to monitor.
     ///
@@ -40,8 +42,15 @@ pub struct IncomingMessage {
     /// Advent of Code session token.
     ///
     /// If set, overrides [`Config::aoc_session`].
+    #[redact]
     #[serde(default)]
     pub aoc_session: Option<String>,
+
+    /// Set to `true` to do a test run.
+    ///
+    /// A test run will report changes even if there are none.
+    #[serde(default)]
+    pub test_run: bool,
 
     /// AWS DynamoDB storage-specific input parameters.
     #[serde(flatten)]
@@ -65,12 +74,13 @@ pub struct IncomingDynamoDbStorageInput {
 /// Slack webhook reporter-specific part of the lambda's [`IncomingMessage`].
 ///
 /// Allows caller to override fields in the [`SlackWebhookReporter`].
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Redact, Default, Clone, Deserialize)]
 #[serde(default)]
 pub struct IncomingSlackWebhookReporterInput {
     /// Slack webhook URL where to report changes.
     ///
     /// If set, overrides [`SlackWebhookReporter::webhook_url`].
+    #[redact(partial)]
     pub webhook_url: Option<String>,
 
     /// Slack channel where to report changes.
@@ -126,13 +136,34 @@ pub async fn bot_lambda_handler(
     event: LambdaEvent<IncomingMessage>,
 ) -> Result<OutgoingMessage, Error> {
     let input = event.payload;
-    trace!(?input);
 
     let config = get_config(&input)?;
     let mut storage = get_storage(&input).await?;
     let mut reporter = get_reporter(&input)?;
 
-    let output = run_bot(&config, &mut storage, &mut reporter).await?;
+    let output = run_bot(&config, &mut storage, &mut reporter, input.test_run).await?;
+
+    if input.test_run {
+        let previous_leaderboard = output
+            .previous_leaderboard
+            .as_ref()
+            .unwrap_or(&output.leaderboard);
+        let changes = output
+            .changes
+            .as_ref()
+            .map(Cow::Borrowed)
+            .unwrap_or_default();
+
+        reporter
+            .report_changes(
+                output.year,
+                output.leaderboard_id,
+                previous_leaderboard,
+                &output.leaderboard,
+                &changes,
+            )
+            .await?;
+    }
 
     Ok(OutgoingMessage { output })
 }
