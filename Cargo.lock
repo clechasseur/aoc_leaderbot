@@ -109,8 +109,10 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "test-log",
  "thiserror",
  "tokio",
+ "tracing",
  "wiremock",
 ]
 
@@ -164,6 +166,7 @@ dependencies = [
  "rustc_version",
  "serde",
  "serial_test",
+ "test-log",
  "thiserror",
  "tokio",
  "tracing",

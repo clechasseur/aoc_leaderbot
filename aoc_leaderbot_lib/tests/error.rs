@@ -4,7 +4,7 @@ mod from_var_error_for_env_var_error {
     use aoc_leaderbot_lib::error::EnvVarError;
     use assert_matches::assert_matches;
 
-    #[test]
+    #[test_log::test]
     fn test_not_present() {
         let err = env::VarError::NotPresent;
         let actual: EnvVarError = err.into();
@@ -12,7 +12,7 @@ mod from_var_error_for_env_var_error {
         assert_matches!(actual, EnvVarError::NotPresent);
     }
 
-    #[test]
+    #[test_log::test]
     fn test_not_unicode() {
         let err = env::VarError::NotUnicode("foo".into());
         let actual: EnvVarError = err.into();
