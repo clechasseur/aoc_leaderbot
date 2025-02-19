@@ -52,6 +52,7 @@ aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version =
 assert_matches = { workspace = true }
 mockall = { workspace = true }
 serial_test = { workspace = true }
+test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "test-util"] }
 uuid = { workspace = true, features = ["v4"] }
 

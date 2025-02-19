@@ -33,7 +33,7 @@ name = "http"
 required-features = ["http"]
 
 [features]
-http = ["dep:reqwest", "dep:serde_json"]
+http = ["reqwest", "serde_json", "tracing"]
 
 [dependencies]
 reqwest = { workspace = true, optional = true, features = ["json"] }
@@ -41,12 +41,14 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, optional = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
+tracing = { workspace = true, optional = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 assert_matches = { workspace = true }
 dotenvy = { workspace = true }
 serde_json = { workspace = true }
+test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "test-util"] }
 wiremock = { workspace = true }
 

@@ -20,7 +20,7 @@ mod leaderbot_config {
         }
     }
 
-    #[test]
+    #[test_log::test]
     fn default_year() {
         let config = TestLeaderbotConfig;
 
@@ -40,7 +40,7 @@ mod leaderbot_changes {
 
         use super::*;
 
-        #[test]
+        #[test_log::test]
         fn with_new_members() {
             let new_members = [42].iter().copied().collect();
             let members_with_new_stars = HashSet::new();
@@ -53,7 +53,7 @@ mod leaderbot_changes {
             });
         }
 
-        #[test]
+        #[test_log::test]
         fn with_members_with_new_stars() {
             let new_members = HashSet::new();
             let members_with_new_stars = [23].iter().copied().collect();
@@ -66,7 +66,7 @@ mod leaderbot_changes {
             });
         }
 
-        #[test]
+        #[test_log::test]
         fn with_both() {
             let new_members = [42].iter().copied().collect();
             let members_with_new_stars = [23].iter().copied().collect();
@@ -81,7 +81,7 @@ mod leaderbot_changes {
         }
     }
 
-    #[test]
+    #[test_log::test]
     fn without_changes() {
         let changes = Changes::if_needed(HashSet::new(), HashSet::new());
         assert!(changes.is_none());

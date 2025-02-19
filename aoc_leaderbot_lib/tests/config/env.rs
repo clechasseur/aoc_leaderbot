@@ -33,12 +33,12 @@ mod get_env_config {
         assert_eq!(actual.aoc_session(), AOC_SESSION);
     }
 
-    #[test]
+    #[test_log::test]
     fn with_year() {
         perform_valid_test(&random_env_var_prefix(), true);
     }
 
-    #[test]
+    #[test_log::test]
     fn without_year() {
         perform_valid_test(&random_env_var_prefix(), false);
     }
@@ -46,7 +46,7 @@ mod get_env_config {
     mod missing_vars {
         use super::*;
 
-        #[test]
+        #[test_log::test]
         fn missing_leaderboard_id() {
             let env_var_prefix = random_env_var_prefix();
             let var_name = |name| format!("{env_var_prefix}{name}");
@@ -57,7 +57,7 @@ mod get_env_config {
             assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source: EnvVarError::NotPresent }) if actual_var_name == var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX));
         }
 
-        #[test]
+        #[test_log::test]
         fn missing_aoc_session() {
             let env_var_prefix = random_env_var_prefix();
             let var_name = |name| format!("{env_var_prefix}{name}");
@@ -72,7 +72,7 @@ mod get_env_config {
     mod invalid_values {
         use super::*;
 
-        #[test]
+        #[test_log::test]
         fn invalid_year() {
             let env_var_prefix = random_env_var_prefix();
             let var_name = |name| format!("{env_var_prefix}{name}");
@@ -86,7 +86,7 @@ mod get_env_config {
             })
         }
 
-        #[test]
+        #[test_log::test]
         fn invalid_leaderboard_id() {
             let env_var_prefix = random_env_var_prefix();
             let var_name = |name| format!("{env_var_prefix}{name}");
