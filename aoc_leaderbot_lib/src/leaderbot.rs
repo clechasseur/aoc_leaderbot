@@ -448,7 +448,7 @@ mod tests {
 
             async fn report_error<S>(&mut self, year: i32, leaderboard_id: u64, error: S)
             where
-                S: Into<String> + Send,
+                S: Into<String> + Debug + Send,
             {
                 self.errors.push((year, leaderboard_id, error.into()));
             }
@@ -792,7 +792,7 @@ mod tests {
 
                     async fn report_error<S>(&mut self, _year: i32, _leaderboard_id: u64, _error: S)
                     where
-                        S: Into<String> + Send,
+                        S: Into<String> + Debug + Send,
                     {
                         self.errors += 1;
                     }
