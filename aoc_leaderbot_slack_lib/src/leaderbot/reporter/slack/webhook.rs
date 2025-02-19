@@ -7,6 +7,7 @@ mod detail;
 
 use std::cmp::Ordering;
 use std::env;
+use std::fmt::Debug;
 
 use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
 use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
@@ -334,7 +335,7 @@ impl Reporter for SlackWebhookReporter {
     #[instrument(skip(self, error))]
     async fn report_error<S>(&mut self, year: i32, leaderboard_id: u64, error: S)
     where
-        S: Into<String> + Send,
+        S: Into<String> + Debug + Send,
     {
         let error = error.into();
         error!("aoc_leaderbot error for leaderboard {leaderboard_id} and year {year}: {error}");
