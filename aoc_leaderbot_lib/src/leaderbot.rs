@@ -27,6 +27,7 @@ pub trait Config {
     /// Year for which we want to monitor the leaderboard.
     ///
     /// Defaults to the current year.
+    #[instrument(skip(self), level = "trace", ret)]
     fn year(&self) -> i32 {
         Local::now().year()
     }
@@ -86,13 +87,15 @@ pub struct Changes {
 }
 
 impl Changes {
-    /// Creates a [`Changes`].
+    /// Returns a [`Changes`] with the given new/updated members.
+    #[instrument(level = "trace")]
     pub fn new(new_members: HashSet<u64>, members_with_new_stars: HashSet<u64>) -> Self {
         Self { new_members, members_with_new_stars }
     }
 
-    /// Creates a [`Changes`] if there are new members and/or members
+    /// Returns a [`Changes`] if there are new members and/or members
     /// with new stars, otherwise returns `None`.
+    #[instrument(level = "trace", ret)]
     pub fn if_needed(
         new_members: HashSet<u64>,
         members_with_new_stars: HashSet<u64>,
@@ -142,6 +145,7 @@ pub trait Reporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
+    #[instrument(skip(self))]
     fn report_error<S>(
         &mut self,
         year: i32,
@@ -149,7 +153,7 @@ pub trait Reporter {
         error: S,
     ) -> impl Future<Output = ()> + Send
     where
-        S: Into<String> + Send,
+        S: Into<String> + Debug + Send,
     {
         let error = error.into();
         eprintln!("Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}");
@@ -183,6 +187,7 @@ impl BotOutput {
     ///
     /// The [`previous_leaderboard`](Self::previous_leaderboard) and
     /// [`changes`](Self::changes) field will both be set to `None`.
+    #[instrument(level = "trace", ret)]
     pub fn new(year: i32, leaderboard_id: u64, leaderboard: Leaderboard) -> Self {
         Self { year, leaderboard_id, previous_leaderboard: None, leaderboard, changes: None }
     }
@@ -348,7 +353,7 @@ mod tests {
             }
         }
 
-        #[tokio::test]
+        #[test_log::test(tokio::test)]
         async fn default_impl_works() {
             let mut reporter = TestReporter;
 
@@ -593,7 +598,7 @@ mod tests {
         mod without_previous {
             use super::*;
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn stores_current() {
                 let config = config();
@@ -678,26 +683,26 @@ mod tests {
                 }
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn with_no_changes() {
                 test_previous(base_leaderboard(), vec![], vec![]).await;
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn with_new_member() {
                 test_previous(leaderboard_with_new_member(), vec![MEMBER_2], vec![]).await;
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn with_member_with_new_stars() {
                 test_previous(leaderboard_with_member_with_new_stars(), vec![], vec![MEMBER_1])
                     .await;
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn with_both() {
                 test_previous(leaderboard_with_both_updates(), vec![MEMBER_2], vec![MEMBER_1])
@@ -708,7 +713,7 @@ mod tests {
         mod errors {
             use super::*;
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn leaderboard_get_error() {
                 let config = config();
@@ -729,7 +734,7 @@ mod tests {
                 assert_eq!(reporter.errors.len(), 1);
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn load_previous_error() {
                 let config = config();
@@ -763,7 +768,7 @@ mod tests {
                 );
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn report_changes_error() {
                 #[derive(Debug, Default)]
@@ -813,7 +818,7 @@ mod tests {
                 assert_eq!(reporter.errors, 1);
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn save_updated_error() {
                 let config = config();
@@ -848,7 +853,7 @@ mod tests {
                 );
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             #[serial(run_bot)]
             async fn save_base_error() {
                 let config = config();
