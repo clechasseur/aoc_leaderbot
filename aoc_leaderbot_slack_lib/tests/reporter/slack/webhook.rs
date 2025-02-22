@@ -207,11 +207,24 @@ mod leaderboard_sort_order {
 }
 
 mod slack_webhook_reporter {
+    use std::env;
+
+    use aoc_leaderboard::aoc::Leaderboard;
     use aoc_leaderboard::aoc::LeaderboardMember;
+    use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
+    use aoc_leaderbot_slack_lib::error::WebhookError;
+    use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError;
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
         LeaderboardSortOrder, SlackWebhookReporter,
     };
+    use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
+        CHANNEL_ENV_VAR, SORT_ORDER_ENV_VAR, WEBHOOK_URL_ENV_VAR,
+    };
+    use aoc_leaderbot_slack_lib::Error;
+    use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
+    use assert_matches::assert_matches;
     use reqwest::Method;
+    use reqwest::StatusCode;
     use serde_json::json;
     use serial_test::serial;
     use wiremock::matchers::{header, method, path};
@@ -297,17 +310,20 @@ mod slack_webhook_reporter {
         serde_json::from_value(member_json).unwrap()
     }
 
-    mod builder {
-        use std::env;
+    mod redact {
+        use super::*;
 
-        use aoc_leaderbot_slack_lib::error::WebhookError;
-        use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
-            LeaderboardSortOrder, SlackWebhookReporter, SlackWebhookReporterBuilderError,
-            CHANNEL_ENV_VAR, SORT_ORDER_ENV_VAR, WEBHOOK_URL_ENV_VAR,
-        };
-        use aoc_leaderbot_slack_lib::Error;
-        use assert_matches::assert_matches;
-        use serial_test::serial;
+        #[test_log::test(tokio::test)]
+        async fn debug_impl() {
+            let mock_server = working_mock_server().await;
+            let reporter = offline_reporter(&mock_server);
+
+            assert!(!format!("{:?}", reporter).is_empty());
+        }
+    }
+
+    mod builder {
+        use super::*;
 
         #[cfg(unix)]
         pub fn get_invalid_os_string() -> std::ffi::OsString {
@@ -326,7 +342,7 @@ mod slack_webhook_reporter {
             std::ffi::OsString::from_wide(&source)
         }
 
-        #[test]
+        #[test_log::test]
         #[serial(slack_webhook_reporter_env)]
         fn with_correct_defaults() {
             env::set_var(WEBHOOK_URL_ENV_VAR, "https://webhook-url");
@@ -337,7 +353,7 @@ mod slack_webhook_reporter {
             assert!(result.is_ok());
         }
 
-        #[test]
+        #[test_log::test]
         #[serial(slack_webhook_reporter_env)]
         fn with_all_fields() {
             let result = SlackWebhookReporter::builder()
@@ -353,12 +369,13 @@ mod slack_webhook_reporter {
         mod missing_field {
             use super::*;
 
-            #[test]
+            #[test_log::test]
             #[serial(slack_webhook_reporter_env)]
             fn webhook_url() {
                 env::remove_var(WEBHOOK_URL_ENV_VAR);
 
                 let result = SlackWebhookReporter::builder().build();
+                assert!(!format!("{:?}", result).is_empty());
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
@@ -370,13 +387,14 @@ mod slack_webhook_reporter {
                 );
             }
 
-            #[test]
+            #[test_log::test]
             #[serial(slack_webhook_reporter_env)]
             fn channel() {
                 env::set_var(WEBHOOK_URL_ENV_VAR, "https://webhook-url");
                 env::remove_var(CHANNEL_ENV_VAR);
 
                 let result = SlackWebhookReporter::builder().build();
+                assert!(!format!("{:?}", result).is_empty());
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
@@ -392,7 +410,7 @@ mod slack_webhook_reporter {
         mod invalid_fields {
             use super::*;
 
-            #[test]
+            #[test_log::test]
             #[serial(slack_webhook_reporter_env)]
             fn invalid_sort_order_value() {
                 env::set_var(SORT_ORDER_ENV_VAR, "not_a_sort_order_value");
@@ -401,6 +419,7 @@ mod slack_webhook_reporter {
                     .webhook_url("https://webhook-url")
                     .channel("#aoc_leaderbot_test")
                     .build();
+                assert!(!format!("{:?}", result).is_empty());
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
@@ -409,7 +428,7 @@ mod slack_webhook_reporter {
                 );
             }
 
-            #[test]
+            #[test_log::test]
             #[serial(slack_webhook_reporter_env)]
             fn invalid_sort_order_unicode() {
                 env::set_var(SORT_ORDER_ENV_VAR, get_invalid_os_string());
@@ -418,6 +437,7 @@ mod slack_webhook_reporter {
                     .webhook_url("https://webhook-url")
                     .channel("#aoc_leaderbot_test")
                     .build();
+                assert!(!format!("{:?}", result).is_empty());
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
@@ -428,21 +448,28 @@ mod slack_webhook_reporter {
                 );
             }
         }
+
+        mod redact {
+            use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
+                LeaderboardSortOrder, SlackWebhookReporter,
+            };
+
+            #[test_log::test]
+            fn debug_impl() {
+                let reporter = SlackWebhookReporter::builder()
+                    .webhook_url("https://webhook-url")
+                    .channel("#aoc_leaderbot_test")
+                    .username("AoC Leaderbot (test)")
+                    .icon_url("https://www.adventofcode.com/favicon.ico")
+                    .sort_order(LeaderboardSortOrder::Score)
+                    .build();
+
+                assert!(!format!("{:?}", reporter).is_empty());
+            }
+        }
     }
 
     mod reporter {
-        use std::env;
-
-        use aoc_leaderboard::aoc::Leaderboard;
-        use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
-        use aoc_leaderbot_slack_lib::error::WebhookError;
-        use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::LeaderboardSortOrder;
-        use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::SORT_ORDER_ENV_VAR;
-        use aoc_leaderbot_slack_lib::Error;
-        use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
-        use assert_matches::assert_matches;
-        use reqwest::StatusCode;
-
         use super::*;
 
         mod report_changes {
@@ -550,6 +577,7 @@ mod slack_webhook_reporter {
                             &changes,
                         )
                         .await;
+                    assert!(!format!("{:?}", result).is_empty());
                     assert_matches!(
                         result,
                         Err(Error::Webhook(WebhookError::ReportChanges {
