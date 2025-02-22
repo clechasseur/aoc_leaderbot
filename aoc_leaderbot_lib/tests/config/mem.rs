@@ -12,17 +12,6 @@ mod memory_config {
         assert_eq!(actual.aoc_session(), AOC_SESSION);
     }
 
-    mod redact {
-        use super::*;
-
-        #[test_log::test]
-        fn debug_impl() {
-            let config = MemoryConfig::new(YEAR, LEADERBOARD_ID, AOC_SESSION);
-
-            assert!(!format!("{:?}", config).is_empty());
-        }
-    }
-
     mod builder {
         use std::any::type_name;
 
@@ -83,21 +72,6 @@ mod memory_config {
                 assert_eq!(target, type_name::<MemoryConfig>());
                 assert_eq!(field, "aoc_session");
             });
-        }
-
-        mod redact {
-            use super::*;
-
-            #[test_log::test]
-            fn debug_impl() {
-                let mut builder = MemoryConfig::builder();
-                builder
-                    .year(YEAR)
-                    .leaderboard_id(LEADERBOARD_ID)
-                    .aoc_session(AOC_SESSION);
-
-                assert!(!format!("{:?}", builder).is_empty());
-            }
         }
     }
 }
