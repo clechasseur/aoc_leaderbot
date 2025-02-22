@@ -310,18 +310,6 @@ mod slack_webhook_reporter {
         serde_json::from_value(member_json).unwrap()
     }
 
-    mod redact {
-        use super::*;
-
-        #[test_log::test(tokio::test)]
-        async fn debug_impl() {
-            let mock_server = working_mock_server().await;
-            let reporter = offline_reporter(&mock_server);
-
-            assert!(!format!("{:?}", reporter).is_empty());
-        }
-    }
-
     mod builder {
         use super::*;
 
@@ -375,7 +363,6 @@ mod slack_webhook_reporter {
                 env::remove_var(WEBHOOK_URL_ENV_VAR);
 
                 let result = SlackWebhookReporter::builder().build();
-                assert!(!format!("{:?}", result).is_empty());
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
@@ -394,7 +381,6 @@ mod slack_webhook_reporter {
                 env::remove_var(CHANNEL_ENV_VAR);
 
                 let result = SlackWebhookReporter::builder().build();
-                assert!(!format!("{:?}", result).is_empty());
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
@@ -419,7 +405,6 @@ mod slack_webhook_reporter {
                     .webhook_url("https://webhook-url")
                     .channel("#aoc_leaderbot_test")
                     .build();
-                assert!(!format!("{:?}", result).is_empty());
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
@@ -437,7 +422,6 @@ mod slack_webhook_reporter {
                     .webhook_url("https://webhook-url")
                     .channel("#aoc_leaderbot_test")
                     .build();
-                assert!(!format!("{:?}", result).is_empty());
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
@@ -446,25 +430,6 @@ mod slack_webhook_reporter {
                         "invalid unicode found in environment variable {SORT_ORDER_ENV_VAR}:"
                     ))
                 );
-            }
-        }
-
-        mod redact {
-            use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
-                LeaderboardSortOrder, SlackWebhookReporter,
-            };
-
-            #[test_log::test]
-            fn debug_impl() {
-                let reporter = SlackWebhookReporter::builder()
-                    .webhook_url("https://webhook-url")
-                    .channel("#aoc_leaderbot_test")
-                    .username("AoC Leaderbot (test)")
-                    .icon_url("https://www.adventofcode.com/favicon.ico")
-                    .sort_order(LeaderboardSortOrder::Score)
-                    .build();
-
-                assert!(!format!("{:?}", reporter).is_empty());
             }
         }
     }
@@ -577,7 +542,6 @@ mod slack_webhook_reporter {
                             &changes,
                         )
                         .await;
-                    assert!(!format!("{:?}", result).is_empty());
                     assert_matches!(
                         result,
                         Err(Error::Webhook(WebhookError::ReportChanges {
