@@ -169,6 +169,7 @@ dependencies = [
  "assert_matches",
  "chrono",
  "derive_builder",
+ "itertools",
  "mockall",
  "mockall_double",
  "rustc_version",

@@ -50,6 +50,7 @@ veil = { workspace = true, optional = true }
 [dev-dependencies]
 aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.3.0" }
 assert_matches = { workspace = true }
+itertools = { workspace = true }
 mockall = { workspace = true }
 serial_test = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
