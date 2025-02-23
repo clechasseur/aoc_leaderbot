@@ -376,6 +376,7 @@ mod tests {
         use std::future::ready;
 
         use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
+        use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
         use assert_matches::assert_matches;
         use mockall::predicate::eq;
         use serial_test::serial;
@@ -383,10 +384,6 @@ mod tests {
         use super::*;
         use crate::leaderbot::config::mem::MemoryConfig;
         use crate::leaderbot::storage::mem::MemoryStorage;
-
-        pub const YEAR: i32 = 2024;
-        pub const LEADERBOARD_ID: u64 = 12345;
-        pub const AOC_SESSION: &str = "aoc_session";
 
         const OWNER: u64 = 42;
         const MEMBER_1: u64 = 23;
@@ -396,13 +393,14 @@ mod tests {
         pub struct SpiedChanges {
             pub previous_leaderboard: Leaderboard,
             pub leaderboard: Leaderboard,
-            pub changes: Changes,
+            pub changes: Option<Changes>,
         }
 
         impl SpiedChanges {
             pub fn has_changes(&self) -> bool {
-                !self.changes.new_members.is_empty()
-                    || !self.changes.members_with_new_stars.is_empty()
+                self.changes.as_ref().is_some_and(|changes| {
+                    !changes.new_members.is_empty() || !changes.members_with_new_stars.is_empty()
+                })
             }
         }
 
@@ -439,7 +437,7 @@ mod tests {
                     SpiedChanges {
                         previous_leaderboard: previous_leaderboard.clone(),
                         leaderboard: leaderboard.clone(),
-                        changes: changes.clone(),
+                        changes: Some(changes.clone()),
                     },
                 ));
 
@@ -595,6 +593,7 @@ mod tests {
             leaderboard
         }
 
+        // noinspection DuplicatedCode
         mod without_previous {
             use super::*;
 
@@ -623,15 +622,48 @@ mod tests {
                 let actual = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
                 assert_eq!(actual, Some(expected));
             }
+
+            mod dry_run {
+                use super::*;
+
+                #[test_log::test(tokio::test)]
+                #[serial(run_bot)]
+                async fn does_not_store_current() {
+                    let config = config();
+                    let mut storage = storage();
+                    let mut reporter = spy_reporter();
+
+                    let ctx = mockable_helpers::get_leaderboard_context();
+                    ctx.expect().returning(|_, _, _| Ok(base_leaderboard()));
+
+                    let expected = base_leaderboard();
+                    let result = run_bot(&config, &mut storage, &mut reporter, true).await;
+                    assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
+                        assert_eq!(year, YEAR);
+                        assert_eq!(leaderboard_id, LEADERBOARD_ID);
+                        assert!(previous_leaderboard.is_none());
+                        assert_eq!(leaderboard, expected);
+                        assert!(changes.is_none());
+                    });
+                    assert!(storage.is_empty());
+                    assert!(!reporter.called());
+
+                    let actual = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+                    assert!(actual.is_none());
+                }
+            }
         }
 
         mod with_previous {
+            use itertools::iproduct;
+
             use super::*;
 
             async fn test_previous<N, W>(
                 leaderboard: Leaderboard,
-                new_members: N,
-                members_with_new_stars: W,
+                dry_run: bool,
+                expected_new_members: N,
+                expected_members_with_new_stars: W,
             ) where
                 N: IntoIterator<Item = u64>,
                 W: IntoIterator<Item = u64>,
@@ -652,27 +684,26 @@ mod tests {
                 let expected = SpiedChanges {
                     previous_leaderboard: base.clone(),
                     leaderboard: leaderboard.clone(),
-                    changes: Changes {
-                        new_members: new_members.into_iter().collect(),
-                        members_with_new_stars: members_with_new_stars.into_iter().collect(),
-                    },
+                    changes: Changes::if_needed(
+                        expected_new_members.into_iter().collect(),
+                        expected_members_with_new_stars.into_iter().collect(),
+                    ),
                 };
 
-                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
+                let result = run_bot(&config, &mut storage, &mut reporter, dry_run).await;
                 assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard: output_leaderboard, changes }) => {
                     assert_eq!(year, YEAR);
                     assert_eq!(leaderboard_id, LEADERBOARD_ID);
                     assert_eq!(previous_leaderboard.as_ref(), Some(&base));
                     assert_eq!(output_leaderboard, leaderboard);
-                    if expected.has_changes() {
-                        assert_eq!(changes.as_ref(), Some(&expected.changes));
-                    } else {
-                        assert!(changes.is_none());
-                    }
+                    assert_eq!(changes, expected.changes);
                 });
-                assert_eq!(storage.len(), 1);
 
-                if expected.has_changes() {
+                assert_eq!(storage.len(), 1);
+                let current = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+                assert_eq!(current, Some(if dry_run { base } else { leaderboard }));
+
+                if expected.has_changes() && !dry_run {
                     assert!(reporter.called());
                     let (actual_year, actual_leaderboard_id, actual) = &reporter.changes[0];
                     assert_eq!(*actual_year, YEAR);
@@ -683,30 +714,39 @@ mod tests {
                 }
             }
 
-            #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
-            async fn with_no_changes() {
-                test_previous(base_leaderboard(), vec![], vec![]).await;
+            fn test_permutations() -> impl Iterator<Item = ((Leaderboard, Vec<u64>, Vec<u64>), bool)>
+            {
+                iproduct!(
+                    // leaderboard, expected_new_members, expected_members_with_new_stars
+                    [
+                        (base_leaderboard(), vec![], vec![]),
+                        (leaderboard_with_new_member(), vec![MEMBER_2], vec![]),
+                        (leaderboard_with_member_with_new_stars(), vec![], vec![MEMBER_1]),
+                        (leaderboard_with_both_updates(), vec![MEMBER_2], vec![MEMBER_1]),
+                    ],
+                    // dry_run
+                    [false, true]
+                )
             }
 
             #[test_log::test(tokio::test)]
             #[serial(run_bot)]
-            async fn with_new_member() {
-                test_previous(leaderboard_with_new_member(), vec![MEMBER_2], vec![]).await;
-            }
+            async fn all() {
+                let permutations = test_permutations();
 
-            #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
-            async fn with_member_with_new_stars() {
-                test_previous(leaderboard_with_member_with_new_stars(), vec![], vec![MEMBER_1])
+                for (
+                    (leaderboard, expected_new_members, expected_members_with_new_stars),
+                    dry_run,
+                ) in permutations
+                {
+                    test_previous(
+                        leaderboard,
+                        dry_run,
+                        expected_new_members,
+                        expected_members_with_new_stars,
+                    )
                     .await;
-            }
-
-            #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
-            async fn with_both() {
-                test_previous(leaderboard_with_both_updates(), vec![MEMBER_2], vec![MEMBER_1])
-                    .await;
+                }
             }
         }
 
