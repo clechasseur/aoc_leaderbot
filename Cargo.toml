@@ -19,6 +19,7 @@ repository = "https://github.com/clechasseur/aoc_leaderbot"
 
 [workspace.dependencies]
 anyhow = "1.0.97"
+assert_cmd = "2.0.16"
 assert_matches = "1.5.0"
 aws-config = "1.5.17"
 aws-sdk-dynamodb = "1.66.0"
@@ -40,6 +41,7 @@ serde_with = "3.12.0"
 serial_test = "3.2.0"
 strum = "0.27.1"
 test-log = { version = "0.2.17", default-features = false }
+testcontainers-modules = "0.11.6"
 thiserror = "2.0.12"
 tokio = "1.43.0"
 tracing = "0.1.41"
