@@ -1,6 +1,8 @@
 // These tests require Docker, which only seems to work reliably on Linux in GitHub workflows.
 #[cfg(any(not(ci), target_os = "linux"))]
 mod dynamo_storage {
+    use std::future::Future;
+
     use aoc_leaderboard::aoc::Leaderboard;
     use aoc_leaderbot_aws_lib::error::{
         CreateDynamoDbTableError, DynamoDbError, LoadPreviousDynamoDbError, SaveDynamoDbError,
@@ -13,14 +15,14 @@ mod dynamo_storage {
     use assert_matches::assert_matches;
     use aws_config::BehaviorVersion;
     use aws_sdk_dynamodb::types::AttributeValue;
-    use aws_sdk_dynamodb::Client;
     use uuid::Uuid;
 
     const LOCAL_ENDPOINT_URL: &str = "http://localhost:8000";
 
+    #[derive(Debug)]
     struct LocalTable {
         name: String,
-        client: Client,
+        client: aws_sdk_dynamodb::Client,
         storage: DynamoDbStorage,
     }
 
@@ -35,27 +37,23 @@ mod dynamo_storage {
                 .load()
                 .await;
 
-            let client = Client::new(&config);
+            let client = aws_sdk_dynamodb::Client::new(&config);
             let storage = DynamoDbStorage::with_config(&config, name.clone()).await;
 
             Self { name, client, storage }
         }
 
         pub async fn with_table() -> Self {
-            let mut table = Self::without_table().await;
+            let table = Self::without_table().await;
             table.create().await;
             table
-        }
-
-        pub async fn create(&mut self) {
-            self.storage.create_table().await.unwrap();
         }
 
         pub fn name(&self) -> String {
             self.name.clone()
         }
 
-        pub fn client(&self) -> &Client {
+        pub fn client(&self) -> &aws_sdk_dynamodb::Client {
             &self.client
         }
 
@@ -100,6 +98,42 @@ mod dynamo_storage {
         fn random_table_name() -> String {
             format!("aoc_leaderbot_aws_test_table_{}", Uuid::new_v4())
         }
+
+        async fn create(&self) {
+            self.storage.create_table().await.unwrap();
+        }
+    }
+
+    async fn drop_table<S>(client: &aws_sdk_dynamodb::Client, table_name: S)
+    where
+        S: Into<String>,
+    {
+        client
+            .delete_table()
+            .table_name(table_name)
+            .send()
+            .await
+            .unwrap();
+    }
+
+    fn run_local_table_test<TF, TFR>(test_f: TF)
+    where
+        TF: FnOnce(LocalTable) -> TFR,
+        TFR: Future<Output = ()> + Send + 'static,
+    {
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        let table = runtime.block_on(LocalTable::with_table());
+        let table_name = table.name();
+        let client = table.client().clone();
+
+        let result = runtime.block_on(runtime.spawn(test_f(table)));
+
+        runtime.block_on(drop_table(&client, table_name));
+        result.unwrap();
     }
 
     mod storage_impl {
@@ -108,29 +142,31 @@ mod dynamo_storage {
         pub mod load_previous {
             use super::*;
 
-            #[tokio::test]
-            async fn without_data() {
-                let mut table = LocalTable::with_table().await;
-                let previous_leaderboard =
-                    table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
-                assert_matches!(previous_leaderboard, Ok(None));
+            #[test_log::test]
+            fn without_data() {
+                run_local_table_test(|mut table| async move {
+                    let previous_leaderboard =
+                        table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
+                    assert_matches!(previous_leaderboard, Ok(None));
+                });
             }
 
-            #[tokio::test]
-            async fn with_data() {
-                let mut table = LocalTable::with_table().await;
-                let expected_leaderboard = get_sample_leaderboard();
-                table.save_leaderboard(&expected_leaderboard).await;
+            #[test_log::test]
+            fn with_data() {
+                run_local_table_test(|mut table| async move {
+                    let expected_leaderboard = get_sample_leaderboard();
+                    table.save_leaderboard(&expected_leaderboard).await;
 
-                let previous_leaderboard =
-                    table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
-                assert_matches!(previous_leaderboard, Ok(Some(actual_leaderboard)) if actual_leaderboard == expected_leaderboard);
+                    let previous_leaderboard =
+                        table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
+                    assert_matches!(previous_leaderboard, Ok(Some(actual_leaderboard)) if actual_leaderboard == expected_leaderboard);
+                });
             }
 
             pub mod errors {
                 use super::*;
 
-                #[tokio::test]
+                #[test_log::test(tokio::test)]
                 async fn get_item() {
                     let mut table = LocalTable::without_table().await;
                     let previous_leaderboard =
@@ -147,90 +183,93 @@ mod dynamo_storage {
                     );
                 }
 
-                #[tokio::test]
-                async fn missing_leaderboard_data() {
-                    let mut table = LocalTable::with_table().await;
-                    table
-                        .client()
-                        .put_item()
-                        .table_name(table.name())
-                        .item(HASH_KEY, AttributeValue::N(LEADERBOARD_ID.to_string()))
-                        .item(RANGE_KEY, AttributeValue::N(YEAR.to_string()))
-                        .send()
-                        .await
-                        .unwrap();
+                #[test_log::test]
+                fn missing_leaderboard_data() {
+                    run_local_table_test(|mut table| async move {
+                        table
+                            .client()
+                            .put_item()
+                            .table_name(table.name())
+                            .item(HASH_KEY, AttributeValue::N(LEADERBOARD_ID.to_string()))
+                            .item(RANGE_KEY, AttributeValue::N(YEAR.to_string()))
+                            .send()
+                            .await
+                            .unwrap();
 
-                    let previous_leaderboard =
-                        table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
-                    assert_matches!(
-                        previous_leaderboard,
-                        Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoDbError::LoadPreviousLeaderboard {
-                                leaderboard_id,
-                                year,
-                                source: LoadPreviousDynamoDbError::Deserialize(_),
-                            }
-                        )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
-                    );
+                        let previous_leaderboard =
+                            table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
+                        assert_matches!(
+                            previous_leaderboard,
+                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                                DynamoDbError::LoadPreviousLeaderboard {
+                                    leaderboard_id,
+                                    year,
+                                    source: LoadPreviousDynamoDbError::Deserialize(_),
+                                }
+                            )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
+                        );
+                    });
                 }
 
-                #[tokio::test]
-                async fn invalid_leaderboard_data_type() {
-                    let mut table = LocalTable::with_table().await;
-                    table
-                        .client()
-                        .put_item()
-                        .table_name(table.name())
-                        .item(HASH_KEY, AttributeValue::N(LEADERBOARD_ID.to_string()))
-                        .item(RANGE_KEY, AttributeValue::N(YEAR.to_string()))
-                        .item(LEADERBOARD_DATA, AttributeValue::N(42.to_string()))
-                        .send()
-                        .await
-                        .unwrap();
+                #[test_log::test]
+                fn invalid_leaderboard_data_type() {
+                    run_local_table_test(|mut table| async move {
+                        table
+                            .client()
+                            .put_item()
+                            .table_name(table.name())
+                            .item(HASH_KEY, AttributeValue::N(LEADERBOARD_ID.to_string()))
+                            .item(RANGE_KEY, AttributeValue::N(YEAR.to_string()))
+                            .item(LEADERBOARD_DATA, AttributeValue::N(42.to_string()))
+                            .send()
+                            .await
+                            .unwrap();
 
-                    let previous_leaderboard =
-                        table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
-                    assert_matches!(
-                        previous_leaderboard,
-                        Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoDbError::LoadPreviousLeaderboard {
-                                leaderboard_id,
-                                year,
-                                source: LoadPreviousDynamoDbError::Deserialize(_),
-                            }
-                        )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
-                    );
+                        let previous_leaderboard =
+                            table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
+                        assert_matches!(
+                            previous_leaderboard,
+                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                                DynamoDbError::LoadPreviousLeaderboard {
+                                    leaderboard_id,
+                                    year,
+                                    source: LoadPreviousDynamoDbError::Deserialize(_),
+                                }
+                            )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
+                        );
+                    });
                 }
 
-                #[tokio::test]
-                async fn parse_error() {
-                    let mut table = LocalTable::with_table().await;
-                    table
-                        .client()
-                        .put_item()
-                        .table_name(table.name())
-                        .item(HASH_KEY, AttributeValue::N(LEADERBOARD_ID.to_string()))
-                        .item(RANGE_KEY, AttributeValue::N(YEAR.to_string()))
-                        .item(
-                            LEADERBOARD_DATA,
-                            AttributeValue::S("{\"hello\":\"world\"".to_string()),
-                        )
-                        .send()
-                        .await
-                        .unwrap();
+                #[test_log::test]
+                fn parse_error() {
+                    run_local_table_test(|mut table| async move {
+                        table
+                            .client()
+                            .put_item()
+                            .table_name(table.name())
+                            .item(HASH_KEY, AttributeValue::N(LEADERBOARD_ID.to_string()))
+                            .item(RANGE_KEY, AttributeValue::N(YEAR.to_string()))
+                            .item(
+                                LEADERBOARD_DATA,
+                                AttributeValue::S("{\"hello\":\"world\"".to_string()),
+                            )
+                            .send()
+                            .await
+                            .unwrap();
 
-                    let previous_leaderboard =
-                        table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
-                    assert_matches!(
-                        previous_leaderboard,
-                        Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoDbError::LoadPreviousLeaderboard {
-                                leaderboard_id,
-                                year,
-                                source: LoadPreviousDynamoDbError::Deserialize(_),
-                            }
-                        )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
-                    );
+                        let previous_leaderboard =
+                            table.storage().load_previous(YEAR, LEADERBOARD_ID).await;
+                        assert_matches!(
+                            previous_leaderboard,
+                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                                DynamoDbError::LoadPreviousLeaderboard {
+                                    leaderboard_id,
+                                    year,
+                                    source: LoadPreviousDynamoDbError::Deserialize(_),
+                                }
+                            )) if leaderboard_id == LEADERBOARD_ID && year == YEAR
+                        );
+                    });
                 }
             }
         }
@@ -238,45 +277,46 @@ mod dynamo_storage {
         pub mod save {
             use super::*;
 
-            #[tokio::test]
-            async fn without_existing() {
-                let expected_leaderboard = get_sample_leaderboard();
+            #[test_log::test]
+            fn without_existing() {
+                run_local_table_test(|mut table| async move {
+                    let expected_leaderboard = get_sample_leaderboard();
+                    table
+                        .storage()
+                        .save(YEAR, LEADERBOARD_ID, &expected_leaderboard)
+                        .await
+                        .unwrap();
 
-                let mut table = LocalTable::with_table().await;
-                table
-                    .storage()
-                    .save(YEAR, LEADERBOARD_ID, &expected_leaderboard)
-                    .await
-                    .unwrap();
-
-                let actual_leaderboard = table.load_leaderboard().await;
-                assert_eq!(expected_leaderboard, actual_leaderboard);
+                    let actual_leaderboard = table.load_leaderboard().await;
+                    assert_eq!(expected_leaderboard, actual_leaderboard);
+                });
             }
 
-            #[tokio::test]
-            async fn with_existing() {
-                let mut table = LocalTable::with_table().await;
-                let previous_leaderboard = get_sample_leaderboard();
-                table.save_leaderboard(&previous_leaderboard).await;
+            #[test_log::test]
+            fn with_existing() {
+                run_local_table_test(|mut table| async move {
+                    let previous_leaderboard = get_sample_leaderboard();
+                    table.save_leaderboard(&previous_leaderboard).await;
 
-                let expected_leaderboard = Leaderboard {
-                    day1_ts: previous_leaderboard.day1_ts + 1,
-                    ..previous_leaderboard
-                };
-                table
-                    .storage()
-                    .save(YEAR, LEADERBOARD_ID, &expected_leaderboard)
-                    .await
-                    .unwrap();
+                    let expected_leaderboard = Leaderboard {
+                        day1_ts: previous_leaderboard.day1_ts + 1,
+                        ..previous_leaderboard
+                    };
+                    table
+                        .storage()
+                        .save(YEAR, LEADERBOARD_ID, &expected_leaderboard)
+                        .await
+                        .unwrap();
 
-                let actual_leaderboard = table.load_leaderboard().await;
-                assert_eq!(expected_leaderboard, actual_leaderboard);
+                    let actual_leaderboard = table.load_leaderboard().await;
+                    assert_eq!(expected_leaderboard, actual_leaderboard);
+                });
             }
 
             pub mod errors {
                 use super::*;
 
-                #[tokio::test]
+                #[test_log::test(tokio::test)]
                 async fn put_item() {
                     let mut table = LocalTable::without_table().await;
                     let leaderboard = get_sample_leaderboard();
@@ -304,19 +344,20 @@ mod dynamo_storage {
             pub mod errors {
                 use super::*;
 
-                #[tokio::test]
-                async fn create_table() {
-                    let mut table = LocalTable::with_table().await;
-                    let create_result = table.storage().create_table().await;
-                    assert_matches!(
-                        create_result,
-                        Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                            DynamoDbError::CreateTable {
-                                table_name: actual_table_name,
-                                source: CreateDynamoDbTableError::CreateTable(_),
-                            }
-                        )) if actual_table_name == table.name()
-                    );
+                #[test_log::test]
+                fn create_table() {
+                    run_local_table_test(|mut table| async move {
+                        let create_result = table.storage().create_table().await;
+                        assert_matches!(
+                            create_result,
+                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                                DynamoDbError::CreateTable {
+                                    table_name: actual_table_name,
+                                    source: CreateDynamoDbTableError::CreateTable(_),
+                                }
+                            )) if actual_table_name == table.name()
+                        );
+                    });
                 }
             }
         }
