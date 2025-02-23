@@ -17,7 +17,6 @@ use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
 use crate::error::{ReporterError, StorageError};
-use crate::mockable_helpers;
 
 /// Trait that must be implemented to provide the parameters required by the
 /// bot to monitor an [Advent of Code] leaderboard.
@@ -207,6 +206,7 @@ impl BotOutput {
 /// [`config`]: Config
 /// [`storage`]: Storage
 /// [`reporter`]: Reporter
+#[cfg_attr(coverage_nightly, coverage(off))]
 #[instrument(skip(config, storage, reporter), ret, err)]
 pub async fn run_bot<C, S, R>(
     config: &C,
@@ -221,7 +221,31 @@ where
     R: Reporter,
     <R as Reporter>::Err: Error + Sync + 'static,
 {
-    async fn internal_run_bot<S, R>(
+    run_bot_from(None::<String>, config, storage, reporter, dry_run).await
+}
+
+/// Runs the bot's core functionality, using the given base Advent of Code URL
+/// (or the default, `https://adventofcode.com`, if not provided).
+///
+/// This function is mostly exposed for testing; you should use [`run_bot`] instead.
+#[instrument(skip(config, storage, reporter), level = "debug", ret, err)]
+pub async fn run_bot_from<B, C, S, R>(
+    advent_of_code_base: Option<B>,
+    config: &C,
+    storage: &mut S,
+    reporter: &mut R,
+    dry_run: bool,
+) -> crate::Result<BotOutput>
+where
+    B: AsRef<str> + Debug,
+    C: Config,
+    S: Storage,
+    <S as Storage>::Err: Error + Sync + 'static,
+    R: Reporter,
+    <R as Reporter>::Err: Error + Sync + 'static,
+{
+    async fn internal_run_bot<B, S, R>(
+        advent_of_code_base: Option<B>,
         year: i32,
         leaderboard_id: u64,
         aoc_session: &str,
@@ -230,15 +254,41 @@ where
         dry_run: bool,
     ) -> crate::Result<BotOutput>
     where
+        B: AsRef<str> + Debug,
         S: Storage,
         <S as Storage>::Err: Error + Sync + 'static,
         R: Reporter,
         <R as Reporter>::Err: Error + Sync + 'static,
     {
+        #[cfg_attr(coverage_nightly, coverage(off))]
+        async fn get_leaderboard<B>(
+            advent_of_code_base: Option<B>,
+            year: i32,
+            leaderboard_id: u64,
+            aoc_session: &str,
+        ) -> crate::Result<Leaderboard>
+        where
+            B: AsRef<str> + Debug,
+        {
+            Ok(match advent_of_code_base {
+                Some(base) => {
+                    Leaderboard::get_from(
+                        Leaderboard::http_client()?,
+                        base,
+                        year,
+                        leaderboard_id,
+                        aoc_session,
+                    )
+                    .await?
+                },
+                None => Leaderboard::get(year, leaderboard_id, aoc_session).await?,
+            })
+        }
+
         let reporter: &mut R = reporter;
 
         let leaderboard =
-            mockable_helpers::get_leaderboard(year, leaderboard_id, aoc_session).await?;
+            get_leaderboard(advent_of_code_base, year, leaderboard_id, aoc_session).await?;
         let mut output = BotOutput::new(year, leaderboard_id, leaderboard.clone());
 
         let load_result = storage
@@ -283,7 +333,17 @@ where
     let (year, leaderboard_id, aoc_session) =
         (config.year(), config.leaderboard_id(), config.aoc_session());
 
-    match internal_run_bot(year, leaderboard_id, &aoc_session, storage, reporter, dry_run).await {
+    match internal_run_bot(
+        advent_of_code_base,
+        year,
+        leaderboard_id,
+        &aoc_session,
+        storage,
+        reporter,
+        dry_run,
+    )
+    .await
+    {
         Ok(output) => Ok(output),
         Err(err) => {
             reporter
@@ -376,10 +436,11 @@ mod tests {
         use std::future::ready;
 
         use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
-        use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
+        use aoc_leaderbot_test_helpers::{
+            get_mock_server_with_leaderboard, AOC_SESSION, LEADERBOARD_ID, YEAR,
+        };
         use assert_matches::assert_matches;
         use mockall::predicate::eq;
-        use serial_test::serial;
 
         use super::*;
         use crate::leaderbot::config::mem::MemoryConfig;
@@ -598,17 +659,22 @@ mod tests {
             use super::*;
 
             #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
             async fn stores_current() {
                 let config = config();
                 let mut storage = storage();
                 let mut reporter = spy_reporter();
 
-                let ctx = mockable_helpers::get_leaderboard_context();
-                ctx.expect().returning(|_, _, _| Ok(base_leaderboard()));
+                let mock_server = get_mock_server_with_leaderboard(base_leaderboard()).await;
 
                 let expected = base_leaderboard();
-                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
                 assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
                     assert_eq!(year, YEAR);
                     assert_eq!(leaderboard_id, LEADERBOARD_ID);
@@ -627,17 +693,22 @@ mod tests {
                 use super::*;
 
                 #[test_log::test(tokio::test)]
-                #[serial(run_bot)]
                 async fn does_not_store_current() {
                     let config = config();
                     let mut storage = storage();
                     let mut reporter = spy_reporter();
 
-                    let ctx = mockable_helpers::get_leaderboard_context();
-                    ctx.expect().returning(|_, _, _| Ok(base_leaderboard()));
+                    let mock_server = get_mock_server_with_leaderboard(base_leaderboard()).await;
 
                     let expected = base_leaderboard();
-                    let result = run_bot(&config, &mut storage, &mut reporter, true).await;
+                    let result = run_bot_from(
+                        Some(mock_server.uri()),
+                        &config,
+                        &mut storage,
+                        &mut reporter,
+                        true,
+                    )
+                    .await;
                     assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
                         assert_eq!(year, YEAR);
                         assert_eq!(leaderboard_id, LEADERBOARD_ID);
@@ -676,10 +747,7 @@ mod tests {
 
                 storage.save(YEAR, LEADERBOARD_ID, &base).await.unwrap();
 
-                let ctx = mockable_helpers::get_leaderboard_context();
-                let returned_leaderboard = leaderboard.clone();
-                ctx.expect()
-                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+                let mock_server = get_mock_server_with_leaderboard(leaderboard.clone()).await;
 
                 let expected = SpiedChanges {
                     previous_leaderboard: base.clone(),
@@ -690,7 +758,14 @@ mod tests {
                     ),
                 };
 
-                let result = run_bot(&config, &mut storage, &mut reporter, dry_run).await;
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    dry_run,
+                )
+                .await;
                 assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard: output_leaderboard, changes }) => {
                     assert_eq!(year, YEAR);
                     assert_eq!(leaderboard_id, LEADERBOARD_ID);
@@ -730,7 +805,6 @@ mod tests {
             }
 
             #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
             async fn all() {
                 let permutations = test_permutations();
 
@@ -751,20 +825,26 @@ mod tests {
         }
 
         mod errors {
+            use aoc_leaderbot_test_helpers::get_mock_server_with_inaccessible_leaderboard;
+
             use super::*;
 
             #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
             async fn leaderboard_get_error() {
                 let config = config();
                 let mut storage = storage();
                 let mut reporter = spy_reporter();
 
-                let ctx = mockable_helpers::get_leaderboard_context();
-                ctx.expect()
-                    .returning(move |_, _, _| Err(aoc_leaderboard::Error::NoAccess));
+                let mock_server = get_mock_server_with_inaccessible_leaderboard().await;
 
-                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
                 assert_matches!(
                     result,
                     Err(crate::Error::Leaderboard(aoc_leaderboard::Error::NoAccess))
@@ -775,16 +855,12 @@ mod tests {
             }
 
             #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
             async fn load_previous_error() {
                 let config = config();
                 let mut storage = MockStorage::new();
                 let mut reporter = spy_reporter();
 
-                let ctx = mockable_helpers::get_leaderboard_context();
-                let returned_leaderboard = base_leaderboard();
-                ctx.expect()
-                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+                let mock_server = get_mock_server_with_leaderboard(base_leaderboard()).await;
 
                 storage
                     .expect_load_previous()
@@ -794,7 +870,14 @@ mod tests {
                         Box::pin(ready(Err(crate::Error::TestLoadPreviousError)))
                     });
 
-                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
                 assert_matches!(result, Err(crate::Error::Storage(StorageError::LoadPrevious(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
@@ -809,7 +892,6 @@ mod tests {
             }
 
             #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
             async fn report_changes_error() {
                 #[derive(Debug, Default)]
                 struct MockReporter {
@@ -845,12 +927,17 @@ mod tests {
                 let base = base_leaderboard();
                 storage.save(YEAR, LEADERBOARD_ID, &base).await.unwrap();
 
-                let ctx = mockable_helpers::get_leaderboard_context();
-                let returned_leaderboard = leaderboard_with_new_member();
-                ctx.expect()
-                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+                let mock_server =
+                    get_mock_server_with_leaderboard(leaderboard_with_new_member()).await;
 
-                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
                 assert_matches!(
                     result,
                     Err(crate::Error::Reporter(ReporterError::ReportChanges(_)))
@@ -859,16 +946,13 @@ mod tests {
             }
 
             #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
             async fn save_updated_error() {
                 let config = config();
                 let mut storage = MockStorage::new();
                 let mut reporter = spy_reporter();
 
-                let ctx = mockable_helpers::get_leaderboard_context();
-                let returned_leaderboard = leaderboard_with_new_member();
-                ctx.expect()
-                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+                let mock_server =
+                    get_mock_server_with_leaderboard(leaderboard_with_new_member()).await;
 
                 storage
                     .expect_load_previous()
@@ -883,7 +967,14 @@ mod tests {
                         Box::pin(ready(Err(crate::Error::TestSaveUpdatedError)))
                     });
 
-                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
                 assert_matches!(result, Err(crate::Error::Storage(StorageError::Save(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
@@ -894,16 +985,12 @@ mod tests {
             }
 
             #[test_log::test(tokio::test)]
-            #[serial(run_bot)]
             async fn save_base_error() {
                 let config = config();
                 let mut storage = MockStorage::new();
                 let mut reporter = spy_reporter();
 
-                let ctx = mockable_helpers::get_leaderboard_context();
-                let returned_leaderboard = base_leaderboard();
-                ctx.expect()
-                    .returning(move |_, _, _| Ok(returned_leaderboard.clone()));
+                let mock_server = get_mock_server_with_leaderboard(base_leaderboard()).await;
 
                 storage
                     .expect_load_previous()
@@ -918,7 +1005,14 @@ mod tests {
                         Box::pin(ready(Err(crate::Error::TestSaveBaseError)))
                     });
 
-                let result = run_bot(&config, &mut storage, &mut reporter, false).await;
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
                 assert_matches!(result, Err(crate::Error::Storage(StorageError::Save(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);

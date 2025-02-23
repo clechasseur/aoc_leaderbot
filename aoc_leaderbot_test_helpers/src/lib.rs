@@ -35,14 +35,38 @@ pub fn get_sample_leaderboard() -> Leaderboard {
 }
 
 //noinspection DuplicatedCode
-pub async fn get_mock_server_with_leaderboard() -> MockServer {
+pub async fn get_mock_server_with_leaderboard(leaderboard: Leaderboard) -> MockServer {
     let mock_server = MockServer::start().await;
 
-    let leaderboard = get_sample_leaderboard();
     Mock::given(method(Method::GET))
         .and(path(format!("/{YEAR}/leaderboard/private/view/{LEADERBOARD_ID}.json")))
         .and(header(header::COOKIE, format!("session={AOC_SESSION}")))
         .respond_with(ResponseTemplate::new(StatusCode::OK).set_body_json(leaderboard))
+        .mount(&mock_server)
+        .await;
+
+    mock_server
+}
+
+pub async fn get_mock_server_with_sample_leaderboard() -> MockServer {
+    get_mock_server_with_leaderboard(get_sample_leaderboard()).await
+}
+
+pub async fn get_mock_server_with_inaccessible_leaderboard() -> MockServer {
+    let mock_server = MockServer::start().await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!("/{YEAR}/leaderboard/private/view/{LEADERBOARD_ID}.json")))
+        .respond_with(ResponseTemplate::new(302).insert_header(header::LOCATION, "/"))
+        .mount(&mock_server)
+        .await;
+    Mock::given(method(Method::GET))
+        .and(path("/"))
+        .respond_with({
+            ResponseTemplate::new(200)
+                .insert_header(header::CONTENT_TYPE, "text/html")
+                .set_body_string("<html><body>Advent of Code</body></html>")
+        })
         .mount(&mock_server)
         .await;
 

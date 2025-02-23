@@ -31,4 +31,7 @@ serde_json = { workspace = true }
 wiremock = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["macros", "rt-multi-thread", "test-util"] }
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["http"] }
+assert_matches = { workspace = true }
+test-log = { workspace = true, default-features = false, features = ["trace"] }
+tokio = { workspace = true, features = ["macros"] }
