@@ -41,7 +41,6 @@ anyhow = { workspace = true }
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["http"] }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
-mockall_double = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
@@ -52,7 +51,6 @@ aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version =
 assert_matches = { workspace = true }
 itertools = { workspace = true }
 mockall = { workspace = true }
-serial_test = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "test-util"] }
 uuid = { workspace = true, features = ["v4"] }
