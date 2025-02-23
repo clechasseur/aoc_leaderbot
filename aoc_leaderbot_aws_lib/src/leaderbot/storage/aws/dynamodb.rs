@@ -12,7 +12,6 @@ use aws_sdk_dynamodb::types::{
     AttributeDefinition, AttributeValue, BillingMode, KeySchemaElement, KeyType,
     ScalarAttributeType, TableDescription, TableStatus,
 };
-use aws_sdk_dynamodb::Client;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
@@ -50,7 +49,7 @@ pub struct DynamoDbLeaderboardData {
 /// [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 #[derive(Debug, Clone)]
 pub struct DynamoDbStorage {
-    client: Client,
+    client: aws_sdk_dynamodb::Client,
     table_name: String,
 }
 
@@ -73,7 +72,7 @@ impl DynamoDbStorage {
     where
         T: Into<String>,
     {
-        Self { client: Client::new(config), table_name: table_name.into() }
+        Self { client: aws_sdk_dynamodb::Client::new(config), table_name: table_name.into() }
     }
 
     /// Creates a DynamoDB table suitable for storing leaderboard data.
