@@ -1,3 +1,7 @@
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
+#![cfg_attr(coverage_nightly, feature(coverage_attribute))]
+
 use aoc_leaderbot_aws_lambda_impl::leaderbot::DEFAULT_DYNAMODB_TABLE_NAME;
 use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::DynamoDbStorage;
 use aws_config::BehaviorVersion;
@@ -10,20 +14,25 @@ async fn main() -> anyhow::Result<()> {
 
     let cli = Cli::parse();
 
-    let storage = if cli.test_endpoint_url.is_empty() {
-        DynamoDbStorage::new(cli.table_name).await
+    let storage = get_storage(&cli).await;
+    storage.create_table().await?;
+
+    Ok(())
+}
+
+#[cfg_attr(coverage_nightly, coverage(off))]
+async fn get_storage(cli: &Cli) -> DynamoDbStorage {
+    if cli.test_endpoint_url.is_empty() {
+        DynamoDbStorage::new(&cli.table_name).await
     } else {
         let config = aws_config::defaults(BehaviorVersion::latest())
             .region("ca-central-1")
             .test_credentials()
-            .endpoint_url(cli.test_endpoint_url)
+            .endpoint_url(&cli.test_endpoint_url)
             .load()
             .await;
-        DynamoDbStorage::with_config(&config, cli.table_name).await
-    };
-    storage.create_table().await?;
-
-    Ok(())
+        DynamoDbStorage::with_config(&config, &cli.table_name).await
+    }
 }
 
 #[derive(Debug, Parser)]
