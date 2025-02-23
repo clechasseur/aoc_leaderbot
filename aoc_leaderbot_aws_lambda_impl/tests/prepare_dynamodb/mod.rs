@@ -1,3 +1,5 @@
+use std::env;
+
 use aoc_leaderbot_aws_lambda_impl::leaderbot::DEFAULT_DYNAMODB_TABLE_NAME;
 use assert_cmd::Command;
 use assert_matches::assert_matches;
@@ -41,6 +43,35 @@ async fn check_table_exists(table_name: &str, endpoint_url: &str) {
     });
 }
 
+#[derive(Debug)]
+struct RemoveAwsEnvVars {
+    access_key_id: Option<String>,
+    secret_access_key: Option<String>,
+}
+
+impl Default for RemoveAwsEnvVars {
+    fn default() -> Self {
+        let access_key_id = env::var("AWS_ACCESS_KEY_ID").ok();
+        let secret_access_key = env::var("AWS_SECRET_ACCESS_KEY").ok();
+
+        env::remove_var("AWS_ACCESS_KEY_ID");
+        env::remove_var("AWS_SECRET_ACCESS_KEY");
+
+        Self { access_key_id, secret_access_key }
+    }
+}
+
+impl Drop for RemoveAwsEnvVars {
+    fn drop(&mut self) {
+        if let Some(access_key_id) = self.access_key_id.take() {
+            env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
+        }
+        if let Some(secret_access_key) = self.secret_access_key.take() {
+            env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
+        }
+    }
+}
+
 #[test_log::test(tokio::test)]
 #[file_serial(testcontainers_dynamodb)]
 async fn with_default_table_name() {
@@ -73,4 +104,15 @@ async fn with_custom_table_name() {
         .success();
 
     check_table_exists(table_name, &endpoint_url).await;
+}
+
+#[test_log::test]
+#[file_serial(aws_env)]
+fn without_connection() {
+    let _remove_aws_env_vars = RemoveAwsEnvVars::default();
+
+    Command::cargo_bin(PREPARE_DYNAMODB_BIN_NAME)
+        .unwrap()
+        .assert()
+        .failure();
 }
