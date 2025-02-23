@@ -14,6 +14,7 @@ use aws_sdk_dynamodb::types::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
+use tracing::instrument;
 
 use crate::error::DynamoDbError;
 
@@ -79,6 +80,7 @@ impl DynamoDbStorage {
     ///
     /// The table name passed at construction time will be used. The function
     /// waits until the table is created before returning.
+    #[instrument(skip(self), ret, err)]
     pub async fn create_table(&self) -> crate::Result<()> {
         let output = self
             .client
@@ -126,6 +128,7 @@ impl DynamoDbStorage {
     // the creation will take so long we'll have to wait, which means coverage might
     // be inconsistent between runs.
     #[cfg_attr(coverage_nightly, coverage(off))]
+    #[instrument(skip_all, level = "trace", ret, err)]
     async fn wait_for_table_creation(
         &self,
         create_output: &CreateTableOutput,
@@ -161,6 +164,7 @@ impl DynamoDbStorage {
 impl Storage for DynamoDbStorage {
     type Err = crate::Error;
 
+    #[instrument(skip(self), ret, err)]
     async fn load_previous(
         &self,
         year: i32,
@@ -187,6 +191,7 @@ impl Storage for DynamoDbStorage {
             .map_err(|err| load_previous_error(err.into()))?)
     }
 
+    #[instrument(skip(self), ret, err)]
     async fn save(
         &mut self,
         year: i32,
