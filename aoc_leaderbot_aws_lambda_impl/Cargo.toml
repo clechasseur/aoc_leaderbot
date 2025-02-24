@@ -19,7 +19,7 @@ categories = [ "asynchronous" ]
 include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
-all-features = true
+all-features = false
 targets = [ "x86_64-unknown-linux-gnu" ]
 rustc-args = [ "--cfg", "docsrs" ]
 
@@ -36,6 +36,9 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 name = "prepare_dynamodb"
 required-features = ["clap", "aws-config/behavior-version-latest"]
 
+[features]
+__testing = ["aws-config/behavior-version-latest"]
+
 [dependencies]
 anyhow = { workspace = true }
 aoc_leaderbot_aws_lib = { path = "../aoc_leaderbot_aws_lib", version = "0.3.0" }
@@ -46,7 +49,7 @@ clap = { workspace = true, optional = true, features = ["derive"] }
 dotenvy = { workspace = true }
 lambda_runtime = { workspace = true }
 serde = { workspace = true }
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing = { workspace = true }
 veil = { workspace = true }
 
@@ -58,7 +61,6 @@ aws-sdk-dynamodb = { workspace = true }
 serial_test = { workspace = true, features = ["file_locks"] }
 testcontainers-modules = { workspace = true, features = ["dynamodb"] }
 test-log = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "test-util"] }
 
 [build-dependencies]
 rustc_version = { workspace = true }
