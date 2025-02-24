@@ -52,7 +52,7 @@ assert_matches = { workspace = true }
 itertools = { workspace = true }
 mockall = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
-tokio = { workspace = true, features = ["macros", "test-util"] }
+tokio = { workspace = true, features = ["macros"] }
 uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]
