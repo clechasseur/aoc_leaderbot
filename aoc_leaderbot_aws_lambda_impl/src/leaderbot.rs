@@ -15,7 +15,7 @@ use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
 };
 use lambda_runtime::{Error, LambdaEvent};
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
+use tracing::{debug, info, instrument, trace};
 use veil::Redact;
 
 /// Struct used to deserialize the incoming message passed
@@ -69,6 +69,24 @@ pub struct IncomingMessage {
 pub struct IncomingDynamoDbStorageInput {
     /// Name of DynamoDB table to use to store leaderboard data.
     pub table_name: Option<String>,
+
+    /// Endpoint URL to use for local testing.
+    ///
+    /// Do not use this when lambda is deployed to AWS; all config
+    /// values will be fetched from the lambda's environment.
+    #[cfg(feature = "__testing")]
+    #[doc(hidden)]
+    pub test_endpoint_url: Option<String>,
+
+    /// Region to use for local testing.
+    ///
+    /// Do not use this when lambda is deployed to AWS; all config
+    /// values will be fetched from the lambda's environment.
+    ///
+    /// Ignored unless [`test_endpoint_url`](Self::test_endpoint_url) is set.
+    #[cfg(feature = "__testing")]
+    #[doc(hidden)]
+    pub test_region: Option<String>,
 }
 
 /// Slack webhook reporter-specific part of the lambda's [`IncomingMessage`].
@@ -141,6 +159,7 @@ pub async fn bot_lambda_handler(
     let mut storage = get_storage(&input).await?;
     let mut reporter = get_reporter(&input)?;
 
+    trace!("Running bot (test run: {})", input.test_run);
     let output = run_bot(&config, &mut storage, &mut reporter, input.test_run).await?;
 
     if input.test_run {
@@ -154,6 +173,8 @@ pub async fn bot_lambda_handler(
             .map(Cow::Borrowed)
             .unwrap_or_default();
 
+        info!("Test run: reporting changes");
+        debug!(?previous_leaderboard, ?changes);
         reporter
             .report_changes(
                 output.year,
@@ -181,6 +202,8 @@ fn get_config(input: &IncomingMessage) -> Result<MemoryConfig, Error> {
         .clone()
         .unwrap_or_else(|| env_config.aoc_session());
 
+    debug!(year, leaderboard_id, aoc_session);
+
     Ok(MemoryConfig::builder()
         .year(year)
         .leaderboard_id(leaderboard_id)
@@ -190,12 +213,42 @@ fn get_config(input: &IncomingMessage) -> Result<MemoryConfig, Error> {
 
 #[instrument(err)]
 async fn get_storage(input: &IncomingMessage) -> Result<DynamoDbStorage, Error> {
+    #[cfg(feature = "__testing")]
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    async fn internal_get_storage(input: &IncomingMessage, table_name: String) -> DynamoDbStorage {
+        match input.dynamodb_storage_input.test_endpoint_url.as_ref() {
+            Some(endpoint_url) => {
+                let config = aws_config::defaults(aws_config::BehaviorVersion::latest())
+                    .region(aws_config::Region::new(
+                        input
+                            .dynamodb_storage_input
+                            .test_region
+                            .as_ref()
+                            .map(|region| Cow::Owned(region.clone()))
+                            .unwrap_or_else(|| Cow::Borrowed("ca-central-1")),
+                    ))
+                    .endpoint_url(endpoint_url)
+                    .test_credentials()
+                    .load()
+                    .await;
+                DynamoDbStorage::with_config(&config, table_name).await
+            },
+            None => DynamoDbStorage::new(table_name).await,
+        }
+    }
+
+    #[cfg(not(feature = "__testing"))]
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    async fn internal_get_storage(_input: &IncomingMessage, table_name: String) -> DynamoDbStorage {
+        DynamoDbStorage::new(table_name).await
+    }
+
     let table_name = input
         .dynamodb_storage_input
         .table_name
         .clone()
         .unwrap_or_else(|| DEFAULT_DYNAMODB_TABLE_NAME.into());
-    Ok(DynamoDbStorage::new(table_name).await)
+    Ok(internal_get_storage(input, table_name).await)
 }
 
 #[instrument(err)]
