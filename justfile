@@ -37,7 +37,9 @@ cargo_hack := cargo + " hack"
 
 # ----- Project-specific variables -----
 
-lambda_package_flag := "--package " + (if package != "" { package } else { "aoc_leaderbot_aws_lambda_impl" })
+lambda_package := if package != "" { package } else { "aoc_leaderbot_aws_lambda_impl" }
+lambda_package_flag := "--package " + lambda_package
+lambda_bin_flag := "--binary-name " + lambda_package
 
 output_format := ""
 output_format_flag := if output_format != "" { "--output-format " + output_format } else { "" }
@@ -182,9 +184,9 @@ watch *extra_args:
 build-lambda *extra_args:
     {{cargo_lambda}} build {{lambda_package_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{release_flag}} {{arm64_flag}} {{extra_args}}
 
-# Run `cargo lambda deploy` using `.env.aws-lambda` file
+# Run `cargo lambda deploy` using `.env` file
 deploy-lambda *extra_args:
-    {{cargo_lambda}} deploy {{output_format_flag}} --env-file .env.aws-lambda {{extra_args}}
+    {{cargo_lambda}} deploy {{lambda_bin_flag}} {{output_format_flag}} --env-file .env {{extra_args}}
 
 # Run tool to post test message to Slack
 slack *extra_args: (teach "post_test_message_to_slack" extra_args)
