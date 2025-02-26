@@ -52,24 +52,10 @@ __testing = [
     "uuid/v4",
 ]
 
-[dependencies.aoc_leaderboard]
-path = "../aoc_leaderboard"
-version = "0.3.0"
-optional = true
-default-features = false
-
-[dependencies.aoc_leaderbot_lib]
-path = "../aoc_leaderbot_lib"
-version = "0.3.0"
-optional = true
-default-features = false
-
-[dependencies.aoc_leaderbot_test_helpers]
-path = "../aoc_leaderbot_test_helpers"
-version = "0.3.0"
-optional = true
-
 [dependencies]
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", optional = true }
+aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.3.0", optional = true, default-features = false }
+aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.3.0", optional = true }
 aws-config = { workspace = true, optional = true }
 aws-sdk-dynamodb = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
