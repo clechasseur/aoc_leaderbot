@@ -2,6 +2,10 @@
 //!
 //! [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 
+#[cfg(feature = "__testing")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "__testing")))]
+pub mod testing;
+
 use std::time::Duration;
 
 use aoc_leaderboard::aoc::Leaderboard;

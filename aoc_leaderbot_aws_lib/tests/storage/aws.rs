@@ -1,2 +1,2 @@
-#[cfg(feature = "storage-dynamodb")]
+#[cfg(all(feature = "storage-dynamodb", feature = "__testing"))]
 mod dynamodb;
