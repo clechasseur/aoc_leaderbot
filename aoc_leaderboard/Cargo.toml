@@ -33,7 +33,7 @@ name = "http"
 required-features = ["http"]
 
 [features]
-http = ["reqwest", "serde_json", "tracing"]
+http = ["dep:reqwest", "dep:serde_json", "dep:tracing"]
 
 [dependencies]
 reqwest = { workspace = true, optional = true, features = ["json"] }

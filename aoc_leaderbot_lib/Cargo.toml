@@ -31,7 +31,7 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 [features]
 default = ["config-env"]
 
-config-mem = ["derive_builder", "veil"]
+config-mem = ["dep:derive_builder", "dep:veil"]
 config-env = ["config-mem"]
 
 storage-mem = []
