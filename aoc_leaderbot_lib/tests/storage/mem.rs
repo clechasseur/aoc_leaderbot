@@ -6,7 +6,7 @@ mod memory_storage {
     mod new {
         use super::*;
 
-        #[tokio::test]
+        #[test_log::test(tokio::test)]
         async fn new() {
             let storage = MemoryStorage::new();
 
@@ -14,7 +14,7 @@ mod memory_storage {
             assert!(previous.is_none());
         }
 
-        #[tokio::test]
+        #[test_log::test(tokio::test)]
         async fn default() {
             let storage = MemoryStorage::default();
 
@@ -26,7 +26,7 @@ mod memory_storage {
     mod mem_storage_impl {
         use super::*;
 
-        #[tokio::test]
+        #[test_log::test(tokio::test)]
         async fn len_and_is_empty() {
             let mut storage = MemoryStorage::new();
 
@@ -46,7 +46,7 @@ mod memory_storage {
     mod storage_impl {
         use super::*;
 
-        #[tokio::test]
+        #[test_log::test(tokio::test)]
         async fn load_save() {
             let mut storage = MemoryStorage::new();
 

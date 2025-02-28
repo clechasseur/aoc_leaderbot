@@ -3,7 +3,7 @@ mod memory_config {
     use aoc_leaderbot_lib::leaderbot::Config;
     use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID, YEAR};
 
-    #[test]
+    #[test_log::test]
     fn new() {
         let actual = MemoryConfig::new(YEAR, LEADERBOARD_ID, AOC_SESSION);
 
@@ -21,7 +21,7 @@ mod memory_config {
 
         use super::*;
 
-        #[test]
+        #[test_log::test]
         fn with_all_fields() {
             let actual = MemoryConfig::builder()
                 .year(YEAR)
@@ -35,7 +35,7 @@ mod memory_config {
             assert_eq!(actual.aoc_session(), AOC_SESSION);
         }
 
-        #[test]
+        #[test_log::test]
         fn with_default_year() {
             let actual = MemoryConfig::builder()
                 .leaderboard_id(LEADERBOARD_ID)
@@ -48,7 +48,7 @@ mod memory_config {
             assert_eq!(actual.aoc_session(), AOC_SESSION);
         }
 
-        #[test]
+        #[test_log::test]
         fn with_missing_leaderboard_id() {
             let actual = MemoryConfig::builder()
                 .year(YEAR)
@@ -61,7 +61,7 @@ mod memory_config {
             });
         }
 
-        #[test]
+        #[test_log::test]
         fn with_missing_aoc_session() {
             let actual = MemoryConfig::builder()
                 .year(YEAR)

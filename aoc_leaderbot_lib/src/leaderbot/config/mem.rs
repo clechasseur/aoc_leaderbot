@@ -5,13 +5,15 @@ use std::any::type_name;
 use chrono::{Datelike, Local};
 use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
+use tracing::instrument;
+use veil::Redact;
 
 use crate::leaderbot::Config;
 
 /// Bot config storing values in memory.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Builder)]
+#[derive(Redact, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Builder)]
 #[builder(
-    derive(Debug, PartialEq, Eq, Hash),
+    derive(Redact, PartialEq, Eq, Hash),
     build_fn(name = "build_internal", error = "UninitializedFieldError", private)
 )]
 pub struct MemoryConfig {
@@ -29,7 +31,9 @@ pub struct MemoryConfig {
     /// AoC session token.
     ///
     /// See [`Config::aoc_session`] for info on this value.
+    #[redact]
     #[builder(setter(into))]
+    #[builder_field_attr(redact)]
     pub aoc_session: String,
 }
 
@@ -68,14 +72,17 @@ impl MemoryConfigBuilder {
 }
 
 impl Config for MemoryConfig {
+    #[instrument(skip(self), level = "trace", ret)]
     fn year(&self) -> i32 {
         self.year
     }
 
+    #[instrument(skip(self), level = "trace", ret)]
     fn leaderboard_id(&self) -> u64 {
         self.leaderboard_id
     }
 
+    #[instrument(skip(self), level = "trace")]
     fn aoc_session(&self) -> String {
         self.aoc_session.clone()
     }
