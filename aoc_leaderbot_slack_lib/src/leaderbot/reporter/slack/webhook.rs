@@ -54,7 +54,7 @@ pub const SORT_ORDER_ENV_VAR: &str = "SLACK_LEADERBOARD_SORT_ORDER";
     EnumProperty,
     EnumString,
 )]
-#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "__post_test_message_to_slack", derive(clap::ValueEnum))]
 #[serde(rename_all = "snake_case")]
 pub enum LeaderboardSortOrder {
     /// Sort leaderboard members by number of stars, descending.
