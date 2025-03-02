@@ -30,7 +30,7 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 
 [[example]]
 name = "post_test_message_to_slack"
-required-features = ["__post_test_message_to_slack"]
+required-features = ["reporter-webhook", "clap"]
 
 [features]
 default = ["webhook"]
@@ -48,8 +48,6 @@ reporter-webhook = [
     "dep:tracing",
     "dep:veil",
 ]
-
-__post_test_message_to_slack = ["reporter-webhook", "dep:clap"]
 
 [dependencies]
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", optional = true }

@@ -39,7 +39,7 @@ required-features = ["__prepare_dynamodb"]
 [features]
 __testing = ["dep:aws-config"]
 
-__prepare_dynamodb = ["dep:clap", "dep:aws-config"]
+__prepare_dynamodb = ["dep:aws-config", "dep:clap"]
 
 [dependencies]
 anyhow = { workspace = true }
