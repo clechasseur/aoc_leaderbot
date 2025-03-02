@@ -62,7 +62,7 @@ default:
 @_check-test-reqs: (_check-container-state "aoc_leaderbot-dynamodb-local")
 
 @_run-tests *cmd:
-    {{ if `just _check-test-reqs` != skip_test_reqs_value { just + " _run-with-test-reqs " + cmd } else { cmd } }}
+    {{ if env('CI', '') != '' { cmd } else if `just _check-test-reqs` == skip_test_reqs_value { cmd } else { just + " _run-with-test-reqs " + cmd } }}
 
 _run-with-test-reqs *cmd: _before-test && _after-test
     {{cmd}}
