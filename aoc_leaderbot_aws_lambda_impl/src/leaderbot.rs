@@ -15,7 +15,7 @@ use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
 };
 use lambda_runtime::{Error, LambdaEvent};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, info, trace};
 use veil::Redact;
 
 /// Struct used to deserialize the incoming message passed
@@ -149,7 +149,7 @@ pub const DEFAULT_DYNAMODB_TABLE_NAME: &str = "aoc_leaderbot";
 /// - [`SlackWebhookReporter`]
 ///
 /// [AWS Lambda]: https://aws.amazon.com/lambda/
-#[instrument(ret, err)]
+#[cfg_attr(not(coverage_nightly), tracing::instrument(ret, err))]
 pub async fn bot_lambda_handler(
     event: LambdaEvent<IncomingMessage>,
 ) -> Result<OutgoingMessage, Error> {
@@ -189,7 +189,7 @@ pub async fn bot_lambda_handler(
     Ok(OutgoingMessage { output })
 }
 
-#[instrument(err)]
+#[cfg_attr(not(coverage_nightly), tracing::instrument(err))]
 fn get_config(input: &IncomingMessage) -> Result<MemoryConfig, Error> {
     let env_config = get_env_config(CONFIG_ENV_VAR_PREFIX)?;
 
@@ -211,7 +211,7 @@ fn get_config(input: &IncomingMessage) -> Result<MemoryConfig, Error> {
         .build()?)
 }
 
-#[instrument(err)]
+#[cfg_attr(not(coverage_nightly), tracing::instrument(err))]
 async fn get_storage(input: &IncomingMessage) -> Result<DynamoDbStorage, Error> {
     #[cfg(feature = "__testing")]
     #[cfg_attr(coverage_nightly, coverage(off))]
@@ -251,7 +251,7 @@ async fn get_storage(input: &IncomingMessage) -> Result<DynamoDbStorage, Error> 
     Ok(internal_get_storage(input, table_name).await)
 }
 
-#[instrument(err)]
+#[cfg_attr(not(coverage_nightly), tracing::instrument(err))]
 fn get_reporter(input: &IncomingMessage) -> Result<SlackWebhookReporter, Error> {
     let mut builder = SlackWebhookReporter::builder();
 

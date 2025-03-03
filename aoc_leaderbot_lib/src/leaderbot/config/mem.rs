@@ -5,7 +5,6 @@ use std::any::type_name;
 use chrono::{Datelike, Local};
 use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
 use veil::Redact;
 
 use crate::leaderbot::Config;
@@ -72,17 +71,17 @@ impl MemoryConfigBuilder {
 }
 
 impl Config for MemoryConfig {
-    #[instrument(skip(self), level = "trace", ret)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), level = "trace", ret))]
     fn year(&self) -> i32 {
         self.year
     }
 
-    #[instrument(skip(self), level = "trace", ret)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), level = "trace", ret))]
     fn leaderboard_id(&self) -> u64 {
         self.leaderboard_id
     }
 
-    #[instrument(skip(self), level = "trace")]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), level = "trace"))]
     fn aoc_session(&self) -> String {
         self.aoc_session.clone()
     }

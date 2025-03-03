@@ -2,8 +2,6 @@
 
 use std::fmt::Debug;
 
-use tracing::instrument;
-
 use crate::detail::{env_var, int_env_var};
 use crate::error::EnvVarError;
 use crate::leaderbot::config::mem::MemoryConfig;
@@ -27,7 +25,7 @@ pub const ENV_CONFIG_AOC_SESSION_SUFFIX: &str = "AOC_SESSION";
 /// | `{prefix}YEAR`           | `year`           | Current year  |
 /// | `{prefix}LEADERBOARD_ID` | `leaderboard_id` | -             |
 /// | `{prefix}AOC_SESSION`    | `aoc_session`    | -             |
-#[instrument(level = "trace", err)]
+#[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", err))]
 pub fn get_env_config<S>(env_var_prefix: S) -> crate::Result<impl Config + Send + Debug>
 where
     S: AsRef<str> + Debug,

@@ -2,7 +2,6 @@
 #![deny(rustdoc::private_intra_doc_links)]
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
-use aoc_leaderbot_aws_lambda_impl::leaderbot::DEFAULT_DYNAMODB_TABLE_NAME;
 use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::DynamoDbStorage;
 use aws_config::BehaviorVersion;
 use clap::Parser;
@@ -40,6 +39,8 @@ use cli::Cli;
 // but I don't know how to cover them, so I'll move the struct to a "no coverage" module.
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod cli {
+    use aoc_leaderbot_aws_lambda_impl::leaderbot::DEFAULT_DYNAMODB_TABLE_NAME;
+
     use super::*;
 
     #[derive(Debug, Parser)]
