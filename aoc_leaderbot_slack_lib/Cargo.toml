@@ -71,9 +71,9 @@ clap-verbosity-flag = { workspace = true, features = ["tracing"] }
 dotenvy = { workspace = true }
 serde_json = { workspace = true }
 serial_test = { workspace = true }
-test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = { workspace = true }
+tracing-test = { workspace = true, features = ["no-env-filter"] }
 wiremock = { workspace = true }
 
 [build-dependencies]

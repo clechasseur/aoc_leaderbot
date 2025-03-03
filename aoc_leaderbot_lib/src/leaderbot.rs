@@ -14,7 +14,6 @@ use anyhow::anyhow;
 use aoc_leaderboard::aoc::Leaderboard;
 use chrono::{Datelike, Local};
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
 
 use crate::error::{ReporterError, StorageError};
 
@@ -26,7 +25,7 @@ pub trait Config {
     /// Year for which we want to monitor the leaderboard.
     ///
     /// Defaults to the current year.
-    #[instrument(skip(self), level = "trace", ret)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), level = "trace", ret))]
     fn year(&self) -> i32 {
         Local::now().year()
     }
@@ -87,14 +86,14 @@ pub struct Changes {
 
 impl Changes {
     /// Returns a [`Changes`] with the given new/updated members.
-    #[instrument(level = "trace")]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace"))]
     pub fn new(new_members: HashSet<u64>, members_with_new_stars: HashSet<u64>) -> Self {
         Self { new_members, members_with_new_stars }
     }
 
     /// Returns a [`Changes`] if there are new members and/or members
     /// with new stars, otherwise returns `None`.
-    #[instrument(level = "trace", ret)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", ret))]
     pub fn if_needed(
         new_members: HashSet<u64>,
         members_with_new_stars: HashSet<u64>,
@@ -144,7 +143,7 @@ pub trait Reporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
-    #[instrument(skip(self))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self)))]
     fn report_error<S>(
         &mut self,
         year: i32,
@@ -186,7 +185,7 @@ impl BotOutput {
     ///
     /// The [`previous_leaderboard`](Self::previous_leaderboard) and
     /// [`changes`](Self::changes) field will both be set to `None`.
-    #[instrument(level = "trace", ret)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", ret))]
     pub fn new(year: i32, leaderboard_id: u64, leaderboard: Leaderboard) -> Self {
         Self { year, leaderboard_id, previous_leaderboard: None, leaderboard, changes: None }
     }
@@ -207,7 +206,7 @@ impl BotOutput {
 /// [`storage`]: Storage
 /// [`reporter`]: Reporter
 #[cfg_attr(coverage_nightly, coverage(off))]
-#[instrument(skip(config, storage, reporter), ret, err)]
+#[tracing::instrument(skip(config, storage, reporter), ret, err)]
 pub async fn run_bot<C, S, R>(
     config: &C,
     storage: &mut S,
@@ -228,7 +227,10 @@ where
 /// (or the default, `https://adventofcode.com`, if not provided).
 ///
 /// This function is mostly exposed for testing; you should use [`run_bot`] instead.
-#[instrument(skip(config, storage, reporter), level = "debug", ret, err)]
+#[cfg_attr(
+    not(coverage_nightly),
+    tracing::instrument(skip(config, storage, reporter), level = "debug", ret, err)
+)]
 pub async fn run_bot_from<B, C, S, R>(
     advent_of_code_base: Option<B>,
     config: &C,
@@ -354,7 +356,7 @@ where
     }
 }
 
-#[instrument(ret)]
+#[cfg_attr(not(coverage_nightly), tracing::instrument(ret))]
 fn detect_changes(
     previous_leaderboard: &Leaderboard,
     leaderboard: &Leaderboard,

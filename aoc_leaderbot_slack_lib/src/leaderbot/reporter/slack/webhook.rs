@@ -15,7 +15,7 @@ use derive_builder::Builder;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumProperty, EnumString};
-use tracing::{error, instrument, trace};
+use tracing::{error, trace};
 use veil::Redact;
 
 use crate::error::WebhookError;
@@ -294,7 +294,10 @@ impl SlackWebhookReporterBuilder {
 impl Reporter for SlackWebhookReporter {
     type Err = crate::Error;
 
-    #[instrument(skip(self, _previous_leaderboard, leaderboard, changes), err)]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(skip(self, _previous_leaderboard, leaderboard, changes), err)
+    )]
     async fn report_changes(
         &mut self,
         year: i32,
@@ -319,6 +322,7 @@ impl Reporter for SlackWebhookReporter {
             .send()
             .await
             .and_then(reqwest::Response::error_for_status);
+        trace!(?response);
         match response {
             Ok(_) => Ok(()),
             Err(source) => Err(WebhookError::ReportChanges {
@@ -332,7 +336,7 @@ impl Reporter for SlackWebhookReporter {
         }
     }
 
-    #[instrument(skip(self, error))]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self, error)))]
     async fn report_error<S>(&mut self, year: i32, leaderboard_id: u64, error: S)
     where
         S: Into<String> + Debug + Send,
@@ -347,20 +351,20 @@ impl Reporter for SlackWebhookReporter {
             .text(format!(
                 "An error occurred while trying to look for leaderboard changes: {error}"
             ))
-            .build();
-        match message {
-            Ok(message) => {
-                let response = self.http_client
-                    .post(&self.webhook_url)
-                    .json(&message)
-                    .send()
-                    .await
-                    .and_then(reqwest::Response::error_for_status);
-                if let Err(err) = response {
-                    error!("error trying to report previous error to Slack webhook for leaderboard {leaderboard_id} and year {year}: {err}");
-                }
-            },
-            Err(err) => error!("error trying to build webhook error message for leaderboard {leaderboard_id} and year {year}: {err}"),
+            .build()
+            .expect("webhook message should have valid fields");
+        trace!(?message);
+
+        let response = self
+            .http_client
+            .post(&self.webhook_url)
+            .json(&message)
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status);
+        trace!(?response);
+        if let Err(err) = response {
+            error!("error trying to report previous error to Slack webhook for leaderboard {leaderboard_id} and year {year}: {err}");
         }
     }
 }

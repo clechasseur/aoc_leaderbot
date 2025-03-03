@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 use aoc_leaderboard::aoc::Leaderboard;
 use serde::{Deserialize, Serialize};
-use tracing::instrument;
 
 use crate::leaderbot::Storage;
 
@@ -36,7 +35,7 @@ impl MemoryStorage {
 impl Storage for MemoryStorage {
     type Err = crate::Error;
 
-    #[instrument(skip(self), ret, err)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
     async fn load_previous(
         &self,
         year: i32,
@@ -49,7 +48,7 @@ impl Storage for MemoryStorage {
             .cloned())
     }
 
-    #[instrument(skip(self), ret, err)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
     async fn save(
         &mut self,
         year: i32,

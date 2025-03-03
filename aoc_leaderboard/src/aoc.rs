@@ -60,7 +60,10 @@ impl Leaderboard {
     ///
     /// [Advent of Code]: https://adventofcode.com/
     #[cfg_attr(coverage_nightly, coverage(off))]
-    #[tracing::instrument(skip(aoc_session), ret(level = "trace"), err)]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(skip(aoc_session), ret(level = "trace"), err)
+    )]
     pub async fn get<S>(year: i32, id: u64, aoc_session: S) -> crate::Result<Self>
     where
         S: AsRef<str>,
@@ -77,11 +80,14 @@ impl Leaderboard {
     ///
     /// [Advent of Code]: https://adventofcode.com/
     /// [`get`]: Self::get
-    #[tracing::instrument(
-        skip(http_client, aoc_session),
-        level = "debug",
-        ret(level = "trace"),
-        err
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(
+            skip(http_client, aoc_session),
+            level = "debug",
+            ret(level = "trace"),
+            err
+        )
     )]
     pub async fn get_from<B, S>(
         http_client: reqwest::Client,
@@ -115,7 +121,7 @@ impl Leaderboard {
     ///
     /// [Advent of Code]: https://adventofcode.com/
     /// [`get`]: Self::get
-    #[tracing::instrument(level = "trace", err)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", err))]
     pub fn http_client() -> crate::Result<reqwest::Client> {
         // When trying to fetch the data of a private leaderboard you do
         // not have access to, the AoC website redirects to the main leaderboard,
@@ -126,7 +132,7 @@ impl Leaderboard {
             .build()?)
     }
 
-    #[tracing::instrument(level = "trace", ret)]
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", ret))]
     fn http_user_agent() -> String {
         format!("clechasseur/{}@{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
     }
