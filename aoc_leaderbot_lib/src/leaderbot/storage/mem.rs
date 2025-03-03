@@ -35,6 +35,7 @@ impl MemoryStorage {
 impl Storage for MemoryStorage {
     type Err = crate::Error;
 
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
     async fn load_previous(
         &self,
         year: i32,
@@ -47,6 +48,7 @@ impl Storage for MemoryStorage {
             .cloned())
     }
 
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
     async fn save(
         &mut self,
         year: i32,
