@@ -209,22 +209,17 @@ mod leaderboard_sort_order {
 mod slack_webhook_reporter {
     use std::env;
 
-    use aoc_leaderboard::aoc::Leaderboard;
-    use aoc_leaderboard::aoc::LeaderboardMember;
+    use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
     use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
     use aoc_leaderbot_slack_lib::error::WebhookError;
-    use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError;
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
-        LeaderboardSortOrder, SlackWebhookReporter,
-    };
-    use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
+        LeaderboardSortOrder, SlackWebhookReporter, SlackWebhookReporterBuilderError,
         CHANNEL_ENV_VAR, SORT_ORDER_ENV_VAR, WEBHOOK_URL_ENV_VAR,
     };
     use aoc_leaderbot_slack_lib::Error;
     use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
     use assert_matches::assert_matches;
-    use reqwest::Method;
-    use reqwest::StatusCode;
+    use reqwest::{Method, StatusCode};
     use serde_json::json;
     use serial_test::serial;
     use tracing_test::traced_test;

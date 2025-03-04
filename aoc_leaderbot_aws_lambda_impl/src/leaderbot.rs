@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::DynamoDbStorage;
 use aoc_leaderbot_lib::leaderbot::config::env::get_env_config;
 use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
-use aoc_leaderbot_lib::leaderbot::{run_bot, BotOutput, Config, Reporter};
+use aoc_leaderbot_lib::leaderbot::{run_bot_from, BotOutput, Config, Reporter};
 use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
     LeaderboardSortOrder, SlackWebhookReporter,
 };
@@ -51,6 +51,14 @@ pub struct IncomingMessage {
     /// A test run will report changes even if there are none.
     #[serde(default)]
     pub test_run: bool,
+
+    /// Base URL to use for the Advent of Code website.
+    ///
+    /// Should only be used for testing purposes.
+    #[cfg(feature = "__testing")]
+    #[doc(hidden)]
+    #[serde(default)]
+    pub aoc_base_url: Option<String>,
 
     /// AWS DynamoDB storage-specific input parameters.
     #[serde(flatten)]
@@ -159,8 +167,15 @@ pub async fn bot_lambda_handler(
     let mut storage = get_storage(&input).await?;
     let mut reporter = get_reporter(&input)?;
 
+    #[cfg(feature = "__testing")]
+    let advent_of_code_base = input.aoc_base_url;
+    #[cfg(not(feature = "__testing"))]
+    let advent_of_code_base: Option<String> = None;
+
     trace!("Running bot (test run: {})", input.test_run);
-    let output = run_bot(&config, &mut storage, &mut reporter, input.test_run).await?;
+    let output =
+        run_bot_from(advent_of_code_base, &config, &mut storage, &mut reporter, input.test_run)
+            .await?;
 
     if input.test_run {
         let previous_leaderboard = output
@@ -191,18 +206,21 @@ pub async fn bot_lambda_handler(
 
 #[cfg_attr(not(coverage_nightly), tracing::instrument(err))]
 fn get_config(input: &IncomingMessage) -> Result<MemoryConfig, Error> {
-    let env_config = get_env_config(CONFIG_ENV_VAR_PREFIX)?;
-
-    let year = input.year.unwrap_or_else(|| env_config.year());
-    let leaderboard_id = input
-        .leaderboard_id
-        .unwrap_or_else(|| env_config.leaderboard_id());
-    let aoc_session = input
-        .aoc_session
-        .clone()
-        .unwrap_or_else(|| env_config.aoc_session());
-
-    debug!(year, leaderboard_id, aoc_session);
+    let (year, leaderboard_id, aoc_session) =
+        match (input.year, input.leaderboard_id, input.aoc_session.clone()) {
+            (Some(year), Some(leaderboard_id), Some(aoc_session)) => {
+                (year, leaderboard_id, aoc_session)
+            },
+            (year, leaderboard_id, aoc_session) => {
+                let env_config = get_env_config(CONFIG_ENV_VAR_PREFIX)?;
+                (
+                    year.unwrap_or_else(|| env_config.year()),
+                    leaderboard_id.unwrap_or_else(|| env_config.leaderboard_id()),
+                    aoc_session.unwrap_or_else(|| env_config.aoc_session()),
+                )
+            },
+        };
+    debug!(year, leaderboard_id);
 
     Ok(MemoryConfig::builder()
         .year(year)
@@ -238,7 +256,6 @@ async fn get_storage(input: &IncomingMessage) -> Result<DynamoDbStorage, Error> 
     }
 
     #[cfg(not(feature = "__testing"))]
-    #[cfg_attr(coverage_nightly, coverage(off))]
     async fn internal_get_storage(_input: &IncomingMessage, table_name: String) -> DynamoDbStorage {
         DynamoDbStorage::new(table_name).await
     }

@@ -121,13 +121,16 @@ name = "aoc_leaderbot_aws_lambda_impl"
 version = "0.3.0"
 dependencies = [
  "anyhow",
+ "aoc_leaderboard",
  "aoc_leaderbot_aws_lib",
  "aoc_leaderbot_lib",
  "aoc_leaderbot_slack_lib",
+ "aoc_leaderbot_test_helpers",
  "assert_cmd",
  "assert_matches",
  "aws-config",
  "aws-sdk-dynamodb",
+ "chrono",
  "clap",
  "dotenvy",
  "lambda_runtime",
@@ -139,6 +142,7 @@ dependencies = [
  "tokio",
  "tracing",
  "veil",
+ "wiremock",
 ]
 
 [[package]]

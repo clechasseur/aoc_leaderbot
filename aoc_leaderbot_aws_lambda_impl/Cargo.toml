@@ -56,13 +56,18 @@ tracing = { workspace = true }
 veil = { workspace = true }
 
 [dev-dependencies]
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0" }
+aoc_leaderbot_aws_lib = { path = "../aoc_leaderbot_aws_lib", version = "0.3.0", features = ["__testing"] }
+aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.3.0" }
 assert_cmd = { workspace = true }
 assert_matches = { workspace = true }
 aws-config = { workspace = true, features = ["behavior-version-latest"] }
 aws-sdk-dynamodb = { workspace = true }
+chrono = { workspace = true }
 serial_test = { workspace = true, features = ["file_locks"] }
 testcontainers-modules = { workspace = true, features = ["dynamodb"] }
-test-log = { workspace = true }
+test-log = { workspace = true, default-features = false, features = ["trace"] }
+wiremock = { workspace = true }
 
 [build-dependencies]
 rustc_version = { workspace = true }
