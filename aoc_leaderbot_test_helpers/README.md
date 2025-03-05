@@ -5,3 +5,12 @@
 Test helpers for the [`aoc_leaderbot`](https://github.com/clechasseur/aoc_leaderbot) project's crates.
 
 Not meant to be used outside the project; no guarantee on API stability.
+
+## Minimum Rust version
+
+`aoc_leaderbot_test_helpers` currently builds on Rust 1.70 or newer.
+
+## Contributing / Local development
+
+For information about contributing to this project, see [CONTRIBUTING](../CONTRIBUTING.md).
+For information regarding local development, see [DEVELOPMENT](../DEVELOPMENT.md).
