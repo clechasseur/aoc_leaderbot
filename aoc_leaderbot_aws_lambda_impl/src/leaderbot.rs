@@ -157,6 +157,7 @@ pub const DEFAULT_DYNAMODB_TABLE_NAME: &str = "aoc_leaderbot";
 /// - [`SlackWebhookReporter`]
 ///
 /// [AWS Lambda]: https://aws.amazon.com/lambda/
+/// [`run_bot`]: aoc_leaderbot_lib::leaderbot::run_bot
 #[cfg_attr(not(coverage_nightly), tracing::instrument(ret, err))]
 pub async fn bot_lambda_handler(
     event: LambdaEvent<IncomingMessage>,
