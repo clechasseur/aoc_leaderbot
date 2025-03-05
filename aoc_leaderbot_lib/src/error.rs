@@ -67,6 +67,11 @@ pub enum Error {
     #[doc(hidden)]
     #[error("test")]
     TestSaveBaseError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    #[error("something went wrong: {0}")]
+    TestErrorWithMessage(String),
 }
 
 /// A version of [`env::VarError`] with additional variants.

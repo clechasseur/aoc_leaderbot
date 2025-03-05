@@ -209,7 +209,9 @@ mod leaderboard_sort_order {
 mod slack_webhook_reporter {
     use std::env;
 
+    use anyhow::anyhow;
     use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
+    use aoc_leaderbot_lib::error::StorageError;
     use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
     use aoc_leaderbot_slack_lib::error::WebhookError;
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
@@ -569,8 +571,10 @@ mod slack_webhook_reporter {
                 let mock_server = working_mock_server().await;
                 let mut reporter = reporter(&mock_server, None);
 
-                let error = "error occurred";
-                reporter.report_error(YEAR, LEADERBOARD_ID, error).await;
+                let error = aoc_leaderbot_lib::Error::Storage(StorageError::LoadPrevious(anyhow!(
+                    "something is wrong"
+                )));
+                reporter.report_error(YEAR, LEADERBOARD_ID, &error).await;
 
                 assert!(logs_contain(&format!(
                     "error for leaderboard {LEADERBOARD_ID} and year {YEAR}: {error}"
@@ -585,8 +589,10 @@ mod slack_webhook_reporter {
                 let mock_server = working_mock_server().await;
                 let mut reporter = offline_reporter(&mock_server);
 
-                let error = "error occurred";
-                reporter.report_error(YEAR, LEADERBOARD_ID, error).await;
+                let error = aoc_leaderbot_lib::Error::Storage(StorageError::LoadPrevious(anyhow!(
+                    "something is wrong"
+                )));
+                reporter.report_error(YEAR, LEADERBOARD_ID, &error).await;
 
                 assert!(logs_contain(&format!(
                     "error for leaderboard {LEADERBOARD_ID} and year {YEAR}: {error}"

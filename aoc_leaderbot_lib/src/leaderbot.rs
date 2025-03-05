@@ -144,16 +144,12 @@ pub trait Reporter {
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
     #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self)))]
-    fn report_error<S>(
+    fn report_error(
         &mut self,
         year: i32,
         leaderboard_id: u64,
-        error: S,
-    ) -> impl Future<Output = ()> + Send
-    where
-        S: Into<String> + Debug + Send,
-    {
-        let error = error.into();
+        error: &crate::Error,
+    ) -> impl Future<Output = ()> + Send {
         eprintln!("Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}");
         ready(())
     }
@@ -348,9 +344,7 @@ where
     {
         Ok(output) => Ok(output),
         Err(err) => {
-            reporter
-                .report_error(year, leaderboard_id, err.to_string())
-                .await;
+            reporter.report_error(year, leaderboard_id, &err).await;
             Err(err)
         },
     }
@@ -428,7 +422,11 @@ mod tests {
                 .unwrap();
 
             reporter
-                .report_error(YEAR, LEADERBOARD_ID, "Something went wrong")
+                .report_error(
+                    YEAR,
+                    LEADERBOARD_ID,
+                    &crate::Error::TestErrorWithMessage("broken pipe".into()),
+                )
                 .await;
         }
     }
@@ -507,11 +505,8 @@ mod tests {
                 Ok(())
             }
 
-            async fn report_error<S>(&mut self, year: i32, leaderboard_id: u64, error: S)
-            where
-                S: Into<String> + Debug + Send,
-            {
-                self.errors.push((year, leaderboard_id, error.into()));
+            async fn report_error(&mut self, year: i32, leaderboard_id: u64, error: &crate::Error) {
+                self.errors.push((year, leaderboard_id, error.to_string()));
             }
         }
 
@@ -914,10 +909,12 @@ mod tests {
                         Err(crate::Error::TestReportChangesError)
                     }
 
-                    async fn report_error<S>(&mut self, _year: i32, _leaderboard_id: u64, _error: S)
-                    where
-                        S: Into<String> + Debug + Send,
-                    {
+                    async fn report_error(
+                        &mut self,
+                        _year: i32,
+                        _leaderboard_id: u64,
+                        _error: &crate::Error,
+                    ) {
                         self.errors += 1;
                     }
                 }

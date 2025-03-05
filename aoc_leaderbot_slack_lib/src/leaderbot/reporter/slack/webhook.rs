@@ -337,11 +337,12 @@ impl Reporter for SlackWebhookReporter {
     }
 
     #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self, error)))]
-    async fn report_error<S>(&mut self, year: i32, leaderboard_id: u64, error: S)
-    where
-        S: Into<String> + Debug + Send,
-    {
-        let error = error.into();
+    async fn report_error(
+        &mut self,
+        year: i32,
+        leaderboard_id: u64,
+        error: &aoc_leaderbot_lib::Error,
+    ) {
         error!("aoc_leaderbot error for leaderboard {leaderboard_id} and year {year}: {error}");
 
         let message = WebhookMessage::builder()
