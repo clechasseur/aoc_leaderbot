@@ -207,13 +207,24 @@ mod leaderboard_sort_order {
 }
 
 mod slack_webhook_reporter {
-    use aoc_leaderboard::aoc::LeaderboardMember;
+    use std::env;
+
+    use anyhow::anyhow;
+    use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
+    use aoc_leaderbot_lib::error::StorageError;
+    use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
+    use aoc_leaderbot_slack_lib::error::WebhookError;
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
-        LeaderboardSortOrder, SlackWebhookReporter,
+        LeaderboardSortOrder, SlackWebhookReporter, SlackWebhookReporterBuilderError,
+        CHANNEL_ENV_VAR, SORT_ORDER_ENV_VAR, WEBHOOK_URL_ENV_VAR,
     };
-    use reqwest::Method;
+    use aoc_leaderbot_slack_lib::Error;
+    use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
+    use assert_matches::assert_matches;
+    use reqwest::{Method, StatusCode};
     use serde_json::json;
     use serial_test::serial;
+    use tracing_test::traced_test;
     use wiremock::matchers::{header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -298,16 +309,7 @@ mod slack_webhook_reporter {
     }
 
     mod builder {
-        use std::env;
-
-        use aoc_leaderbot_slack_lib::error::WebhookError;
-        use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
-            LeaderboardSortOrder, SlackWebhookReporter, SlackWebhookReporterBuilderError,
-            CHANNEL_ENV_VAR, SORT_ORDER_ENV_VAR, WEBHOOK_URL_ENV_VAR,
-        };
-        use aoc_leaderbot_slack_lib::Error;
-        use assert_matches::assert_matches;
-        use serial_test::serial;
+        use super::*;
 
         #[cfg(unix)]
         pub fn get_invalid_os_string() -> std::ffi::OsString {
@@ -431,18 +433,6 @@ mod slack_webhook_reporter {
     }
 
     mod reporter {
-        use std::env;
-
-        use aoc_leaderboard::aoc::Leaderboard;
-        use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
-        use aoc_leaderbot_slack_lib::error::WebhookError;
-        use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::LeaderboardSortOrder;
-        use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::SORT_ORDER_ENV_VAR;
-        use aoc_leaderbot_slack_lib::Error;
-        use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
-        use assert_matches::assert_matches;
-        use reqwest::StatusCode;
-
         use super::*;
 
         mod report_changes {
@@ -493,19 +483,19 @@ mod slack_webhook_reporter {
                     assert!(result.is_ok());
                 }
 
-                #[test_log::test(tokio::test)]
+                #[tokio::test]
                 #[serial(slack_webhook_reporter_env)]
                 async fn sorted_by_default() {
                     sorted_by(None).await;
                 }
 
-                #[test_log::test(tokio::test)]
+                #[tokio::test]
                 #[serial(slack_webhook_reporter_env)]
                 async fn sorted_by_stars() {
                     sorted_by(Some(LeaderboardSortOrder::Stars)).await;
                 }
 
-                #[test_log::test(tokio::test)]
+                #[tokio::test]
                 #[serial(slack_webhook_reporter_env)]
                 async fn sorted_by_score() {
                     sorted_by(Some(LeaderboardSortOrder::Score)).await;
@@ -515,7 +505,7 @@ mod slack_webhook_reporter {
             mod errors {
                 use super::*;
 
-                #[test_log::test(tokio::test)]
+                #[tokio::test]
                 #[serial(slack_webhook_reporter_env)]
                 async fn not_found() {
                     env::remove_var(SORT_ORDER_ENV_VAR);
@@ -568,6 +558,46 @@ mod slack_webhook_reporter {
                         }
                     );
                 }
+            }
+        }
+
+        mod report_error {
+            use super::*;
+
+            #[tokio::test]
+            #[traced_test]
+            #[serial(slack_webhook_reporter_env)]
+            async fn working() {
+                let mock_server = working_mock_server().await;
+                let mut reporter = reporter(&mock_server, None);
+
+                let error = aoc_leaderbot_lib::Error::Storage(StorageError::LoadPrevious(anyhow!(
+                    "something is wrong"
+                )));
+                reporter.report_error(YEAR, LEADERBOARD_ID, &error).await;
+
+                assert!(logs_contain(&format!(
+                    "error for leaderboard {LEADERBOARD_ID} and year {YEAR}: {error}"
+                )));
+                assert!(!logs_contain(&format!("error trying to report previous error to Slack webhook for leaderboard {LEADERBOARD_ID} and year {YEAR}")));
+            }
+
+            #[tokio::test]
+            #[traced_test]
+            #[serial(slack_webhook_reporter_env)]
+            async fn offline() {
+                let mock_server = working_mock_server().await;
+                let mut reporter = offline_reporter(&mock_server);
+
+                let error = aoc_leaderbot_lib::Error::Storage(StorageError::LoadPrevious(anyhow!(
+                    "something is wrong"
+                )));
+                reporter.report_error(YEAR, LEADERBOARD_ID, &error).await;
+
+                assert!(logs_contain(&format!(
+                    "error for leaderboard {LEADERBOARD_ID} and year {YEAR}: {error}"
+                )));
+                assert!(logs_contain(&format!("error trying to report previous error to Slack webhook for leaderboard {LEADERBOARD_ID} and year {YEAR}")));
             }
         }
     }

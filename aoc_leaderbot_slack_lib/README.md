@@ -42,3 +42,8 @@ Many properties will also default to reading their values from environment varia
 ## Minimum Rust version
 
 `aoc_leaderbot_slack_lib` currently builds on Rust 1.75 or newer.
+
+## Contributing / Local development
+
+For information about contributing to this project, see [CONTRIBUTING](../CONTRIBUTING.md).
+For information regarding local development, see [DEVELOPMENT](../DEVELOPMENT.md).
