@@ -35,7 +35,10 @@ package_only_flag := if package != "" { "--package " + package } else { "" }
 warnings_as_errors := "true"
 clippy_flags := if warnings_as_errors == "true" { "-- -D warnings" } else { "" }
 
-just := "just all_features=" + all_features + " all_targets=" + all_targets + " message_format=" + message_format + " target_tuple=" + target_tuple + " release=" + release + " workspace=" + workspace + " package=" + package + " warnings_as_errors=" + warnings_as_errors
+force_prep := "false"
+force_prep_flag := if force_prep == "true" { "--force" } else { "" }
+
+just := "just all_features=" + all_features + " all_targets=" + all_targets + " message_format=" + message_format + " target_tuple=" + target_tuple + " release=" + release + " workspace=" + workspace + " package=" + package + " warnings_as_errors=" + warnings_as_errors + " force_prep=" + force_prep
 
 skip_test_reqs_value := "running"
 
@@ -161,7 +164,7 @@ test-package *extra_args:
 
 # Run `cargo msrv-prep`
 prep *extra_args:
-    {{cargo}} msrv-prep {{workspace_flag}} {{package_flag}} --backup-root-manifest {{extra_args}}
+    {{cargo}} msrv-prep {{workspace_flag}} {{package_flag}} --backup-root-manifest {{force_prep_flag}} {{extra_args}}
 
 # Run `cargo msrv-unprep`
 unprep *extra_args:

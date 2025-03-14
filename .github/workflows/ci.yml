@@ -64,9 +64,9 @@ jobs:
         include:
           - toolchain: invalid
           - package: "aoc_leaderboard"
-            toolchain: 1.70.0
+            toolchain: 1.74.1
           - package: "aoc_leaderbot_test_helpers"
-            toolchain: 1.70.0
+            toolchain: 1.74.1
           - package: "aoc_leaderbot_lib"
             toolchain: 1.75.0
           - package: "aoc_leaderbot_aws_lib"
