@@ -9,7 +9,6 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Custom error type used by this crate's API.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum Error {
     /// Attempted to build an instance of a type via a builder, but
     /// a required field was missing.
@@ -36,6 +35,18 @@ pub enum Error {
     #[error(transparent)]
     Leaderboard(#[from] aoc_leaderboard::Error),
 
+    /// Error while performing a [`Storage`] operation.
+    ///
+    /// [`Storage`]: crate::leaderbot::Storage
+    #[error(transparent)]
+    Storage(#[from] StorageError),
+
+    /// Error while performing a [`Reporter`] operation.
+    ///
+    /// [`Reporter`]: crate::leaderbot::Reporter
+    #[error(transparent)]
+    Reporter(#[from] ReporterError),
+
     // The following errors are only used in tests, they will not be available to users.
     #[cfg(test)]
     #[doc(hidden)]
@@ -56,10 +67,15 @@ pub enum Error {
     #[doc(hidden)]
     #[error("test")]
     TestSaveBaseError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    #[error("something went wrong: {0}")]
+    TestErrorWithMessage(String),
 }
 
 /// A version of [`env::VarError`] with additional variants.
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum EnvVarError {
     /// Environment variable is not present.
     ///
@@ -91,4 +107,28 @@ impl From<env::VarError> for EnvVarError {
             env::VarError::NotUnicode(value) => EnvVarError::NotUnicode(value),
         }
     }
+}
+
+/// Error type used for errors related to [`Storage`].
+///
+/// [`Storage`]: crate::leaderbot::Storage
+#[derive(Debug, thiserror::Error)]
+pub enum StorageError {
+    /// Error while trying to load previous leaderboard data.
+    #[error("failed to load previous leaderboard data: {0}")]
+    LoadPrevious(anyhow::Error),
+
+    /// Error while trying to save new leaderboard data.
+    #[error("failed to save leaderboard data: {0}")]
+    Save(anyhow::Error),
+}
+
+/// Error type used for errors related to [`Reporter`].
+///
+/// [`Reporter`]: crate::leaderbot::Reporter
+#[derive(Debug, thiserror::Error)]
+pub enum ReporterError {
+    /// Error while trying to report changes detected in leaderboard data.
+    #[error("failed to report changes to leaderboard: {0}")]
+    ReportChanges(anyhow::Error),
 }

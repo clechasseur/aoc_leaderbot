@@ -60,7 +60,11 @@ impl Leaderboard {
     ///
     /// [Advent of Code]: https://adventofcode.com/
     #[cfg_attr(coverage_nightly, coverage(off))]
-    pub async fn get<S>(year: i32, id: u64, aoc_session: S) -> crate::Result<Leaderboard>
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(skip(aoc_session), ret(level = "trace"), err)
+    )]
+    pub async fn get<S>(year: i32, id: u64, aoc_session: S) -> crate::Result<Self>
     where
         S: AsRef<str>,
     {
@@ -76,15 +80,24 @@ impl Leaderboard {
     ///
     /// [Advent of Code]: https://adventofcode.com/
     /// [`get`]: Self::get
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(
+            skip(http_client, aoc_session),
+            level = "debug",
+            ret(level = "trace"),
+            err
+        )
+    )]
     pub async fn get_from<B, S>(
         http_client: reqwest::Client,
         base: B,
         year: i32,
         id: u64,
         aoc_session: S,
-    ) -> crate::Result<Leaderboard>
+    ) -> crate::Result<Self>
     where
-        B: AsRef<str>,
+        B: AsRef<str> + std::fmt::Debug,
         S: AsRef<str>,
     {
         let response = http_client
@@ -108,6 +121,7 @@ impl Leaderboard {
     ///
     /// [Advent of Code]: https://adventofcode.com/
     /// [`get`]: Self::get
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", err))]
     pub fn http_client() -> crate::Result<reqwest::Client> {
         // When trying to fetch the data of a private leaderboard you do
         // not have access to, the AoC website redirects to the main leaderboard,
@@ -118,6 +132,7 @@ impl Leaderboard {
             .build()?)
     }
 
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", ret))]
     fn http_user_agent() -> String {
         format!("clechasseur/{}@{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
     }
@@ -227,7 +242,7 @@ mod tests {
         mod deserialize {
             use super::*;
 
-            #[test]
+            #[test_log::test]
             fn test_deserialize() {
                 let leaderboard = get_sample_leaderboard();
 
@@ -279,7 +294,7 @@ mod tests {
                 .await
             }
 
-            #[tokio::test]
+            #[test_log::test(tokio::test)]
             async fn success() {
                 let mock_server = get_mock_server_with_leaderboard().await;
 
@@ -329,7 +344,7 @@ mod tests {
                     mock_server
                 }
 
-                #[tokio::test]
+                #[test_log::test(tokio::test)]
                 async fn no_access() {
                     let mock_server = get_mock_server_with_leaderboard_with_no_access().await;
 
@@ -337,7 +352,7 @@ mod tests {
                     assert_matches!(actual, Err(crate::Error::NoAccess));
                 }
 
-                #[tokio::test]
+                #[test_log::test(tokio::test)]
                 async fn not_found() {
                     let mock_server = MockServer::start().await;
 
@@ -348,7 +363,7 @@ mod tests {
                     });
                 }
 
-                #[tokio::test]
+                #[test_log::test(tokio::test)]
                 async fn invalid_json() {
                     let mock_server = get_mock_server_with_leaderboard_with_invalid_json().await;
 

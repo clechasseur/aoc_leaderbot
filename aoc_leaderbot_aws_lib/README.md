@@ -35,3 +35,8 @@ If that table does not yet exist, it's possible to create it via the [`create_ta
 ## Minimum Rust version
 
 `aoc_leaderbot_aws_lib` currently builds on Rust 1.81 or newer.
+
+## Contributing / Local development
+
+For information about contributing to this project, see [CONTRIBUTING](../CONTRIBUTING.md).
+For information regarding local development, see [DEVELOPMENT](../DEVELOPMENT.md).

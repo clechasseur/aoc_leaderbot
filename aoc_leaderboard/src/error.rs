@@ -5,7 +5,6 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Custom error type used by this crate's API.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum Error {
     /// HTTP error occurring while getting a [`Leaderboard`]'s data
     /// from the [Advent of Code] website (see [`get`]).
