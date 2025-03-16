@@ -221,7 +221,7 @@ mod tests {
     mod leaderboard {
         use std::fs;
         use std::path::PathBuf;
-
+        use rstest::{fixture, rstest};
         use super::*;
 
         fn leaderboard_file_path(file_name: &str) -> PathBuf {
@@ -230,25 +230,25 @@ mod tests {
                 .collect()
         }
 
-        fn get_test_leaderboard(file_name: &str) -> Leaderboard {
+        fn test_leaderboard(file_name: &str) -> Leaderboard {
             serde_json::from_str(&fs::read_to_string(leaderboard_file_path(file_name)).unwrap())
                 .unwrap()
         }
 
-        fn get_sample_leaderboard() -> Leaderboard {
-            get_test_leaderboard("sample_leaderboard.json")
+        #[fixture]
+        fn sample_leaderboard() -> Leaderboard {
+            test_leaderboard("sample_leaderboard.json")
         }
 
         mod deserialize {
             use super::*;
 
+            #[rstest]
             #[test_log::test]
-            fn test_deserialize() {
-                let leaderboard = get_sample_leaderboard();
-
-                assert_eq!(leaderboard.year, 2024);
-                assert_eq!(leaderboard.members.len(), 8);
-                assert!(leaderboard.members[&12345].completion_day_level[&2]
+            fn test_deserialize(sample_leaderboard: Leaderboard) {
+                assert_eq!(sample_leaderboard.year, 2024);
+                assert_eq!(sample_leaderboard.members.len(), 8);
+                assert!(sample_leaderboard.members[&12345].completion_day_level[&2]
                     .part_2
                     .is_some());
             }
@@ -269,14 +269,14 @@ mod tests {
             const AOC_SESSION: &str = "aoc_session";
 
             //noinspection DuplicatedCode
-            async fn get_mock_server_with_leaderboard() -> MockServer {
+            #[fixture]
+            async fn mock_server_with_leaderboard(sample_leaderboard: Leaderboard) -> MockServer {
                 let mock_server = MockServer::start().await;
 
-                let leaderboard = get_sample_leaderboard();
                 Mock::given(method(Method::GET))
                     .and(path(format!("/{YEAR}/leaderboard/private/view/{LEADERBOARD_ID}.json")))
                     .and(header(header::COOKIE, format!("session={AOC_SESSION}")))
-                    .respond_with(ResponseTemplate::new(StatusCode::OK).set_body_json(leaderboard))
+                    .respond_with(ResponseTemplate::new(StatusCode::OK).set_body_json(sample_leaderboard))
                     .mount(&mock_server)
                     .await;
 
@@ -294,19 +294,23 @@ mod tests {
                 .await
             }
 
+            #[rstest]
+            #[awt]
             #[test_log::test(tokio::test)]
-            async fn success() {
-                let mock_server = get_mock_server_with_leaderboard().await;
-
-                let expected = get_sample_leaderboard();
-                let actual = get_mock_leaderboard(&mock_server).await;
+            async fn success(
+                sample_leaderboard: Leaderboard,
+                #[future] mock_server_with_leaderboard: MockServer
+            ) {
+                let expected = sample_leaderboard;
+                let actual = get_mock_leaderboard(&mock_server_with_leaderboard).await;
                 assert_matches!(actual, Ok(actual) if actual == expected);
             }
 
             mod errors {
                 use super::*;
 
-                async fn get_mock_server_with_leaderboard_with_no_access() -> MockServer {
+                #[fixture]
+                async fn mock_server_with_leaderboard_with_no_access() -> MockServer {
                     let mock_server = MockServer::start().await;
 
                     // When you try to fetch a leaderboard you don't have access to,
@@ -325,7 +329,8 @@ mod tests {
                     mock_server
                 }
 
-                async fn get_mock_server_with_leaderboard_with_invalid_json() -> MockServer {
+                #[fixture]
+                async fn mock_server_with_leaderboard_with_invalid_json() -> MockServer {
                     let mock_server = MockServer::start().await;
 
                     Mock::given(method(Method::GET))
@@ -344,11 +349,11 @@ mod tests {
                     mock_server
                 }
 
+                #[rstest]
+                #[awt]
                 #[test_log::test(tokio::test)]
-                async fn no_access() {
-                    let mock_server = get_mock_server_with_leaderboard_with_no_access().await;
-
-                    let actual = get_mock_leaderboard(&mock_server).await;
+                async fn no_access(#[future] mock_server_with_leaderboard_with_no_access: MockServer) {
+                    let actual = get_mock_leaderboard(&mock_server_with_leaderboard_with_no_access).await;
                     assert_matches!(actual, Err(crate::Error::NoAccess));
                 }
 
@@ -363,11 +368,11 @@ mod tests {
                     });
                 }
 
+                #[rstest]
+                #[awt]
                 #[test_log::test(tokio::test)]
-                async fn invalid_json() {
-                    let mock_server = get_mock_server_with_leaderboard_with_invalid_json().await;
-
-                    let actual = get_mock_leaderboard(&mock_server).await;
+                async fn invalid_json(#[future] mock_server_with_leaderboard_with_invalid_json: MockServer) {
+                    let actual = get_mock_leaderboard(&mock_server_with_leaderboard_with_invalid_json).await;
                     assert_matches!(actual, Err(crate::Error::HttpGet(err)) if err.is_decode());
                 }
             }
