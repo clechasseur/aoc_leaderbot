@@ -227,7 +227,8 @@ fn get_config(input: &IncomingMessage) -> Result<MemoryConfig, Error> {
         .year(year)
         .leaderboard_id(leaderboard_id)
         .aoc_session(&aoc_session)
-        .build()?)
+        .build()
+        .expect("all fields should have been specified"))
 }
 
 #[cfg_attr(not(coverage_nightly), tracing::instrument(err))]

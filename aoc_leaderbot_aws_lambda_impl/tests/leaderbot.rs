@@ -27,6 +27,7 @@ mod bot_lambda_handler {
     use chrono::Local;
     use lambda_runtime::{Context, LambdaEvent};
     use rstest::{fixture, rstest};
+    use serial_test::serial;
 
     const OWNER: u64 = 42;
     const MEMBER_1: u64 = 23;
@@ -396,6 +397,7 @@ mod bot_lambda_handler {
         use std::env;
 
         use aoc_leaderbot_aws_lambda_impl::leaderbot::CONFIG_ENV_VAR_PREFIX;
+        use aoc_leaderbot_lib::error::EnvVarError;
         use aoc_leaderbot_lib::leaderbot::config::env::{
             ENV_CONFIG_AOC_SESSION_SUFFIX, ENV_CONFIG_LEADERBOARD_ID_SUFFIX, ENV_CONFIG_YEAR_SUFFIX,
         };
@@ -437,11 +439,9 @@ mod bot_lambda_handler {
         mod with_changes {
             use super::*;
 
-            // Note: we'll only run one test using environment, otherwise we would have to
-            // serialize them all, and we wouldn't really gain anything since we tested all
-            // scenarios in the module above.
             #[rstest]
             #[test_log::test]
+            #[serial(aws_lambda_env)]
             fn updates_storage_and_sends_report(
                 #[from(base_leaderboard)] previous_leaderboard: Leaderboard,
                 #[from(leaderboard_with_new_member)] current_leaderboard: Leaderboard,
@@ -469,6 +469,35 @@ mod bot_lambda_handler {
                     });
                     assert_eq!(table.load_leaderboard().await, current_leaderboard);
                 });
+            }
+        }
+
+        mod errors {
+            use super::*;
+
+            mod config {
+                use super::*;
+
+                #[test_log::test(tokio::test)]
+                #[serial(aws_lambda_env)]
+                async fn invalid_year_env_var() {
+                    env::set_var(
+                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_YEAR_SUFFIX}"),
+                        "invalid",
+                    );
+
+                    let incoming_message = IncomingMessage::default();
+                    let event = LambdaEvent::new(incoming_message, Context::default());
+                    let result = bot_lambda_handler(event).await;
+
+                    assert_matches!(result, Err(lambda_err) => {
+                        assert_matches!(lambda_err.downcast::<aoc_leaderbot_lib::Error>(), Ok(err) => {
+                            assert_matches!(*err, aoc_leaderbot_lib::Error::Env { source: env_err, .. } => {
+                                assert_matches!(env_err, EnvVarError::IntExpected { .. });
+                            });
+                        });
+                    });
+                }
             }
         }
     }
