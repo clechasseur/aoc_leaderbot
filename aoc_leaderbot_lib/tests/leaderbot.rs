@@ -4,19 +4,19 @@ mod config;
 mod storage;
 
 mod leaderbot_config {
+    use aoc_leaderboard::test_helpers::{TEST_AOC_SESSION, TEST_LEADERBOARD_ID};
     use aoc_leaderbot_lib::leaderbot::Config;
-    use aoc_leaderbot_test_helpers::{AOC_SESSION, LEADERBOARD_ID};
     use chrono::{Datelike, Local};
 
     struct TestLeaderbotConfig;
 
     impl Config for TestLeaderbotConfig {
         fn leaderboard_id(&self) -> u64 {
-            LEADERBOARD_ID
+            TEST_LEADERBOARD_ID
         }
 
         fn aoc_session(&self) -> String {
-            AOC_SESSION.into()
+            TEST_AOC_SESSION.into()
         }
     }
 
@@ -25,8 +25,8 @@ mod leaderbot_config {
         let config = TestLeaderbotConfig;
 
         assert_eq!(config.year(), Local::now().year());
-        assert_eq!(config.leaderboard_id(), LEADERBOARD_ID);
-        assert_eq!(config.aoc_session(), AOC_SESSION);
+        assert_eq!(config.leaderboard_id(), TEST_LEADERBOARD_ID);
+        assert_eq!(config.aoc_session(), TEST_AOC_SESSION);
     }
 }
 

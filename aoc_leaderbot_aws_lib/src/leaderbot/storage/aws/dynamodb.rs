@@ -2,9 +2,9 @@
 //!
 //! [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 
-#[cfg(feature = "__testing")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "__testing")))]
-pub mod testing;
+#[cfg(feature = "__test_helpers")]
+#[doc(hidden)]
+pub mod test_helpers;
 
 use std::time::Duration;
 

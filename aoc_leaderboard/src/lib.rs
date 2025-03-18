@@ -17,9 +17,18 @@
 
 pub mod aoc;
 pub mod error;
+#[cfg(feature = "__test_helpers")]
+#[doc(hidden)]
+pub mod test_helpers;
 
 pub use error::Error;
 pub use error::Result;
 #[cfg(feature = "http")]
 #[doc(hidden)]
 pub use reqwest;
+#[cfg(feature = "__test_helpers")]
+#[doc(hidden)]
+pub use rstest;
+#[cfg(feature = "__test_helpers")]
+#[doc(hidden)]
+pub use wiremock;

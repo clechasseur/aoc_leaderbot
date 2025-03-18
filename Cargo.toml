@@ -6,7 +6,6 @@ members = [
     "aoc_leaderbot_aws_lib",
     "aoc_leaderbot_lib",
     "aoc_leaderbot_slack_lib",
-    "aoc_leaderbot_test_helpers",
 ]
 
 [workspace.package]

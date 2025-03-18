@@ -1,7 +1,9 @@
 mod memory_storage {
+    use aoc_leaderboard::aoc::Leaderboard;
+    use aoc_leaderboard::test_helpers::{test_leaderboard, TEST_LEADERBOARD_ID, TEST_YEAR};
     use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryStorage;
     use aoc_leaderbot_lib::leaderbot::Storage;
-    use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
+    use rstest::rstest;
 
     mod new {
         use super::*;
@@ -10,7 +12,10 @@ mod memory_storage {
         async fn new() {
             let storage = MemoryStorage::new();
 
-            let previous = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+            let previous = storage
+                .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                .await
+                .unwrap();
             assert!(previous.is_none());
         }
 
@@ -18,7 +23,10 @@ mod memory_storage {
         async fn default() {
             let storage = MemoryStorage::default();
 
-            let previous = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+            let previous = storage
+                .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                .await
+                .unwrap();
             assert!(previous.is_none());
         }
     }
@@ -26,15 +34,16 @@ mod memory_storage {
     mod mem_storage_impl {
         use super::*;
 
+        #[rstest]
         #[test_log::test(tokio::test)]
-        async fn len_and_is_empty() {
+        async fn len_and_is_empty(#[from(test_leaderboard)] leaderboard: Leaderboard) {
             let mut storage = MemoryStorage::new();
 
             assert_eq!(storage.len(), 0);
             assert!(storage.is_empty());
 
             storage
-                .save(YEAR, LEADERBOARD_ID, &get_sample_leaderboard())
+                .save(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
                 .await
                 .unwrap();
 
@@ -46,25 +55,33 @@ mod memory_storage {
     mod storage_impl {
         use super::*;
 
+        #[rstest]
         #[test_log::test(tokio::test)]
-        async fn load_save() {
+        async fn load_save(
+            #[from(test_leaderboard)] leaderboard: Leaderboard,
+            #[from(test_leaderboard)] expected: Leaderboard,
+        ) {
             let mut storage = MemoryStorage::new();
 
-            let previous = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+            let previous = storage
+                .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                .await
+                .unwrap();
             assert!(previous.is_none());
 
-            let leaderboard = get_sample_leaderboard();
             storage
-                .save(YEAR, LEADERBOARD_ID, &leaderboard)
+                .save(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
                 .await
                 .unwrap();
 
-            let expected = get_sample_leaderboard();
-            let previous = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+            let previous = storage
+                .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                .await
+                .unwrap();
             assert_eq!(previous, Some(expected));
 
             let previous = storage
-                .load_previous(YEAR - 1, LEADERBOARD_ID)
+                .load_previous(TEST_YEAR - 1, TEST_LEADERBOARD_ID)
                 .await
                 .unwrap();
             assert!(previous.is_none());

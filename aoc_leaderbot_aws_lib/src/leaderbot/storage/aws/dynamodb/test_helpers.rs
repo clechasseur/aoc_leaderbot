@@ -1,13 +1,14 @@
 //! Test helpers for [`DynamoDbStorage`].
 //!
-//! Only available if the `__testing` feature is enabled.
+//! Not meant to be used outside the project; no guarantee on API stability.
 
 use std::future::Future;
 
 use aoc_leaderboard::aoc::Leaderboard;
-use aoc_leaderbot_test_helpers::{LEADERBOARD_ID, YEAR};
+use aoc_leaderboard::test_helpers::{TEST_LEADERBOARD_ID, TEST_YEAR};
 use aws_config::BehaviorVersion;
 use aws_sdk_dynamodb::types::AttributeValue;
+use rstest::fixture;
 use uuid::Uuid;
 
 use crate::leaderbot::storage::aws::dynamodb::{
@@ -128,8 +129,8 @@ impl LocalTable {
     /// values [`LEADERBOARD_ID`] and [`YEAR`].
     pub async fn save_leaderboard(&self, leaderboard: &Leaderboard) {
         let leaderboard_data = DynamoDbLeaderboardData {
-            leaderboard_id: LEADERBOARD_ID,
-            year: YEAR,
+            leaderboard_id: TEST_LEADERBOARD_ID,
+            year: TEST_YEAR,
             leaderboard_data: leaderboard.clone(),
         };
         let item = serde_dynamo::to_item(leaderboard_data)
@@ -145,7 +146,7 @@ impl LocalTable {
     }
 
     /// Loads a [`Leaderboard`] from the test table directly,
-    /// using the test values [`LEADERBOARD_ID`] and [`YEAR`].
+    /// using the test values [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
     ///
     /// Loads the data from the table through the DynamoDB client,
     /// not via the [`DynamoDbStorage`] wrapper.
@@ -155,8 +156,8 @@ impl LocalTable {
         self.client()
             .get_item()
             .table_name(self.name())
-            .key(HASH_KEY, AttributeValue::N(LEADERBOARD_ID.to_string()))
-            .key(RANGE_KEY, AttributeValue::N(YEAR.to_string()))
+            .key(HASH_KEY, AttributeValue::N(TEST_LEADERBOARD_ID.to_string()))
+            .key(RANGE_KEY, AttributeValue::N(TEST_YEAR.to_string()))
             .send()
             .await
             .expect("leaderboard data should exist in the test table")
@@ -182,7 +183,7 @@ impl LocalTable {
     /// `async` block; example:
     ///
     /// ```
-    /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::testing::LocalTable;
+    /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
     /// #[test]
     /// # #[cfg(feature = "__testing")]
     /// fn some_test() {
@@ -214,4 +215,14 @@ impl LocalTable {
     fn random_table_name() -> String {
         format!("aoc_leaderbot_aws_test_table_{}", Uuid::new_v4())
     }
+}
+
+#[fixture]
+pub async fn local_non_existent_table() -> LocalTable {
+    LocalTable::without_table().await
+}
+
+#[fixture]
+pub async fn local_table() -> LocalTable {
+    LocalTable::with_table().await
 }

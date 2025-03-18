@@ -47,10 +47,10 @@ tracing = { workspace = true }
 veil = { workspace = true, optional = true }
 
 [dev-dependencies]
-aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.3.0" }
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["__test_helpers"] }
 assert_matches = { workspace = true }
-itertools = { workspace = true }
 mockall = { workspace = true }
+rstest = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros"] }
 uuid = { workspace = true, features = ["v4"] }

@@ -380,51 +380,67 @@ fn detect_changes(
 #[cfg(all(feature = "config-mem", feature = "storage-mem"))]
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
+    use aoc_leaderboard::test_helpers::{
+        mock_server_with_inaccessible_leaderboard, mock_server_with_leaderboard, test_leaderboard,
+        TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR,
+    };
+    use rstest::{fixture, rstest};
+
     use super::*;
 
     mod reporter {
-        use aoc_leaderbot_test_helpers::{get_sample_leaderboard, LEADERBOARD_ID, YEAR};
-
         use super::*;
 
-        struct TestReporter;
+        #[fixture]
+        fn reporter() -> impl Reporter {
+            struct TestReporter;
 
-        impl Reporter for TestReporter {
-            type Err = crate::Error;
+            impl Reporter for TestReporter {
+                type Err = crate::Error;
 
-            async fn report_changes(
-                &mut self,
-                year: i32,
-                leaderboard_id: u64,
-                _previous_leaderboard: &Leaderboard,
-                _leaderboard: &Leaderboard,
-                changes: &Changes,
-            ) -> Result<(), Self::Err> {
-                println!(
-                    "Leaderboard {leaderboard_id} (for year {year}) has changed: {} new members added, {} members got new stars",
-                    changes.new_members.len(),
-                    changes.members_with_new_stars.len()
-                );
-                Ok(())
+                async fn report_changes(
+                    &mut self,
+                    year: i32,
+                    leaderboard_id: u64,
+                    _previous_leaderboard: &Leaderboard,
+                    _leaderboard: &Leaderboard,
+                    changes: &Changes,
+                ) -> Result<(), Self::Err> {
+                    println!(
+                        "Leaderboard {leaderboard_id} (for year {year}) has changed: {} new members added, {} members got new stars",
+                        changes.new_members.len(),
+                        changes.members_with_new_stars.len()
+                    );
+                    Ok(())
+                }
             }
+
+            TestReporter
         }
 
-        #[test_log::test(tokio::test)]
-        async fn default_impl_works() {
-            let mut reporter = TestReporter;
-
-            let leaderboard = get_sample_leaderboard();
+        #[rstest]
+        #[tokio::test]
+        async fn default_impl_works(
+            #[from(test_leaderboard)] leaderboard: Leaderboard,
+            mut reporter: impl Reporter,
+        ) {
             let changes = Changes::new([42, 23].into(), [11, 7].into());
 
             reporter
-                .report_changes(YEAR, LEADERBOARD_ID, &leaderboard, &leaderboard, &changes)
+                .report_changes(
+                    TEST_YEAR,
+                    TEST_LEADERBOARD_ID,
+                    &leaderboard,
+                    &leaderboard,
+                    &changes,
+                )
                 .await
                 .unwrap();
 
             reporter
                 .report_error(
-                    YEAR,
-                    LEADERBOARD_ID,
+                    TEST_YEAR,
+                    TEST_LEADERBOARD_ID,
                     &crate::Error::TestErrorWithMessage("broken pipe".into()),
                 )
                 .await;
@@ -436,9 +452,6 @@ mod tests {
         use std::future::ready;
 
         use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
-        use aoc_leaderbot_test_helpers::{
-            get_mock_server_with_leaderboard, AOC_SESSION, LEADERBOARD_ID, YEAR,
-        };
         use assert_matches::assert_matches;
         use mockall::predicate::eq;
 
@@ -510,26 +523,30 @@ mod tests {
             }
         }
 
+        #[fixture]
         fn config() -> MemoryConfig {
             MemoryConfig::builder()
-                .year(YEAR)
-                .leaderboard_id(LEADERBOARD_ID)
-                .aoc_session(AOC_SESSION)
+                .year(TEST_YEAR)
+                .leaderboard_id(TEST_LEADERBOARD_ID)
+                .aoc_session(TEST_AOC_SESSION)
                 .build()
                 .unwrap()
         }
 
+        #[fixture]
         fn storage() -> MemoryStorage {
             MemoryStorage::new()
         }
 
-        fn spy_reporter() -> SpyReporter {
+        #[fixture]
+        fn reporter() -> SpyReporter {
             SpyReporter::default()
         }
 
+        #[fixture]
         fn base_leaderboard() -> Leaderboard {
             Leaderboard {
-                year: YEAR,
+                year: TEST_YEAR,
                 owner_id: OWNER,
                 day1_ts: Local::now().timestamp(),
                 members: {
@@ -601,6 +618,7 @@ mod tests {
             );
         }
 
+        #[fixture]
         fn leaderboard_with_new_member() -> Leaderboard {
             let mut leaderboard = base_leaderboard();
 
@@ -635,17 +653,19 @@ mod tests {
             leaderboard
         }
 
-        fn leaderboard_with_member_with_new_stars() -> Leaderboard {
-            let mut leaderboard = base_leaderboard();
-
+        #[fixture]
+        fn leaderboard_with_member_with_new_stars(
+            #[from(base_leaderboard)] mut leaderboard: Leaderboard,
+        ) -> Leaderboard {
             add_member_1_stars(&mut leaderboard);
 
             leaderboard
         }
 
-        fn leaderboard_with_both_updates() -> Leaderboard {
-            let mut leaderboard = leaderboard_with_new_member();
-
+        #[fixture]
+        fn leaderboard_with_both_updates(
+            #[from(leaderboard_with_new_member)] mut leaderboard: Leaderboard,
+        ) -> Leaderboard {
             add_member_1_stars(&mut leaderboard);
 
             leaderboard
@@ -653,17 +673,23 @@ mod tests {
 
         // noinspection DuplicatedCode
         mod without_previous {
+            use aoc_leaderboard::wiremock::MockServer;
+
             use super::*;
 
+            #[rstest]
+            #[awt]
             #[test_log::test(tokio::test)]
-            async fn stores_current() {
-                let config = config();
-                let mut storage = storage();
-                let mut reporter = spy_reporter();
-
-                let mock_server = get_mock_server_with_leaderboard(base_leaderboard()).await;
-
-                let expected = base_leaderboard();
+            async fn stores_current(
+                config: MemoryConfig,
+                mut storage: MemoryStorage,
+                mut reporter: SpyReporter,
+                #[future]
+                #[from(mock_server_with_leaderboard)]
+                #[with(base_leaderboard::default())]
+                mock_server: MockServer,
+                #[from(base_leaderboard)] expected: Leaderboard,
+            ) {
                 let result = run_bot_from(
                     Some(mock_server.uri()),
                     &config,
@@ -673,8 +699,8 @@ mod tests {
                 )
                 .await;
                 assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
-                    assert_eq!(year, YEAR);
-                    assert_eq!(leaderboard_id, LEADERBOARD_ID);
+                    assert_eq!(year, TEST_YEAR);
+                    assert_eq!(leaderboard_id, TEST_LEADERBOARD_ID);
                     assert!(previous_leaderboard.is_none());
                     assert_eq!(leaderboard, expected);
                     assert!(changes.is_none());
@@ -682,22 +708,29 @@ mod tests {
                 assert_eq!(storage.len(), 1);
                 assert!(!reporter.called());
 
-                let actual = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+                let actual = storage
+                    .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                    .await
+                    .unwrap();
                 assert_eq!(actual, Some(expected));
             }
 
             mod dry_run {
                 use super::*;
 
+                #[rstest]
+                #[awt]
                 #[test_log::test(tokio::test)]
-                async fn does_not_store_current() {
-                    let config = config();
-                    let mut storage = storage();
-                    let mut reporter = spy_reporter();
-
-                    let mock_server = get_mock_server_with_leaderboard(base_leaderboard()).await;
-
-                    let expected = base_leaderboard();
+                async fn does_not_store_current(
+                    config: MemoryConfig,
+                    mut storage: MemoryStorage,
+                    mut reporter: SpyReporter,
+                    #[future]
+                    #[from(mock_server_with_leaderboard)]
+                    #[with(base_leaderboard::default())]
+                    mock_server: MockServer,
+                    #[from(base_leaderboard)] expected: Leaderboard,
+                ) {
                     let result = run_bot_from(
                         Some(mock_server.uri()),
                         &config,
@@ -707,8 +740,8 @@ mod tests {
                     )
                     .await;
                     assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
-                        assert_eq!(year, YEAR);
-                        assert_eq!(leaderboard_id, LEADERBOARD_ID);
+                        assert_eq!(year, TEST_YEAR);
+                        assert_eq!(leaderboard_id, TEST_LEADERBOARD_ID);
                         assert!(previous_leaderboard.is_none());
                         assert_eq!(leaderboard, expected);
                         assert!(changes.is_none());
@@ -716,35 +749,39 @@ mod tests {
                     assert!(storage.is_empty());
                     assert!(!reporter.called());
 
-                    let actual = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+                    let actual = storage
+                        .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                        .await
+                        .unwrap();
                     assert!(actual.is_none());
                 }
             }
         }
 
+        #[allow(clippy::too_many_arguments)]
         mod with_previous {
-            use itertools::iproduct;
-
             use super::*;
 
-            async fn test_previous<N, W>(
-                leaderboard: Leaderboard,
-                dry_run: bool,
-                expected_new_members: N,
-                expected_members_with_new_stars: W,
-            ) where
-                N: IntoIterator<Item = u64>,
-                W: IntoIterator<Item = u64>,
-            {
-                let config = config();
-                let mut storage = storage();
-                let mut reporter = spy_reporter();
-
-                let base = base_leaderboard();
-
-                storage.save(YEAR, LEADERBOARD_ID, &base).await.unwrap();
-
-                let mock_server = get_mock_server_with_leaderboard(leaderboard.clone()).await;
+            #[rstest]
+            #[case::no_changes(base_leaderboard::default(), vec![], vec![])]
+            #[case::new_member(leaderboard_with_new_member::default(), vec![MEMBER_2], vec![])]
+            #[case::member_with_new_stars(leaderboard_with_member_with_new_stars::default(), vec![], vec![MEMBER_1])]
+            #[case::both_updates(leaderboard_with_both_updates::default(), vec![MEMBER_2], vec![MEMBER_1])]
+            #[test_log::test(tokio::test)]
+            async fn and(
+                config: MemoryConfig,
+                mut storage: MemoryStorage,
+                mut reporter: SpyReporter,
+                #[from(base_leaderboard)] base: Leaderboard,
+                #[case] leaderboard: Leaderboard,
+                #[case] expected_new_members: Vec<u64>,
+                #[case] expected_members_with_new_stars: Vec<u64>,
+                #[values(false, true)] dry_run: bool,
+            ) {
+                storage
+                    .save(TEST_YEAR, TEST_LEADERBOARD_ID, &base)
+                    .await
+                    .unwrap();
 
                 let expected = SpiedChanges {
                     previous_leaderboard: base.clone(),
@@ -755,6 +792,8 @@ mod tests {
                     ),
                 };
 
+                let mock_server = mock_server_with_leaderboard(leaderboard.clone()).await;
+
                 let result = run_bot_from(
                     Some(mock_server.uri()),
                     &config,
@@ -764,76 +803,48 @@ mod tests {
                 )
                 .await;
                 assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard: output_leaderboard, changes }) => {
-                    assert_eq!(year, YEAR);
-                    assert_eq!(leaderboard_id, LEADERBOARD_ID);
+                    assert_eq!(year, TEST_YEAR);
+                    assert_eq!(leaderboard_id, TEST_LEADERBOARD_ID);
                     assert_eq!(previous_leaderboard.as_ref(), Some(&base));
                     assert_eq!(output_leaderboard, leaderboard);
                     assert_eq!(changes, expected.changes);
                 });
 
                 assert_eq!(storage.len(), 1);
-                let current = storage.load_previous(YEAR, LEADERBOARD_ID).await.unwrap();
+                let current = storage
+                    .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                    .await
+                    .unwrap();
                 assert_eq!(current, Some(if dry_run { base } else { leaderboard }));
 
                 if expected.has_changes() && !dry_run {
                     assert!(reporter.called());
                     let (actual_year, actual_leaderboard_id, actual) = &reporter.changes[0];
-                    assert_eq!(*actual_year, YEAR);
-                    assert_eq!(*actual_leaderboard_id, LEADERBOARD_ID);
+                    assert_eq!(*actual_year, TEST_YEAR);
+                    assert_eq!(*actual_leaderboard_id, TEST_LEADERBOARD_ID);
                     assert_eq!(*actual, expected);
                 } else {
                     assert!(!reporter.called())
                 }
             }
-
-            fn test_permutations() -> impl Iterator<Item = ((Leaderboard, Vec<u64>, Vec<u64>), bool)>
-            {
-                iproduct!(
-                    // leaderboard, expected_new_members, expected_members_with_new_stars
-                    [
-                        (base_leaderboard(), vec![], vec![]),
-                        (leaderboard_with_new_member(), vec![MEMBER_2], vec![]),
-                        (leaderboard_with_member_with_new_stars(), vec![], vec![MEMBER_1]),
-                        (leaderboard_with_both_updates(), vec![MEMBER_2], vec![MEMBER_1]),
-                    ],
-                    // dry_run
-                    [false, true]
-                )
-            }
-
-            #[test_log::test(tokio::test)]
-            async fn all() {
-                let permutations = test_permutations();
-
-                for (
-                    (leaderboard, expected_new_members, expected_members_with_new_stars),
-                    dry_run,
-                ) in permutations
-                {
-                    test_previous(
-                        leaderboard,
-                        dry_run,
-                        expected_new_members,
-                        expected_members_with_new_stars,
-                    )
-                    .await;
-                }
-            }
         }
 
         mod errors {
-            use aoc_leaderbot_test_helpers::get_mock_server_with_inaccessible_leaderboard;
+            use aoc_leaderboard::wiremock::MockServer;
 
             use super::*;
 
+            #[rstest]
+            #[awt]
             #[test_log::test(tokio::test)]
-            async fn leaderboard_get_error() {
-                let config = config();
-                let mut storage = storage();
-                let mut reporter = spy_reporter();
-
-                let mock_server = get_mock_server_with_inaccessible_leaderboard().await;
-
+            async fn leaderboard_get_error(
+                config: MemoryConfig,
+                mut storage: MemoryStorage,
+                mut reporter: SpyReporter,
+                #[future]
+                #[from(mock_server_with_inaccessible_leaderboard)]
+                mock_server: MockServer,
+            ) {
                 let result = run_bot_from(
                     Some(mock_server.uri()),
                     &config,
@@ -851,17 +862,20 @@ mod tests {
                 assert_eq!(reporter.errors.len(), 1);
             }
 
+            #[rstest]
+            #[awt]
             #[test_log::test(tokio::test)]
-            async fn load_previous_error() {
-                let config = config();
+            async fn load_previous_error(
+                config: MemoryConfig,
+                mut reporter: SpyReporter,
+                #[future]
+                #[from(mock_server_with_leaderboard)]
+                mock_server: MockServer,
+            ) {
                 let mut storage = MockStorage::new();
-                let mut reporter = spy_reporter();
-
-                let mock_server = get_mock_server_with_leaderboard(base_leaderboard()).await;
-
                 storage
                     .expect_load_previous()
-                    .with(eq(YEAR), eq(LEADERBOARD_ID))
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
                     .returning(move |_, _| {
                         Box::pin(ready(Err(crate::Error::TestLoadPreviousError)))
@@ -881,15 +895,25 @@ mod tests {
                 assert_eq!(
                     reporter.errors[0],
                     (
-                        YEAR,
-                        LEADERBOARD_ID,
+                        TEST_YEAR,
+                        TEST_LEADERBOARD_ID,
                         "failed to load previous leaderboard data: test".to_string()
                     )
                 );
             }
 
+            #[rstest]
+            #[awt]
             #[test_log::test(tokio::test)]
-            async fn report_changes_error() {
+            async fn report_changes_error(
+                config: MemoryConfig,
+                mut storage: MemoryStorage,
+                #[from(base_leaderboard)] base: Leaderboard,
+                #[future]
+                #[from(mock_server_with_leaderboard)]
+                #[with(leaderboard_with_new_member::default())]
+                mock_server: MockServer,
+            ) {
                 #[derive(Debug, Default)]
                 struct MockReporter {
                     pub errors: usize,
@@ -919,15 +943,12 @@ mod tests {
                     }
                 }
 
-                let config = config();
-                let mut storage = storage();
                 let mut reporter = MockReporter::default();
 
-                let base = base_leaderboard();
-                storage.save(YEAR, LEADERBOARD_ID, &base).await.unwrap();
-
-                let mock_server =
-                    get_mock_server_with_leaderboard(leaderboard_with_new_member()).await;
+                storage
+                    .save(TEST_YEAR, TEST_LEADERBOARD_ID, &base)
+                    .await
+                    .unwrap();
 
                 let result = run_bot_from(
                     Some(mock_server.uri()),
@@ -944,23 +965,26 @@ mod tests {
                 assert_eq!(reporter.errors, 1);
             }
 
+            #[rstest]
+            #[awt]
             #[test_log::test(tokio::test)]
-            async fn save_updated_error() {
-                let config = config();
+            async fn save_updated_error(
+                config: MemoryConfig,
+                mut reporter: SpyReporter,
+                #[future]
+                #[from(mock_server_with_leaderboard)]
+                #[with(leaderboard_with_new_member::default())]
+                mock_server: MockServer,
+            ) {
                 let mut storage = MockStorage::new();
-                let mut reporter = spy_reporter();
-
-                let mock_server =
-                    get_mock_server_with_leaderboard(leaderboard_with_new_member()).await;
-
                 storage
                     .expect_load_previous()
-                    .with(eq(YEAR), eq(LEADERBOARD_ID))
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
                     .returning(move |_, _| Box::pin(ready(Ok(Some(base_leaderboard())))));
                 storage
                     .expect_save()
-                    .with(eq(YEAR), eq(LEADERBOARD_ID), eq(leaderboard_with_new_member()))
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(leaderboard_with_new_member()))
                     .times(1)
                     .returning(move |_, _, _| {
                         Box::pin(ready(Err(crate::Error::TestSaveUpdatedError)))
@@ -979,26 +1003,34 @@ mod tests {
                 assert_eq!(reporter.errors.len(), 1);
                 assert_eq!(
                     reporter.errors[0],
-                    (YEAR, LEADERBOARD_ID, "failed to save leaderboard data: test".to_string())
+                    (
+                        TEST_YEAR,
+                        TEST_LEADERBOARD_ID,
+                        "failed to save leaderboard data: test".to_string()
+                    )
                 );
             }
 
+            #[rstest]
+            #[awt]
             #[test_log::test(tokio::test)]
-            async fn save_base_error() {
-                let config = config();
+            async fn save_base_error(
+                config: MemoryConfig,
+                mut reporter: SpyReporter,
+                #[future]
+                #[from(mock_server_with_leaderboard)]
+                #[with(base_leaderboard::default())]
+                mock_server: MockServer,
+            ) {
                 let mut storage = MockStorage::new();
-                let mut reporter = spy_reporter();
-
-                let mock_server = get_mock_server_with_leaderboard(base_leaderboard()).await;
-
                 storage
                     .expect_load_previous()
-                    .with(eq(YEAR), eq(LEADERBOARD_ID))
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
                     .returning(move |_, _| Box::pin(ready(Ok(None))));
                 storage
                     .expect_save()
-                    .with(eq(YEAR), eq(LEADERBOARD_ID), eq(base_leaderboard()))
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(base_leaderboard()))
                     .times(1)
                     .returning(move |_, _, _| {
                         Box::pin(ready(Err(crate::Error::TestSaveBaseError)))
@@ -1017,7 +1049,11 @@ mod tests {
                 assert_eq!(reporter.errors.len(), 1);
                 assert_eq!(
                     reporter.errors[0],
-                    (YEAR, LEADERBOARD_ID, "failed to save leaderboard data: test".to_string())
+                    (
+                        TEST_YEAR,
+                        TEST_LEADERBOARD_ID,
+                        "failed to save leaderboard data: test".to_string()
+                    )
                 );
             }
         }

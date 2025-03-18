@@ -126,7 +126,6 @@ dependencies = [
  "aoc_leaderbot_aws_lib",
  "aoc_leaderbot_lib",
  "aoc_leaderbot_slack_lib",
- "aoc_leaderbot_test_helpers",
  "assert_cmd",
  "assert_matches",
  "aws-config",
@@ -135,6 +134,7 @@ dependencies = [
  "clap",
  "dotenvy",
  "lambda_runtime",
+ "rstest",
  "rustc_version",
  "serde",
  "serial_test",
@@ -143,7 +143,6 @@ dependencies = [
  "tokio",
  "tracing",
  "veil",
- "wiremock",
 ]
 
 [[package]]
@@ -152,10 +151,10 @@ version = "0.3.0"
 dependencies = [
  "aoc_leaderboard",
  "aoc_leaderbot_lib",
- "aoc_leaderbot_test_helpers",
  "assert_matches",
  "aws-config",
  "aws-sdk-dynamodb",
+ "rstest",
  "rustc_version",
  "serde",
  "serde_dynamo",
@@ -172,12 +171,11 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "aoc_leaderboard",
- "aoc_leaderbot_test_helpers",
  "assert_matches",
  "chrono",
  "derive_builder",
- "itertools 0.14.0",
  "mockall",
+ "rstest",
  "rustc_version",
  "serde",
  "test-log",
@@ -195,7 +193,6 @@ dependencies = [
  "anyhow",
  "aoc_leaderboard",
  "aoc_leaderbot_lib",
- "aoc_leaderbot_test_helpers",
  "assert_matches",
  "chrono",
  "clap",
@@ -204,6 +201,7 @@ dependencies = [
  "dotenvy",
  "itertools 0.14.0",
  "reqwest",
+ "rstest",
  "rustc_version",
  "serde",
  "serde_json",
@@ -215,20 +213,6 @@ dependencies = [
  "tracing-subscriber",
  "tracing-test",
  "veil",
- "wiremock",
-]
-
-[[package]]
-name = "aoc_leaderbot_test_helpers"
-version = "0.3.0"
-dependencies = [
- "aoc_leaderboard",
- "assert_matches",
- "reqwest",
- "serde_json",
- "test-log",
- "tokio",
- "wiremock",
 ]
 
 [[package]]

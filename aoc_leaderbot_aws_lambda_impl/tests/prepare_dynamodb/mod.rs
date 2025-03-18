@@ -6,6 +6,7 @@ use assert_matches::assert_matches;
 use aws_config::BehaviorVersion;
 use aws_sdk_dynamodb::operation::describe_table::DescribeTableOutput;
 use aws_sdk_dynamodb::types::{TableDescription, TableStatus};
+use rstest::{fixture, rstest};
 use serial_test::file_serial;
 use testcontainers_modules::dynamodb_local::DynamoDb;
 use testcontainers_modules::testcontainers::runners::AsyncRunner;
@@ -14,6 +15,7 @@ use testcontainers_modules::testcontainers::{ContainerAsync, ImageExt};
 const DYNAMODB_LOCAL_TAG: &str = "2.5.4";
 const PREPARE_DYNAMODB_BIN_NAME: &str = "prepare_dynamodb";
 
+#[fixture]
 async fn local_dynamodb() -> (ContainerAsync<DynamoDb>, String) {
     let container = DynamoDb::default()
         .with_tag(DYNAMODB_LOCAL_TAG)
@@ -72,10 +74,12 @@ impl Drop for RemoveAwsEnvVars {
     }
 }
 
+#[rstest]
+#[awt]
 #[test_log::test(tokio::test)]
 #[file_serial(testcontainers_dynamodb)]
-async fn with_default_table_name() {
-    let (_dynamodb, endpoint_url) = local_dynamodb().await;
+async fn with_default_table_name(#[future] local_dynamodb: (ContainerAsync<DynamoDb>, String)) {
+    let (_dynamodb, endpoint_url) = local_dynamodb;
 
     Command::cargo_bin(PREPARE_DYNAMODB_BIN_NAME)
         .unwrap()
@@ -87,10 +91,12 @@ async fn with_default_table_name() {
     check_table_exists(DEFAULT_DYNAMODB_TABLE_NAME, &endpoint_url).await;
 }
 
+#[rstest]
+#[awt]
 #[test_log::test(tokio::test)]
 #[file_serial(testcontainers_dynamodb)]
-async fn with_custom_table_name() {
-    let (_dynamodb, endpoint_url) = local_dynamodb().await;
+async fn with_custom_table_name(#[future] local_dynamodb: (ContainerAsync<DynamoDb>, String)) {
+    let (_dynamodb, endpoint_url) = local_dynamodb;
 
     let table_name = "aoc_leaderbot_test_table_name";
 

@@ -10,22 +10,23 @@ mod bot_lambda_handler {
         CompletionDayLevel, Leaderboard, LeaderboardMember, PuzzleCompletionInfo,
     };
     use aoc_leaderboard::reqwest::Method;
+    use aoc_leaderboard::test_helpers::{
+        mock_server_with_leaderboard, TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR,
+    };
+    use aoc_leaderboard::wiremock::matchers::{header, method, path};
+    use aoc_leaderboard::wiremock::{Mock, MockServer, ResponseTemplate};
     use aoc_leaderbot_aws_lambda_impl::leaderbot::{
         bot_lambda_handler, IncomingDynamoDbStorageInput, IncomingMessage,
         IncomingSlackWebhookReporterInput, OutgoingMessage,
     };
-    use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::testing::{
+    use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::{
         LocalTable, LOCAL_ENDPOINT_URL,
     };
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::LeaderboardSortOrder;
-    use aoc_leaderbot_test_helpers::{
-        get_mock_server_with_leaderboard, AOC_SESSION, LEADERBOARD_ID, YEAR,
-    };
     use assert_matches::assert_matches;
     use chrono::Local;
     use lambda_runtime::{Context, LambdaEvent};
-    use wiremock::matchers::{header, method, path};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
+    use rstest::{fixture, rstest};
 
     const OWNER: u64 = 42;
     const MEMBER_1: u64 = 23;
@@ -36,9 +37,10 @@ mod bot_lambda_handler {
     const USERNAME: &str = "AoC Leaderbot (test)";
     const ICON_URL: &str = "https://www.adventofcode.com/favicon.ico";
 
+    #[fixture]
     fn base_leaderboard() -> Leaderboard {
         Leaderboard {
-            year: YEAR,
+            year: TEST_YEAR,
             owner_id: OWNER,
             day1_ts: Local::now().timestamp(),
             members: {
@@ -92,6 +94,7 @@ mod bot_lambda_handler {
         }
     }
 
+    #[fixture]
     fn leaderboard_with_new_member() -> Leaderboard {
         let mut leaderboard = base_leaderboard();
 
@@ -144,7 +147,7 @@ mod bot_lambda_handler {
         TFR: Future<Output = ()> + Send + 'static,
     {
         LocalTable::run_test(|table| async move {
-            let mock_server = get_mock_server_with_leaderboard(leaderboard).await;
+            let mock_server = mock_server_with_leaderboard(leaderboard).await;
             mount_slack_webhook_handler(&mock_server, expect_report).await;
 
             test_f(mock_server, table).await;
@@ -160,9 +163,9 @@ mod bot_lambda_handler {
             table: &LocalTable,
         ) -> IncomingMessage {
             IncomingMessage {
-                year: Some(YEAR),
-                leaderboard_id: Some(LEADERBOARD_ID),
-                aoc_session: Some(AOC_SESSION.into()),
+                year: Some(TEST_YEAR),
+                leaderboard_id: Some(TEST_LEADERBOARD_ID),
+                aoc_session: Some(TEST_AOC_SESSION.into()),
                 test_run,
                 aoc_base_url: Some(mock_server.uri()),
                 dynamodb_storage_input: IncomingDynamoDbStorageInput {
@@ -183,17 +186,17 @@ mod bot_lambda_handler {
         mod without_previous {
             use super::*;
 
+            #[rstest]
             #[test_log::test]
-            fn stores_current() {
-                let current_leaderboard = base_leaderboard();
+            fn stores_current(#[from(base_leaderboard)] current_leaderboard: Leaderboard) {
                 run_bot_test(current_leaderboard.clone(), false, |mock_server, table| async move {
                     let incoming_message = incoming_message(false, &mock_server, &table);
                     let event = LambdaEvent::new(incoming_message, Context::default());
                     let result = bot_lambda_handler(event).await;
 
                     assert_matches!(result, Ok(OutgoingMessage { output }) => {
-                        assert_eq!(output.year, YEAR);
-                        assert_eq!(output.leaderboard_id, LEADERBOARD_ID);
+                        assert_eq!(output.year, TEST_YEAR);
+                        assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
                         assert!(output.previous_leaderboard.is_none());
                         assert_eq!(output.leaderboard, current_leaderboard);
                         assert!(output.changes.is_none());
@@ -207,9 +210,11 @@ mod bot_lambda_handler {
 
                 use super::*;
 
+                #[rstest]
                 #[test_log::test]
-                fn does_not_store_current_and_sends_test_report() {
-                    let current_leaderboard = base_leaderboard();
+                fn does_not_store_current_and_sends_test_report(
+                    #[from(base_leaderboard)] current_leaderboard: Leaderboard,
+                ) {
                     run_bot_test(
                         current_leaderboard.clone(),
                         true,
@@ -219,14 +224,17 @@ mod bot_lambda_handler {
                             let result = bot_lambda_handler(event).await;
 
                             assert_matches!(result, Ok(OutgoingMessage { output }) => {
-                                assert_eq!(output.year, YEAR);
-                                assert_eq!(output.leaderboard_id, LEADERBOARD_ID);
+                                assert_eq!(output.year, TEST_YEAR);
+                                assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
                                 assert!(output.previous_leaderboard.is_none());
                                 assert_eq!(output.leaderboard, current_leaderboard);
                                 assert!(output.changes.is_none());
                             });
                             assert_matches!(
-                                table.storage().load_previous(YEAR, LEADERBOARD_ID).await,
+                                table
+                                    .storage()
+                                    .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                                    .await,
                                 Ok(None)
                             );
                         },
@@ -241,9 +249,11 @@ mod bot_lambda_handler {
             mod without_changes {
                 use super::*;
 
+                #[rstest]
                 #[test_log::test]
-                fn does_not_send_report() {
-                    let current_leaderboard = base_leaderboard();
+                fn does_not_send_report(
+                    #[from(base_leaderboard)] current_leaderboard: Leaderboard,
+                ) {
                     run_bot_test(
                         current_leaderboard.clone(),
                         false,
@@ -255,8 +265,8 @@ mod bot_lambda_handler {
                             let result = bot_lambda_handler(event).await;
 
                             assert_matches!(result, Ok(OutgoingMessage { output }) => {
-                                assert_eq!(output.year, YEAR);
-                                assert_eq!(output.leaderboard_id, LEADERBOARD_ID);
+                                assert_eq!(output.year, TEST_YEAR);
+                                assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
                                 assert_matches!(
                                     output.previous_leaderboard,
                                     Some(leaderboard) if leaderboard == current_leaderboard
@@ -272,9 +282,11 @@ mod bot_lambda_handler {
                 mod test_run {
                     use super::*;
 
+                    #[rstest]
                     #[test_log::test]
-                    fn sends_test_report() {
-                        let current_leaderboard = base_leaderboard();
+                    fn sends_test_report(
+                        #[from(base_leaderboard)] current_leaderboard: Leaderboard,
+                    ) {
                         run_bot_test(
                             current_leaderboard.clone(),
                             true,
@@ -286,8 +298,8 @@ mod bot_lambda_handler {
                                 let result = bot_lambda_handler(event).await;
 
                                 assert_matches!(result, Ok(OutgoingMessage { output }) => {
-                                    assert_eq!(output.year, YEAR);
-                                    assert_eq!(output.leaderboard_id, LEADERBOARD_ID);
+                                    assert_eq!(output.year, TEST_YEAR);
+                                    assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
                                     assert_matches!(
                                         output.previous_leaderboard,
                                         Some(leaderboard) if leaderboard == current_leaderboard
@@ -305,10 +317,12 @@ mod bot_lambda_handler {
             mod with_changes {
                 use super::*;
 
+                #[rstest]
                 #[test_log::test]
-                fn updates_storage_and_sends_report() {
-                    let previous_leaderboard = base_leaderboard();
-                    let current_leaderboard = leaderboard_with_new_member();
+                fn updates_storage_and_sends_report(
+                    #[from(base_leaderboard)] previous_leaderboard: Leaderboard,
+                    #[from(leaderboard_with_new_member)] current_leaderboard: Leaderboard,
+                ) {
                     run_bot_test(
                         current_leaderboard.clone(),
                         true,
@@ -320,8 +334,8 @@ mod bot_lambda_handler {
                             let result = bot_lambda_handler(event).await;
 
                             assert_matches!(result, Ok(OutgoingMessage { output }) => {
-                                assert_eq!(output.year, YEAR);
-                                assert_eq!(output.leaderboard_id, LEADERBOARD_ID);
+                                assert_eq!(output.year, TEST_YEAR);
+                                assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
                                 assert_matches!(
                                     output.previous_leaderboard,
                                     Some(leaderboard) if leaderboard == previous_leaderboard
@@ -340,10 +354,12 @@ mod bot_lambda_handler {
                 mod test_run {
                     use super::*;
 
+                    #[rstest]
                     #[test_log::test]
-                    fn does_not_update_storage_and_sends_test_report() {
-                        let previous_leaderboard = base_leaderboard();
-                        let current_leaderboard = leaderboard_with_new_member();
+                    fn does_not_update_storage_and_sends_test_report(
+                        #[from(base_leaderboard)] previous_leaderboard: Leaderboard,
+                        #[from(leaderboard_with_new_member)] current_leaderboard: Leaderboard,
+                    ) {
                         run_bot_test(
                             current_leaderboard.clone(),
                             true,
@@ -355,8 +371,8 @@ mod bot_lambda_handler {
                                 let result = bot_lambda_handler(event).await;
 
                                 assert_matches!(result, Ok(OutgoingMessage { output }) => {
-                                    assert_eq!(output.year, YEAR);
-                                    assert_eq!(output.leaderboard_id, LEADERBOARD_ID);
+                                    assert_eq!(output.year, TEST_YEAR);
+                                    assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
                                     assert_matches!(
                                         output.previous_leaderboard,
                                         Some(leaderboard) if leaderboard == previous_leaderboard
@@ -394,9 +410,9 @@ mod bot_lambda_handler {
                 env::set_var(format!("{CONFIG_ENV_VAR_PREFIX}{suffix}"), value)
             };
 
-            set_env_config_var(ENV_CONFIG_YEAR_SUFFIX, &YEAR.to_string());
-            set_env_config_var(ENV_CONFIG_LEADERBOARD_ID_SUFFIX, &LEADERBOARD_ID.to_string());
-            set_env_config_var(ENV_CONFIG_AOC_SESSION_SUFFIX, AOC_SESSION);
+            set_env_config_var(ENV_CONFIG_YEAR_SUFFIX, &TEST_YEAR.to_string());
+            set_env_config_var(ENV_CONFIG_LEADERBOARD_ID_SUFFIX, &TEST_LEADERBOARD_ID.to_string());
+            set_env_config_var(ENV_CONFIG_AOC_SESSION_SUFFIX, TEST_AOC_SESSION);
 
             env::set_var(WEBHOOK_URL_ENV_VAR, format!("{}{WEBHOOK_PATH}", mock_server.uri()));
             env::set_var(CHANNEL_ENV_VAR, CHANNEL);
@@ -424,10 +440,12 @@ mod bot_lambda_handler {
             // Note: we'll only run one test using environment, otherwise we would have to
             // serialize them all, and we wouldn't really gain anything since we tested all
             // scenarios in the module above.
+            #[rstest]
             #[test_log::test]
-            fn updates_storage_and_sends_report() {
-                let previous_leaderboard = base_leaderboard();
-                let current_leaderboard = leaderboard_with_new_member();
+            fn updates_storage_and_sends_report(
+                #[from(base_leaderboard)] previous_leaderboard: Leaderboard,
+                #[from(leaderboard_with_new_member)] current_leaderboard: Leaderboard,
+            ) {
                 run_bot_test(current_leaderboard.clone(), true, |mock_server, table| async move {
                     table.save_leaderboard(&previous_leaderboard).await;
                     configure_environment(&mock_server);
@@ -437,8 +455,8 @@ mod bot_lambda_handler {
                     let result = bot_lambda_handler(event).await;
 
                     assert_matches!(result, Ok(OutgoingMessage { output }) => {
-                        assert_eq!(output.year, YEAR);
-                        assert_eq!(output.leaderboard_id, LEADERBOARD_ID);
+                        assert_eq!(output.year, TEST_YEAR);
+                        assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
                         assert_matches!(
                             output.previous_leaderboard,
                             Some(leaderboard) if leaderboard == previous_leaderboard
