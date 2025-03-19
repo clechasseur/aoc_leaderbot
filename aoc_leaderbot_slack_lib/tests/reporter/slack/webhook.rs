@@ -367,16 +367,16 @@ mod slack_webhook_reporter {
             #[serial(slack_webhook_reporter_env)]
             fn webhook_url() {
                 env::remove_var(WEBHOOK_URL_ENV_VAR);
+                env::set_var(CHANNEL_ENV_VAR, "#aoc_leaderbot_test");
 
                 let result = SlackWebhookReporter::builder().build();
                 assert_matches!(
                     result,
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
                         SlackWebhookReporterBuilderError::ValidationError(error_message)
-                    ))) if error_message.starts_with(
-                        &format!("error reading environment variable {} (needed for default value of field webhook_url):",
-                        WEBHOOK_URL_ENV_VAR)
-                    )
+                    ))) if error_message.starts_with(&format!(
+                        "error reading environment variable {WEBHOOK_URL_ENV_VAR} (needed for default value of field 'webhook_url'):"
+                    ))
                 );
             }
 
@@ -392,8 +392,7 @@ mod slack_webhook_reporter {
                     Err(Error::Webhook(WebhookError::ReporterBuilder(
                         SlackWebhookReporterBuilderError::ValidationError(error_message)
                     ))) if error_message.starts_with(&format!(
-                        "error reading environment variable {} (needed for default value of field channel):",
-                        CHANNEL_ENV_VAR
+                        "error reading environment variable {CHANNEL_ENV_VAR} (needed for default value of field 'channel'):"
                     ))
                 );
             }

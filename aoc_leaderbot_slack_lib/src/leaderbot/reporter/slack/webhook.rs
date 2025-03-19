@@ -286,7 +286,7 @@ impl SlackWebhookReporterBuilder {
 
     fn env_var(var_name: &str, field_name: &str) -> Result<String, String> {
         env::var(var_name).map_err(|err| {
-            format!("error reading environment variable {var_name} (needed for default value of field {field_name}): {err}")
+            format!("error reading environment variable {var_name} (needed for default value of field '{field_name}'): {err}")
         })
     }
 }

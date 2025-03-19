@@ -165,7 +165,7 @@ pub async fn bot_lambda_handler(
     let input = event.payload;
 
     let config = get_config(&input)?;
-    let mut storage = get_storage(&input).await?;
+    let mut storage = get_storage(&input).await;
     let mut reporter = get_reporter(&input)?;
 
     #[cfg(feature = "__testing")]
@@ -231,8 +231,8 @@ fn get_config(input: &IncomingMessage) -> Result<MemoryConfig, Error> {
         .expect("all fields should have been specified"))
 }
 
-#[cfg_attr(not(coverage_nightly), tracing::instrument(err))]
-async fn get_storage(input: &IncomingMessage) -> Result<DynamoDbStorage, Error> {
+#[cfg_attr(not(coverage_nightly), tracing::instrument)]
+async fn get_storage(input: &IncomingMessage) -> DynamoDbStorage {
     #[cfg(feature = "__testing")]
     #[cfg_attr(coverage_nightly, coverage(off))]
     async fn internal_get_storage(input: &IncomingMessage, table_name: String) -> DynamoDbStorage {
@@ -267,7 +267,7 @@ async fn get_storage(input: &IncomingMessage) -> Result<DynamoDbStorage, Error> 
         .table_name
         .clone()
         .unwrap_or_else(|| DEFAULT_DYNAMODB_TABLE_NAME.into());
-    Ok(internal_get_storage(input, table_name).await)
+    internal_get_storage(input, table_name).await
 }
 
 #[cfg_attr(not(coverage_nightly), tracing::instrument(err))]

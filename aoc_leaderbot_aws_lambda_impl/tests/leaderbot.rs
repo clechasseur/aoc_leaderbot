@@ -485,6 +485,14 @@ mod bot_lambda_handler {
                         format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_YEAR_SUFFIX}"),
                         "invalid",
                     );
+                    env::set_var(
+                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_LEADERBOARD_ID_SUFFIX}"),
+                        TEST_LEADERBOARD_ID.to_string(),
+                    );
+                    env::set_var(
+                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_AOC_SESSION_SUFFIX}"),
+                        TEST_AOC_SESSION,
+                    );
 
                     let incoming_message = IncomingMessage::default();
                     let event = LambdaEvent::new(incoming_message, Context::default());
@@ -495,6 +503,42 @@ mod bot_lambda_handler {
                             assert_matches!(*err, aoc_leaderbot_lib::Error::Env { source: env_err, .. } => {
                                 assert_matches!(env_err, EnvVarError::IntExpected { .. });
                             });
+                        });
+                    });
+                }
+            }
+
+            mod reporter {
+                use aoc_leaderbot_slack_lib::error::WebhookError;
+                use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError;
+
+                use super::*;
+
+                #[test_log::test(tokio::test)]
+                #[serial(aws_lambda_env)]
+                async fn missing_slack_reporter_env_vars() {
+                    env::remove_var(format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_YEAR_SUFFIX}"));
+                    env::set_var(
+                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_LEADERBOARD_ID_SUFFIX}"),
+                        TEST_LEADERBOARD_ID.to_string(),
+                    );
+                    env::set_var(
+                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_AOC_SESSION_SUFFIX}"),
+                        TEST_AOC_SESSION,
+                    );
+
+                    env::remove_var(WEBHOOK_URL_ENV_VAR);
+                    env::remove_var(CHANNEL_ENV_VAR);
+
+                    let incoming_message = IncomingMessage::default();
+                    let event = LambdaEvent::new(incoming_message, Context::default());
+                    let result = bot_lambda_handler(event).await;
+
+                    assert_matches!(result, Err(lambda_err) => {
+                        assert_matches!(lambda_err.downcast::<aoc_leaderbot_slack_lib::Error>(), Ok(err) => {
+                            assert_matches!(*err, aoc_leaderbot_slack_lib::Error::Webhook(
+                                WebhookError::ReporterBuilder(SlackWebhookReporterBuilderError::ValidationError(_))
+                            ));
                         });
                     });
                 }
