@@ -455,6 +455,7 @@ mod slack_webhook_reporter {
                 #[case::score(Some(LeaderboardSortOrder::Score))]
                 #[awt]
                 #[tokio::test]
+                #[serial(slack_webhook_reporter_env)]
                 async fn sorted_by(
                     #[case] sort_order: Option<LeaderboardSortOrder>,
                     #[future]
