@@ -59,20 +59,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [ "aoc_leaderboard", "aoc_leaderbot_test_helpers", "aoc_leaderbot_lib", "aoc_leaderbot_aws_lib", "aoc_leaderbot_slack_lib" ]
+        package: [ "aoc_leaderboard", "aoc_leaderbot_lib", "aoc_leaderbot_aws_lib", "aoc_leaderbot_slack_lib", "aoc_leaderbot_aws_lambda_impl" ]
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         include:
           - toolchain: invalid
           - package: "aoc_leaderboard"
-            toolchain: 1.70.0
-          - package: "aoc_leaderbot_test_helpers"
-            toolchain: 1.70.0
+            toolchain: 1.74.1
           - package: "aoc_leaderbot_lib"
             toolchain: 1.75.0
           - package: "aoc_leaderbot_aws_lib"
             toolchain: 1.81.0
           - package: "aoc_leaderbot_slack_lib"
             toolchain: 1.75.0
+          - package: "aoc_leaderbot_aws_lambda_impl"
+            toolchain: 1.81.0
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -115,6 +115,9 @@ jobs:
             experimental: true
           - toolchain: nightly
             experimental: true
+          - with-docker: false
+          - os: ubuntu-24.04
+            with-docker: true
         exclude:
           - toolchain: 1.81.0
             ignore-lock: true
@@ -150,13 +153,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache Docker images
-        if: ${{ startsWith(matrix.os, 'ubuntu-') }}
+        if: ${{ matrix.with-docker }}
         uses: ScribeMD/docker-cache@fb28c93772363301b8d0a6072ce850224b73f74e # v0.5.0
         with:
           key: docker-v0-${{ runner.os }}-${{ hashFiles('**/.dockerignore', '**/Dockerfile*', '**/docker-compose*.yml') }}
 
       - name: Start DB Docker containers
-        if: ${{ startsWith(matrix.os, 'ubuntu-') }}
+        if: ${{ matrix.with-docker }}
         uses: hoverkraft-tech/compose-action@8be2d741e891ac9b8ac20825e6f3904149599925 # v2.2.0
         with:
           down-flags: '--volumes'

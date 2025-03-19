@@ -54,11 +54,11 @@ async fn main() -> anyhow::Result<()> {
 #[derive(Debug, Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    /// Implements the `--verbose` and `--quiet` flags.
+    /// Implements the `--verbose` and `--quiet` flags
     #[command(flatten)]
     pub verbose: Verbosity<InfoLevel>,
 
-    /// Year of leaderboard to use.
+    /// Year of leaderboard to use
     ///
     /// If not specified, will be fetched from the `AOC_LEADERBOARD_YEAR`
     /// environment variable. If the variable is not present, the current
@@ -66,28 +66,28 @@ struct Cli {
     #[arg(short, long)]
     pub year: Option<i32>,
 
-    /// ID of leaderboard to use.
+    /// ID of leaderboard to use
     ///
     /// If not specified, will be fetched from the `AOC_LEADERBOARD_ID`
     /// environment variable.
     #[arg(short = 'i', long = "id")]
     pub leaderboard_id: Option<u64>,
 
-    /// Advent of Code session token.
+    /// Advent of Code session token
     ///
     /// If not specified, will be fetched from the `AOC_SESSION`
     /// environment variable.
     #[arg(short = 't', long = "token")]
     pub aoc_session: Option<String>,
 
-    /// URL of Slack webhook to post the test message to.
+    /// URL of Slack webhook to post the test message to
     ///
     /// If not specified, will be fetched from the `SLACK_WEBHOOK_URL`
     /// environment variable.
     #[arg(short, long)]
     pub webhook_url: Option<String>,
 
-    /// Slack channel to post the test message to.
+    /// Slack channel to post the test message to
     ///
     /// If not specified, will be fetched from the `SLACK_CHANNEL`
     /// environment variable.
@@ -98,13 +98,13 @@ struct Cli {
     #[arg(short, long, default_value = DEFAULT_USERNAME)]
     pub username: String,
 
-    /// URL of icon to use for the user posting to Slack.
+    /// URL of icon to use for the user posting to Slack
     ///
     /// If not specified, the default icon will be used.
     #[arg(long)]
     pub icon_url: Option<String>,
 
-    /// How to sort the leaderboard members in the message.
+    /// How to sort the leaderboard members in the message
     #[arg(long, value_enum, default_value_t = LeaderboardSortOrder::Stars)]
     pub sort_order: LeaderboardSortOrder,
 }

@@ -54,4 +54,9 @@ For complete API usage, see [the docs](https://docs.rs/aoc_leaderboard).
 
 ## Minimum Rust version
 
-`aoc_leaderboard` currently builds on Rust 1.70 or newer.
+`aoc_leaderboard` currently builds on Rust 1.74.1 or newer.
+
+## Contributing / Local development
+
+For information about contributing to this project, see [CONTRIBUTING](../CONTRIBUTING.md).
+For information regarding local development, see [DEVELOPMENT](../DEVELOPMENT.md).

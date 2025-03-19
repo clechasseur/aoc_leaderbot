@@ -31,25 +31,28 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 [features]
 default = ["config-env"]
 
-config-mem = ["derive_builder"]
+config-mem = ["dep:derive_builder", "dep:veil"]
 config-env = ["config-mem"]
 
 storage-mem = []
 
 [dependencies]
+anyhow = { workspace = true }
 aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["http"] }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
-mockall_double = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
+tracing = { workspace = true }
+veil = { workspace = true, optional = true }
 
 [dev-dependencies]
-aoc_leaderbot_test_helpers = { path = "../aoc_leaderbot_test_helpers", version = "0.3.0" }
+aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["__test_helpers"] }
 assert_matches = { workspace = true }
 mockall = { workspace = true }
-serial_test = { workspace = true }
-tokio = { workspace = true, features = ["macros", "test-util"] }
+rstest = { workspace = true }
+test-log = { workspace = true, default-features = false, features = ["trace"] }
+tokio = { workspace = true, features = ["macros"] }
 uuid = { workspace = true, features = ["v4"] }
 
 [build-dependencies]

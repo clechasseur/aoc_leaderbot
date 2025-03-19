@@ -7,13 +7,16 @@ mod detail;
 
 use std::cmp::Ordering;
 use std::env;
+use std::fmt::Debug;
 
 use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
 use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
 use derive_builder::Builder;
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 use strum::{Display, EnumProperty, EnumString};
-use tracing::{error, instrument, trace};
+use tracing::{error, trace};
+use veil::Redact;
 
 use crate::error::WebhookError;
 use crate::leaderbot::reporter::slack::webhook::detail::SlackWebhookReporterStringExt;
@@ -45,11 +48,14 @@ pub const SORT_ORDER_ENV_VAR: &str = "SLACK_LEADERBOARD_SORT_ORDER";
     PartialOrd,
     Ord,
     Hash,
+    Serialize,
+    Deserialize,
     Display,
     EnumProperty,
     EnumString,
 )]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[serde(rename_all = "snake_case")]
 pub enum LeaderboardSortOrder {
     /// Sort leaderboard members by number of stars, descending.
     #[default]
@@ -57,6 +63,7 @@ pub enum LeaderboardSortOrder {
     Stars,
 
     /// Sort leaderboard members by score, descending.
+    #[serde(rename = "local_score")]
     #[strum(serialize = "local_score", props(header = "Score #"))]
     Score,
 }
@@ -109,8 +116,8 @@ impl LeaderboardSortOrder {
 ///
 /// [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 /// [Slack webhook]: https://api.slack.com/messaging/webhooks
-#[derive(Debug, Clone, Builder)]
-#[builder(derive(Debug), build_fn(name = "build_internal", private))]
+#[derive(Redact, Clone, Builder)]
+#[builder(derive(Redact), build_fn(name = "build_internal", private))]
 pub struct SlackWebhookReporter {
     /// Slack webhook URL used to send leaderboard updates.
     ///
@@ -118,7 +125,9 @@ pub struct SlackWebhookReporter {
     /// environment variable.
     ///
     /// [`SLACK_WEBHOOK_URL`]: WEBHOOK_URL_ENV_VAR
+    #[redact(partial)]
     #[builder(setter(into), default = "Self::default_webhook_url()?")]
+    #[builder_field_attr(redact(partial))]
     pub webhook_url: String,
 
     /// Slack channel to post leaderboard updates to.
@@ -277,7 +286,7 @@ impl SlackWebhookReporterBuilder {
 
     fn env_var(var_name: &str, field_name: &str) -> Result<String, String> {
         env::var(var_name).map_err(|err| {
-            format!("error reading environment variable {var_name} (needed for default value of field {field_name}): {err}")
+            format!("error reading environment variable {var_name} (needed for default value of field '{field_name}'): {err}")
         })
     }
 }
@@ -285,7 +294,10 @@ impl SlackWebhookReporterBuilder {
 impl Reporter for SlackWebhookReporter {
     type Err = crate::Error;
 
-    #[instrument(skip(self, _previous_leaderboard, leaderboard, changes), err)]
+    #[cfg_attr(
+        not(coverage_nightly),
+        tracing::instrument(skip(self, _previous_leaderboard, leaderboard, changes), err)
+    )]
     async fn report_changes(
         &mut self,
         year: i32,
@@ -310,6 +322,7 @@ impl Reporter for SlackWebhookReporter {
             .send()
             .await
             .and_then(reqwest::Response::error_for_status);
+        trace!(?response);
         match response {
             Ok(_) => Ok(()),
             Err(source) => Err(WebhookError::ReportChanges {
@@ -323,12 +336,13 @@ impl Reporter for SlackWebhookReporter {
         }
     }
 
-    #[instrument(skip(self, error))]
-    async fn report_error<S>(&mut self, year: i32, leaderboard_id: u64, error: S)
-    where
-        S: Into<String> + Send,
-    {
-        let error = error.into();
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self, error)))]
+    async fn report_error(
+        &mut self,
+        year: i32,
+        leaderboard_id: u64,
+        error: &aoc_leaderbot_lib::Error,
+    ) {
         error!("aoc_leaderbot error for leaderboard {leaderboard_id} and year {year}: {error}");
 
         let message = WebhookMessage::builder()
@@ -338,20 +352,20 @@ impl Reporter for SlackWebhookReporter {
             .text(format!(
                 "An error occurred while trying to look for leaderboard changes: {error}"
             ))
-            .build();
-        match message {
-            Ok(message) => {
-                let response = self.http_client
-                    .post(&self.webhook_url)
-                    .json(&message)
-                    .send()
-                    .await
-                    .and_then(reqwest::Response::error_for_status);
-                if let Err(err) = response {
-                    error!("error trying to report previous error to Slack webhook for leaderboard {leaderboard_id} and year {year}: {err}");
-                }
-            },
-            Err(err) => error!("error trying to build webhook error message for leaderboard {leaderboard_id} and year {year}: {err}"),
+            .build()
+            .expect("webhook message should have valid fields");
+        trace!(?message);
+
+        let response = self
+            .http_client
+            .post(&self.webhook_url)
+            .json(&message)
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status);
+        trace!(?response);
+        if let Err(err) = response {
+            error!("error trying to report previous error to Slack webhook for leaderboard {leaderboard_id} and year {year}: {err}");
         }
     }
 }

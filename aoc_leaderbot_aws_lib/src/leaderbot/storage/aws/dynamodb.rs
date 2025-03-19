@@ -2,6 +2,10 @@
 //!
 //! [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 
+#[cfg(feature = "__test_helpers")]
+#[doc(hidden)]
+pub mod test_helpers;
+
 use std::time::Duration;
 
 use aoc_leaderboard::aoc::Leaderboard;
@@ -12,10 +16,10 @@ use aws_sdk_dynamodb::types::{
     AttributeDefinition, AttributeValue, BillingMode, KeySchemaElement, KeyType,
     ScalarAttributeType, TableDescription, TableStatus,
 };
-use aws_sdk_dynamodb::Client;
+use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
-use crate::error::{DynamoDbError, LoadPreviousDynamoDbError};
+use crate::error::DynamoDbError;
 
 /// The hash key (aka partition key) used by [`DynamoDbStorage`].
 ///
@@ -30,12 +34,26 @@ pub const RANGE_KEY: &str = "year";
 /// The column storing leaderboard data in the [`DynamoDbStorage`].
 pub const LEADERBOARD_DATA: &str = "leaderboard_data";
 
+/// Struct used to persist [`Leaderboard`] data into a DynamoDB
+/// table. Used by [`DynamoDbStorage`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DynamoDbLeaderboardData {
+    /// Leaderboard ID. Stored in the table's [`HASH_KEY`].
+    pub leaderboard_id: u64,
+
+    /// Year of leaderboard data. Stored in the table's [`RANGE_KEY`].
+    pub year: i32,
+
+    /// Structured leaderboard data. Stored in the [`LEADERBOARD_DATA`] column.
+    pub leaderboard_data: Leaderboard,
+}
+
 /// Bot storage that keeps data in an [AWS DynamoDB] table.
 ///
 /// [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 #[derive(Debug, Clone)]
 pub struct DynamoDbStorage {
-    client: Client,
+    client: aws_sdk_dynamodb::Client,
     table_name: String,
 }
 
@@ -58,13 +76,14 @@ impl DynamoDbStorage {
     where
         T: Into<String>,
     {
-        Self { client: Client::new(config), table_name: table_name.into() }
+        Self { client: aws_sdk_dynamodb::Client::new(config), table_name: table_name.into() }
     }
 
     /// Creates a DynamoDB table suitable for storing leaderboard data.
     ///
     /// The table name passed at construction time will be used. The function
     /// waits until the table is created before returning.
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
     pub async fn create_table(&self) -> crate::Result<()> {
         let output = self
             .client
@@ -112,6 +131,7 @@ impl DynamoDbStorage {
     // the creation will take so long we'll have to wait, which means coverage might
     // be inconsistent between runs.
     #[cfg_attr(coverage_nightly, coverage(off))]
+    #[tracing::instrument(skip_all, level = "trace", ret, err)]
     async fn wait_for_table_creation(
         &self,
         create_output: &CreateTableOutput,
@@ -147,6 +167,7 @@ impl DynamoDbStorage {
 impl Storage for DynamoDbStorage {
     type Err = crate::Error;
 
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
     async fn load_previous(
         &self,
         year: i32,
@@ -155,7 +176,7 @@ impl Storage for DynamoDbStorage {
         let load_previous_error =
             |source| DynamoDbError::LoadPreviousLeaderboard { leaderboard_id, year, source };
 
-        let output = self
+        Ok(self
             .client
             .get_item()
             .table_name(self.table_name.clone())
@@ -163,28 +184,17 @@ impl Storage for DynamoDbStorage {
             .key(RANGE_KEY, AttributeValue::N(year.to_string()))
             .send()
             .await
-            .map_err(|err| load_previous_error(err.into()))?;
-
-        match output.item() {
-            None => Ok(None),
-            Some(item) => match item.get(LEADERBOARD_DATA) {
-                None => {
-                    Err(load_previous_error(LoadPreviousDynamoDbError::MissingLeaderboardData)
-                        .into())
-                },
-                Some(AttributeValue::S(data)) => {
-                    let leaderboard = serde_json::from_str(data)
-                        .map_err(|err| load_previous_error(err.into()))?;
-                    Ok(Some(leaderboard))
-                },
-                Some(_) => {
-                    Err(load_previous_error(LoadPreviousDynamoDbError::InvalidLeaderboardDataType)
-                        .into())
-                },
-            },
-        }
+            .map_err(|err| load_previous_error(err.into()))?
+            .item
+            .map(|item| {
+                let data: Result<DynamoDbLeaderboardData, _> = serde_dynamo::from_item(item);
+                data.map(|data| data.leaderboard_data)
+            })
+            .transpose()
+            .map_err(|err| load_previous_error(err.into()))?)
     }
 
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
     async fn save(
         &mut self,
         year: i32,
@@ -194,13 +204,13 @@ impl Storage for DynamoDbStorage {
         let save_error = |source| DynamoDbError::SaveLeaderboard { leaderboard_id, year, source };
 
         let leaderboard_data =
-            serde_json::to_string(&leaderboard).map_err(|err| save_error(err.into()))?;
+            DynamoDbLeaderboardData { leaderboard_id, year, leaderboard_data: leaderboard.clone() };
+        let item = serde_dynamo::to_item(leaderboard_data).map_err(|err| save_error(err.into()))?;
+
         self.client
             .put_item()
             .table_name(self.table_name.clone())
-            .item(HASH_KEY, AttributeValue::N(leaderboard_id.to_string()))
-            .item(RANGE_KEY, AttributeValue::N(year.to_string()))
-            .item(LEADERBOARD_DATA, AttributeValue::S(leaderboard_data))
+            .set_item(Some(item))
             .send()
             .await
             .map_err(|err| save_error(err.into()))?;

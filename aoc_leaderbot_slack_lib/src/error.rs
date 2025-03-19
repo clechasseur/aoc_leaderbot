@@ -5,7 +5,6 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// Custom error type used by this crate's API.
 #[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
 pub enum Error {
     /// Error related to a Slack webhook.
     #[cfg(feature = "webhook-base")]
@@ -17,7 +16,9 @@ pub enum Error {
 /// Error type used for problems related to Slack webhooks.
 #[cfg(feature = "webhook-base")]
 #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
-#[derive(Debug, thiserror::Error)]
+#[cfg_attr(feature = "reporter-webhook", derive(veil::Redact))]
+#[cfg_attr(not(feature = "reporter-webhook"), derive(Debug))]
+#[derive(thiserror::Error)]
 pub enum WebhookError {
     /// Error returned when failing to build a [`SlackWebhookReporter`].
     ///
@@ -43,6 +44,7 @@ pub enum WebhookError {
         leaderboard_id: u64,
 
         /// URL of Slack webhook where we tried to report changes.
+        #[redact(partial)]
         webhook_url: String,
 
         /// Slack channel where we tried to report changes.

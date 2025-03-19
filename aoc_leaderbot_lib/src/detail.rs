@@ -37,29 +37,31 @@ where
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use assert_matches::assert_matches;
+    use rstest::fixture;
     use uuid::Uuid;
 
     use super::*;
 
-    fn random_var_name() -> String {
+    #[fixture]
+    fn test_var_name() -> String {
         format!("test_{}", Uuid::new_v4())
     }
 
     mod env_var {
+        use rstest::rstest;
+
         use super::*;
 
-        #[test]
-        fn valid() {
-            let test_var_name = random_var_name();
+        #[rstest]
+        fn valid(test_var_name: String) {
             env::set_var(&test_var_name, "foo");
 
             let actual = env_var(&test_var_name);
             assert_matches!(actual, Ok(value) if value == "foo");
         }
 
-        #[test]
-        fn not_present() {
-            let test_var_name = random_var_name();
+        #[rstest]
+        fn not_present(test_var_name: String) {
             env::remove_var(&test_var_name); // Just in case 😉
 
             let actual = env_var(&test_var_name);
@@ -71,20 +73,20 @@ mod tests {
     }
 
     mod int_env_var {
+        use rstest::rstest;
+
         use super::*;
 
-        #[test]
-        fn valid_int() {
-            let test_var_name = random_var_name();
+        #[rstest]
+        fn valid_int(test_var_name: String) {
             env::set_var(&test_var_name, "42");
 
             let actual = int_env_var::<i32, _>(&test_var_name);
             assert_matches!(actual, Ok(42));
         }
 
-        #[test]
-        fn not_present() {
-            let test_var_name = random_var_name();
+        #[rstest]
+        fn not_present(test_var_name: String) {
             env::remove_var(&test_var_name); // Just in case 😉
 
             let actual = int_env_var::<i32, _>(&test_var_name);
@@ -94,9 +96,8 @@ mod tests {
             });
         }
 
-        #[test]
-        fn invalid_int() {
-            let test_var_name = random_var_name();
+        #[rstest]
+        fn invalid_int(test_var_name: String) {
             env::set_var(&test_var_name, "forty-two");
 
             let actual = int_env_var::<i32, _>(&test_var_name);
