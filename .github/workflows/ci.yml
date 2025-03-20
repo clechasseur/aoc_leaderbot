@@ -154,7 +154,7 @@ jobs:
 
       - name: Cache Docker images
         if: ${{ matrix.with-docker }}
-        uses: ScribeMD/docker-cache@fb28c93772363301b8d0a6072ce850224b73f74e # v0.5.0
+        uses: ScribeMD/docker-cache@fb28c93772363301b8d0a6072ce850224b73f74e # 0.5.0
         with:
           key: docker-v0-${{ runner.os }}-${{ hashFiles('**/.dockerignore', '**/Dockerfile*', '**/docker-compose*.yml') }}
 
@@ -191,7 +191,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache Docker images
-        uses: ScribeMD/docker-cache@fb28c93772363301b8d0a6072ce850224b73f74e # v0.5.0
+        uses: ScribeMD/docker-cache@fb28c93772363301b8d0a6072ce850224b73f74e # 0.5.0
         with:
           key: docker-v0-${{ runner.os }}-${{ hashFiles('**/.dockerignore', '**/Dockerfile*', '**/docker-compose*.yml') }}
 
