@@ -55,7 +55,7 @@ aoc_leaderbot_lib = { path = "../aoc_leaderbot_lib", version = "0.3.0", optional
 clap = { workspace = true, optional = true, features = ["derive"] }
 derive_builder = { workspace = true, optional = true }
 itertools = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true, default-features = false }
 serde = { workspace = true, optional = true, features = ["derive"] }
 strum = { workspace = true, optional = true, features = ["derive"] }
 thiserror = { workspace = true }
