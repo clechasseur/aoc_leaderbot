@@ -12,7 +12,7 @@ use testcontainers_modules::dynamodb_local::DynamoDb;
 use testcontainers_modules::testcontainers::runners::AsyncRunner;
 use testcontainers_modules::testcontainers::{ContainerAsync, ImageExt};
 
-const DYNAMODB_LOCAL_TAG: &str = "2.5.4";
+const DYNAMODB_LOCAL_TAG: &str = "2.6.0";
 const PREPARE_DYNAMODB_BIN_NAME: &str = "prepare_dynamodb";
 
 #[fixture]
