@@ -38,7 +38,7 @@ http = ["dep:reqwest", "dep:serde_json", "dep:tracing"]
 __test_helpers = ["http", "dep:rstest", "dep:wiremock"]
 
 [dependencies]
-reqwest = { workspace = true, optional = true, features = ["json"] }
+reqwest = { workspace = true, optional = true, default-features = false, features = ["json"] }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, optional = true }
