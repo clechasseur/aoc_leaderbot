@@ -208,6 +208,7 @@ mod leaderboard_sort_order {
 
 mod slack_webhook_reporter {
     use std::env;
+    use std::ffi::OsStr;
 
     use anyhow::anyhow;
     use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
@@ -316,6 +317,31 @@ mod slack_webhook_reporter {
         serde_json::from_value(member_json).unwrap()
     }
 
+    fn set_optional_env_var<K, V>(key: K, value: Option<V>)
+    where
+        K: AsRef<OsStr>,
+        V: AsRef<OsStr>,
+    {
+        match value {
+            Some(v) => env::set_var(key, v),
+            None => env::remove_var(key),
+        }
+    }
+
+    fn set_reporter_env_vars<W, C, S>(
+        webhook_url: Option<W>,
+        channel: Option<C>,
+        sort_order: Option<S>,
+    ) where
+        W: AsRef<OsStr>,
+        C: AsRef<OsStr>,
+        S: AsRef<OsStr>,
+    {
+        set_optional_env_var(WEBHOOK_URL_ENV_VAR, webhook_url);
+        set_optional_env_var(CHANNEL_ENV_VAR, channel);
+        set_optional_env_var(SORT_ORDER_ENV_VAR, sort_order);
+    }
+
     mod builder {
         use super::*;
 
@@ -339,9 +365,11 @@ mod slack_webhook_reporter {
         #[test]
         #[serial(slack_webhook_reporter_env)]
         fn with_correct_defaults() {
-            env::set_var(WEBHOOK_URL_ENV_VAR, "https://webhook-url");
-            env::set_var(CHANNEL_ENV_VAR, "#aoc_leaderbot_test");
-            env::remove_var(SORT_ORDER_ENV_VAR);
+            set_reporter_env_vars(
+                Some("https://webhook-url"),
+                Some("#aoc_leaderbot_test"),
+                None::<&OsStr>,
+            );
 
             let result = SlackWebhookReporter::builder().build();
             assert!(result.is_ok());
@@ -366,8 +394,7 @@ mod slack_webhook_reporter {
             #[test]
             #[serial(slack_webhook_reporter_env)]
             fn webhook_url() {
-                env::remove_var(WEBHOOK_URL_ENV_VAR);
-                env::set_var(CHANNEL_ENV_VAR, "#aoc_leaderbot_test");
+                set_reporter_env_vars(None::<&OsStr>, Some("#aoc_leaderbot_test"), None::<&OsStr>);
 
                 let result = SlackWebhookReporter::builder().build();
                 assert_matches!(
@@ -383,8 +410,7 @@ mod slack_webhook_reporter {
             #[test]
             #[serial(slack_webhook_reporter_env)]
             fn channel() {
-                env::set_var(WEBHOOK_URL_ENV_VAR, "https://webhook-url");
-                env::remove_var(CHANNEL_ENV_VAR);
+                set_reporter_env_vars(Some("https://webhook-url"), None::<&OsStr>, None::<&OsStr>);
 
                 let result = SlackWebhookReporter::builder().build();
                 assert_matches!(
@@ -404,7 +430,11 @@ mod slack_webhook_reporter {
             #[test]
             #[serial(slack_webhook_reporter_env)]
             fn invalid_sort_order_value() {
-                env::set_var(SORT_ORDER_ENV_VAR, "not_a_sort_order_value");
+                set_reporter_env_vars(
+                    None::<&OsStr>,
+                    None::<&OsStr>,
+                    Some("not_a_sort_order_value"),
+                );
 
                 let result = SlackWebhookReporter::builder()
                     .webhook_url("https://webhook-url")
@@ -421,7 +451,11 @@ mod slack_webhook_reporter {
             #[test]
             #[serial(slack_webhook_reporter_env)]
             fn invalid_sort_order_unicode() {
-                env::set_var(SORT_ORDER_ENV_VAR, get_invalid_os_string());
+                set_reporter_env_vars(
+                    None::<&OsStr>,
+                    None::<&OsStr>,
+                    Some(get_invalid_os_string()),
+                );
 
                 let result = SlackWebhookReporter::builder()
                     .webhook_url("https://webhook-url")
@@ -464,7 +498,7 @@ mod slack_webhook_reporter {
                     progressing_member: LeaderboardMember,
                     new_member: LeaderboardMember,
                 ) {
-                    env::remove_var(SORT_ORDER_ENV_VAR);
+                    set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
 
                     let mut reporter = reporter(&mock_server, sort_order);
 
@@ -516,7 +550,7 @@ mod slack_webhook_reporter {
                     owner: LeaderboardMember,
                     new_member: LeaderboardMember,
                 ) {
-                    env::remove_var(SORT_ORDER_ENV_VAR);
+                    set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
 
                     let mut reporter = offline_reporter(&mock_server);
 
@@ -579,6 +613,8 @@ mod slack_webhook_reporter {
                 #[from(working_mock_server)]
                 mock_server: MockServer,
             ) {
+                set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+
                 let mut reporter = reporter(&mock_server, None);
 
                 let error = aoc_leaderbot_lib::Error::Storage(StorageError::LoadPrevious(anyhow!(
@@ -604,6 +640,8 @@ mod slack_webhook_reporter {
                 #[from(working_mock_server)]
                 mock_server: MockServer,
             ) {
+                set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+
                 let mut reporter = offline_reporter(&mock_server);
 
                 let error = aoc_leaderbot_lib::Error::Storage(StorageError::LoadPrevious(anyhow!(
