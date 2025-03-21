@@ -164,11 +164,11 @@ test-package *extra_args:
 
 # Run `cargo msrv-prep`
 prep *extra_args:
-    {{cargo}} msrv-prep {{workspace_flag}} {{package_flag}} --backup-root-manifest {{force_prep_flag}} {{extra_args}}
+    {{cargo}} msrv-prep {{package_flag}} --backup-root-manifest {{force_prep_flag}} {{extra_args}}
 
 # Run `cargo msrv-unprep`
 unprep *extra_args:
-    {{cargo}} msrv-unprep {{workspace_flag}} {{package_flag}} --backup-root-manifest {{extra_args}}
+    {{cargo}} msrv-unprep {{package_flag}} --backup-root-manifest {{extra_args}}
 
 # ----- Utilities -----
 
