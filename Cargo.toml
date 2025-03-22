@@ -9,6 +9,7 @@ members = [
 ]
 
 [workspace.package]
+version = "0.3.0"
 authors = [ "Charles Lechasseur <shiftingbeard@outlook.com>" ]
 
 license = "MIT"
@@ -18,6 +19,10 @@ repository = "https://github.com/clechasseur/aoc_leaderbot"
 
 [workspace.dependencies]
 anyhow = "1.0.97"
+aoc_leaderboard = { version = "0.3.0", path = "aoc_leaderboard" }
+aoc_leaderbot_aws_lib = { version = "0.3.0", path = "aoc_leaderbot_aws_lib" }
+aoc_leaderbot_lib = { version = "0.3.0", path = "aoc_leaderbot_lib", default-features = false }
+aoc_leaderbot_slack_lib = { version = "0.3.0", path = "aoc_leaderbot_slack_lib" }
 assert_cmd = "2.0.16"
 assert_matches = "1.5.0"
 aws-config = "1.6.0"
