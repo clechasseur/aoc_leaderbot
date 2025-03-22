@@ -1,6 +1,6 @@
 [package]
 name = "aoc_leaderbot_lib"
-version = "0.3.0"
+version.workspace = true
 authors.workspace = true
 edition = "2021"
 rust-version = "1.75.0"
@@ -38,7 +38,7 @@ storage-mem = []
 
 [dependencies]
 anyhow = { workspace = true }
-aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["http"] }
+aoc_leaderboard = { workspace = true, features = ["http"] }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
