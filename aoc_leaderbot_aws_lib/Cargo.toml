@@ -67,7 +67,7 @@ tracing = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true, features = ["v4"] }
 
 [dev-dependencies]
-aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["__test_helpers"] }
+aoc_leaderboard = { workspace = true, features = ["__test_helpers"] }
 assert_matches = { workspace = true }
 rstest = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }

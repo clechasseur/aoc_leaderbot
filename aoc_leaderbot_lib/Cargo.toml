@@ -47,7 +47,7 @@ tracing = { workspace = true }
 veil = { workspace = true, optional = true }
 
 [dev-dependencies]
-aoc_leaderboard = { path = "../aoc_leaderboard", version = "0.3.0", features = ["__test_helpers"] }
+aoc_leaderboard = { workspace = true, features = ["__test_helpers"] }
 assert_matches = { workspace = true }
 mockall = { workspace = true }
 rstest = { workspace = true }
