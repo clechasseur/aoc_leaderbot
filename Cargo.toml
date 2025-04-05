@@ -47,7 +47,7 @@ strum = "0.27.1"
 test-log = { version = "0.2.17", default-features = false }
 testcontainers-modules = "0.11.6"
 thiserror = "2.0.12"
-tokio = "1.44.1"
+tokio = "1.44.2"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 tracing-test = "0.2.5"
