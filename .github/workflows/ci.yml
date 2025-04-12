@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 
 env:
+  CARGO_TERM_COLOR: always
   CI: 1
 
 jobs:
@@ -33,7 +34,7 @@ jobs:
         with:
           args: --workspace --all-targets --feature-powerset -- -D warnings
           tool: cargo-hack
-          cache-key: v1-aoc_leaderbot-clippy
+          cache-key: v1-clippy
 
   fmt:
     name: Rustfmt check
