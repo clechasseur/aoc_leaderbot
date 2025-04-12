@@ -22,6 +22,7 @@ pub mod error;
 pub mod test_helpers;
 
 pub use error::Error;
+pub use error::ErrorKind;
 pub use error::Result;
 #[cfg(feature = "http")]
 #[doc(hidden)]

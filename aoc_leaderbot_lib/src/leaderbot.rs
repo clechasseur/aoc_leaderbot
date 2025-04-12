@@ -16,6 +16,7 @@ use chrono::{Datelike, Local};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ReporterError, StorageError};
+use crate::ErrorKind;
 
 /// Trait that must be implemented to provide the parameters required by the
 /// bot to monitor an [Advent of Code] leaderboard.
@@ -45,6 +46,34 @@ pub trait Config {
     /// website. According to the AoC leaderboard API documentation, a session
     /// token lasts about a month.
     fn aoc_session(&self) -> String;
+}
+
+/// Data that can be stored by the bot in a [`Storage`].
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BotData {
+    /// Optional leaderboard data.
+    ///
+    /// Will be used to store the previous leaderboard data when the bot executes.
+    pub leaderboard: Option<Leaderboard>,
+
+    /// Optional error.
+    ///
+    /// Will be used to store information about any error that is encountered
+    /// during bot execution, so that we know not to report the same error
+    /// more than once.
+    pub error: Option<BotErrorData>,
+}
+
+/// Data associated with an error that occurred while the bot executes.
+///
+/// Will be stored in [`BotData`] when such an error occurs.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BotErrorData {
+    /// Kind of error encountered.
+    pub kind: ErrorKind,
+
+    /// Optional error message.
+    pub message: Option<String>,
 }
 
 /// Trait that must be implemented to persist the data required by the bot
