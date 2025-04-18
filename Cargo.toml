@@ -23,7 +23,7 @@ aoc_leaderboard = { version = "0.3.0", path = "aoc_leaderboard" }
 aoc_leaderbot_aws_lib = { version = "0.3.0", path = "aoc_leaderbot_aws_lib" }
 aoc_leaderbot_lib = { version = "0.3.0", path = "aoc_leaderbot_lib", default-features = false }
 aoc_leaderbot_slack_lib = { version = "0.3.0", path = "aoc_leaderbot_slack_lib" }
-assert_cmd = "2.0.16"
+assert_cmd = "2.0.17"
 assert_matches = "1.5.0"
 aws-config = "1.6.1"
 aws-sdk-dynamodb = "1.71.2"
