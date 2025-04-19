@@ -4,7 +4,7 @@ volumes:
 services:
   dynamodb-local:
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
-    image: "amazon/dynamodb-local:2.6.0"
+    image: "amazon/dynamodb-local:2.6.1"
     container_name: aoc_leaderbot-dynamodb-local
     user: root
     ports:
