@@ -104,6 +104,7 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "dotenvy",
+ "gratte",
  "reqwest",
  "rstest",
  "rustc_version",
@@ -174,6 +175,7 @@ dependencies = [
  "assert_matches",
  "chrono",
  "derive_builder",
+ "gratte",
  "mockall",
  "rstest",
  "rustc_version",
@@ -199,6 +201,7 @@ dependencies = [
  "clap-verbosity-flag",
  "derive_builder",
  "dotenvy",
+ "gratte",
  "itertools 0.14.0",
  "reqwest",
  "rstest",
@@ -206,7 +209,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "strum",
  "thiserror",
  "tokio",
  "tracing",
@@ -1399,6 +1401,28 @@ name = "glob"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
+
+[[package]]
+name = "gratte"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ed8a67f9e23b2be7c7a71bf0891e9c40fe635d2f615aae0dc5dc32066ee2db6"
+dependencies = [
+ "gratte_macros",
+]
+
+[[package]]
+name = "gratte_macros"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2edee71da57fa378bdbd594c6a0669524800c79708ee65d63baf7760ad3c443"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn",
+]
 
 [[package]]
 name = "h2"
@@ -3110,28 +3134,6 @@ checksum = "152a0b65a590ff6c3da95cabe2353ee04e6167c896b28e3b14478c2636c922fc"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn",
-]
-
-[[package]]
-name = "strum"
-version = "0.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f64def088c51c9510a8579e3c5d67c65349dcf755e5479ad3d010aa6454e2c32"
-dependencies = [
- "strum_macros",
-]
-
-[[package]]
-name = "strum_macros"
-version = "0.27.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c77a8c5abcaf0f9ce05d62342b7d298c346515365c36b673df4ebe3ced01fde8"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "rustversion",
  "syn",
 ]
 

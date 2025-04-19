@@ -18,7 +18,13 @@ pub enum Error {
 #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
 #[cfg_attr(feature = "reporter-webhook", derive(veil::Redact))]
 #[cfg_attr(not(feature = "reporter-webhook"), derive(Debug))]
-#[derive(thiserror::Error)]
+#[derive(thiserror::Error, gratte::EnumDiscriminants, gratte::EnumIs)]
+#[non_exhaustive]
+#[strum_discriminants(
+    name(WebhookErrorKind),
+    derive(serde::Serialize, serde::Deserialize, gratte::EnumIs),
+    non_exhaustive
+)]
 pub enum WebhookError {
     /// Error returned when failing to build a [`SlackWebhookReporter`].
     ///
@@ -59,6 +65,55 @@ pub enum WebhookError {
     /// [`WebhookMessage`]: crate::slack::webhook::WebhookMessage
     #[error("error building Slack webhook message: {0}")]
     MessageBuilder(#[from] crate::slack::webhook::WebhookMessageBuilderError),
+}
+
+#[cfg(feature = "reporter-webhook")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "reporter-webhook")))]
+impl WebhookError {
+    /// Returns `true` if the enum is [`WebhookError::ReporterBuilder`] and the internal
+    /// [`SlackWebhookReporterBuilderError`] matches the given predicate.
+    ///
+    /// [`SlackWebhookReporterBuilderError`]: crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError
+    pub fn is_reporter_builder_and<P>(&self, predicate: P) -> bool
+    where
+        P: FnOnce(&crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError) -> bool,
+    {
+        match self {
+            Self::ReporterBuilder(source) => predicate(source),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the enum is [`WebhookError::ReportChanges`] and the error
+    /// parameters match the given predicate.
+    pub fn is_report_changes_and<P>(&self, predicate: P) -> bool
+    where
+        P: FnOnce(i32, u64, &str, &str, &reqwest::Error) -> bool,
+    {
+        match self {
+            Self::ReportChanges { year, leaderboard_id, webhook_url, channel, source } => {
+                predicate(*year, *leaderboard_id, webhook_url, channel, source)
+            },
+            _ => false,
+        }
+    }
+}
+
+#[cfg(feature = "webhook-base")]
+#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
+impl WebhookError {
+    /// Returns `true` if the enum is [`WebhookError::MessageBuilder`] and the internal
+    /// [`WebhookMessageBuilderError`](crate::slack::webhook::WebhookMessageBuilderError)
+    /// matches the given predicate.
+    pub fn is_message_builder_and<P>(&self, predicate: P) -> bool
+    where
+        P: FnOnce(&crate::slack::webhook::WebhookMessageBuilderError) -> bool,
+    {
+        match self {
+            Self::MessageBuilder(source) => predicate(source),
+            _ => false,
+        }
+    }
 }
 
 #[cfg(feature = "reporter-webhook")]

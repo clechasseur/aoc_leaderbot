@@ -94,4 +94,5 @@ pub mod error;
 pub mod leaderbot;
 
 pub use error::Error;
+pub use error::ErrorKind;
 pub use error::Result;
