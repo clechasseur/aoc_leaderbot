@@ -1,9 +1,6 @@
-use rustc_version::version_meta;
-use rustc_version::Channel::Nightly;
-
 fn main() {
-    println!("cargo:rustc-check-cfg=cfg(nightly_rustc)");
-    if version_meta().unwrap().channel <= Nightly {
-        println!("cargo:rustc-cfg=nightly_rustc");
+    println!("cargo:rustc-check-cfg=cfg(use_doc_cfg)");
+    if cfg!(docsrs) || rustversion::cfg!(nightly) {
+        println!("cargo:rustc-cfg=use_doc_cfg");
     }
 }

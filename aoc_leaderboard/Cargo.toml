@@ -38,6 +38,7 @@ http = ["dep:reqwest", "dep:serde_json", "dep:tracing"]
 __test_helpers = ["http", "dep:rstest", "dep:wiremock"]
 
 [dependencies]
+gratte = { workspace = true }
 reqwest = { workspace = true, optional = true, default-features = false, features = ["json"] }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
@@ -51,9 +52,10 @@ wiremock = { workspace = true, optional = true }
 anyhow = { workspace = true }
 assert_matches = { workspace = true }
 dotenvy = { workspace = true }
+rstest = { workspace = true }
 serde_json = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [build-dependencies]
-rustc_version = { workspace = true }
+rustversion = { workspace = true }
