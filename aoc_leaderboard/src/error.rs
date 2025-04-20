@@ -18,7 +18,6 @@ pub enum Error {
     /// [Advent of Code]: https://adventofcode.com/
     /// [`get`]: crate::aoc::Leaderboard::get
     #[cfg(feature = "http")]
-    #[cfg_attr(use_doc_cfg, doc(cfg(feature = "http")))]
     #[error("http error: {0}")]
     HttpGet(#[from] reqwest::Error),
 
@@ -41,7 +40,6 @@ impl Error {
     /// Returns `true` if the enum is [`Error::HttpGet`] and the internal [`reqwest::Error`]
     /// matches the given predicate.
     #[cfg(feature = "http")]
-    #[cfg_attr(use_doc_cfg, doc(cfg(feature = "http")))]
     pub fn is_http_get_and<P>(&self, predicate: P) -> bool
     where
         P: FnOnce(&reqwest::Error) -> bool,

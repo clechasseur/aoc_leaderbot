@@ -107,7 +107,6 @@ dependencies = [
  "gratte",
  "reqwest",
  "rstest",
- "rustversion",
  "serde",
  "serde_json",
  "serde_with",
