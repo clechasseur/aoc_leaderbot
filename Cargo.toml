@@ -38,8 +38,6 @@ lambda_runtime = "0.13.0"
 mockall = "0.13.1"
 reqwest = { version = "0.12.15", default-features = false, features = ["rustls-tls"] }
 rstest = "0.25.0"
-rustc_version = "0.4.1"
-rustversion = "1.0.20"
 serde = "1.0.219"
 serde_dynamo = "4.2.14"
 serde_json = "1.0.140"

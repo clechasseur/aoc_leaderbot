@@ -75,6 +75,3 @@ serial_test = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = { workspace = true }
 tracing-test = { workspace = true, features = ["no-env-filter"] }
-
-[build-dependencies]
-rustc_version = { workspace = true }

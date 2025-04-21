@@ -54,6 +54,3 @@ rstest = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros"] }
 uuid = { workspace = true, features = ["v4"] }
-
-[build-dependencies]
-rustc_version = { workspace = true }
