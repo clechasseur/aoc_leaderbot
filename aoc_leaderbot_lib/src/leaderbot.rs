@@ -13,9 +13,10 @@ use std::future::{ready, Future};
 use anyhow::anyhow;
 use aoc_leaderboard::aoc::Leaderboard;
 use chrono::{Datelike, Local};
+use gratte::IntoDiscriminant;
 use serde::{Deserialize, Serialize};
-
 use crate::error::{ReporterError, StorageError};
+use crate::ErrorKind;
 
 /// Trait that must be implemented to provide the parameters required by the
 /// bot to monitor an [Advent of Code] leaderboard.
@@ -47,6 +48,141 @@ pub trait Config {
     fn aoc_session(&self) -> String;
 }
 
+/// Data that can be stored by the bot in a [`Storage`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BotData {
+    /// Optional leaderboard data.
+    ///
+    /// Will be used to store the previous leaderboard data when the bot executes.
+    pub leaderboard: Option<Leaderboard>,
+
+    /// Optional error.
+    ///
+    /// Will be used to store information about any error that is encountered
+    /// during bot execution, so that we know not to report the same error
+    /// more than once.
+    pub error: Option<BotErrorData>,
+}
+
+impl BotData {
+    /// Creates a bot data instance with a leaderboard instance and no error.
+    pub fn for_leaderboard(leaderboard: Leaderboard) -> Self {
+        Self { leaderboard: Some(leaderboard), error: None }
+    }
+}
+
+/// Data associated with an error that occurred while the bot executes.
+///
+/// Will be stored in [`BotData`] when such an error occurs.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BotErrorData {
+    /// Kind of error encountered.
+    pub kind: ErrorKind,
+
+    /// Optional error message.
+    pub message: Option<String>,
+}
+
+/// Trait used to augment types to split a `BotData`.
+pub trait BotDataSplitExt {
+    /// Type of first tuple element returned by [`split`](Self::split).
+    /// Will be either [`Leaderboard`] or a reference to it.
+    type LeaderboardType;
+
+    /// Type of second tuple element returned by [`split`](Self::split).
+    /// Will be either [`BotErrorData`] or a reference to it.
+    type BotErrorDataType;
+
+    /// Splits `self`, which contains a [`BotData`], into a tuple of its inner
+    /// [`Leaderboard`] and [`BotErrorData`] (or references to them).
+    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>);
+}
+
+impl BotDataSplitExt for BotData {
+    type LeaderboardType = Leaderboard;
+    type BotErrorDataType = BotErrorData;
+
+    /// Splits this [`BotData`] into a tuple of [`Option`]s of its [`Leaderboard`]
+    /// and [`BotErrorData`].
+    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
+        (self.leaderboard, self.error)
+    }
+}
+
+impl<'a> BotDataSplitExt for &'a BotData {
+    type LeaderboardType = &'a Leaderboard;
+    type BotErrorDataType = &'a BotErrorData;
+
+    /// Splits this [`BotData`] reference into a tuple of [`Option`]s of references
+    /// to its [`Leaderboard`] and [`BotErrorData`].
+    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
+        (self.leaderboard.as_ref(), self.error.as_ref())
+    }
+}
+
+impl<S> BotDataSplitExt for Option<S>
+where
+    S: BotDataSplitExt,
+{
+    type LeaderboardType = S::LeaderboardType;
+    type BotErrorDataType = S::BotErrorDataType;
+
+    /// If this [`Option`] is [`Some(value)`], splits `value` into a tuple of corresponding
+    /// [`Leaderboard`] and [`BotErrorData`], otherwise returns `(None, None)`.
+    // noinspection DuplicatedCode
+    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
+        self.map(|splittable| splittable.split()).unwrap_or((None, None))
+    }
+}
+
+impl<'a, S> BotDataSplitExt for &'a Option<S>
+where
+    &'a S: BotDataSplitExt,
+{
+    type LeaderboardType = <&'a S as BotDataSplitExt>::LeaderboardType;
+    type BotErrorDataType = <&'a S as BotDataSplitExt>::BotErrorDataType;
+
+    /// If this [`Option`] reference is [`Some(value)`], splits `value` into a tuple of
+    /// corresponding [`Leaderboard`] and [`BotErrorData`] references, otherwise returns
+    /// `(None, None)`.
+    // noinspection DuplicatedCode
+    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
+        self.as_ref().map(|splittable| splittable.split()).unwrap_or((None, None))
+    }
+}
+
+impl<S, E> BotDataSplitExt for Result<S, E>
+where
+    S: BotDataSplitExt,
+{
+    type LeaderboardType = S::LeaderboardType;
+    type BotErrorDataType = S::BotErrorDataType;
+
+    /// If this [`Result`] is [`Ok(value)`], splits `value` into a tuple of corresponding
+    /// [`Leaderboard`] and [`BotErrorData`], otherwise returns `(None, None)`, dropping
+    /// the error.
+    // noinspection DuplicatedCode
+    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
+        self.map(|splittable| splittable.split()).unwrap_or((None, None))
+    }
+}
+
+impl<'a, S, E> BotDataSplitExt for &'a Result<S, E>
+where
+    &'a S: BotDataSplitExt,
+{
+    type LeaderboardType = <&'a S as BotDataSplitExt>::LeaderboardType;
+    type BotErrorDataType = <&'a S as BotDataSplitExt>::BotErrorDataType;
+
+    /// If this [`Result`] reference is [`Ok(value)`], splits `value` into a tuple of
+    /// corresponding [`Leaderboard`] and [`BotErrorData`] references , otherwise returns
+    /// `(None, None)`.
+    // noinspection DuplicatedCode
+    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
+        self.as_ref().map(|splittable| splittable.split()).unwrap_or((None, None))
+    }
+}
+
 /// Trait that must be implemented to persist the data required by the bot
 /// in-between every invocation.
 #[cfg_attr(test, mockall::automock(type Err=crate::Error;))]
@@ -62,7 +198,7 @@ pub trait Storage {
         &self,
         year: i32,
         leaderboard_id: u64,
-    ) -> impl Future<Output = Result<Option<Leaderboard>, Self::Err>> + Send;
+    ) -> impl Future<Output = Result<Option<BotData>, Self::Err>> + Send;
 
     /// Saves the given leaderboard data to storage so that the next bot run
     /// can fetch it using [`load_previous`](Self::load_previous).
@@ -70,7 +206,7 @@ pub trait Storage {
         &mut self,
         year: i32,
         leaderboard_id: u64,
-        leaderboard: &Leaderboard,
+        bot_data: &BotData,
     ) -> impl Future<Output = Result<(), Self::Err>> + Send;
 }
 
@@ -143,14 +279,21 @@ pub trait Reporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
+    ///
+    /// If the bot gets the same error twice, it will include
+    /// information about the previous error.
     #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self)))]
     fn report_error(
         &mut self,
         year: i32,
         leaderboard_id: u64,
         error: &crate::Error,
+        previous_error: Option<&BotErrorData>,
     ) -> impl Future<Output = ()> + Send {
         eprintln!("Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}");
+        if let Some(previous_error) = previous_error {
+            eprintln!("This is the same error that happened during last run; previous error info: {previous_error:?}");
+        }
         ready(())
     }
 }
@@ -250,7 +393,7 @@ where
         storage: &mut S,
         reporter: &mut R,
         dry_run: bool,
-    ) -> crate::Result<BotOutput>
+    ) -> crate::Result<BotOutput, (crate::Error, Option<BotData>)>
     where
         B: AsRef<str> + Debug,
         S: Storage,
@@ -285,16 +428,26 @@ where
 
         let reporter: &mut R = reporter;
 
-        let leaderboard =
-            get_leaderboard(advent_of_code_base, year, leaderboard_id, aoc_session).await?;
-        let mut output = BotOutput::new(year, leaderboard_id, leaderboard.clone());
-
-        let load_result = storage
+        let leaderboard_result =
+            get_leaderboard(advent_of_code_base, year, leaderboard_id, aoc_session).await;
+        let load_previous_result = storage
             .load_previous(year, leaderboard_id)
             .await
-            .map_err(|err| StorageError::LoadPrevious(anyhow!(err)))?;
-        match load_result {
-            Some(previous_leaderboard) => {
+            .map_err(|err| StorageError::LoadPrevious(anyhow!(err)));
+        let (leaderboard, previous_data) = match (leaderboard_result, load_previous_result) {
+            (Err(get_err), load_res) => {
+                return Err((get_err, load_res.ok().flatten()));
+            },
+            (Ok(leaderboard), Err(load_err)) => {
+                return Err((load_err.into(), Some(BotData::for_leaderboard(leaderboard))))
+            },
+            (Ok(leaderboard), Ok(bot_data)) => (leaderboard, bot_data),
+        };
+
+        let mut output = BotOutput::new(year, leaderboard_id, leaderboard.clone());
+        let (previous_leaderboard, previous_error) = previous_data.split();
+        let leaderboard_and_prev_error = match (previous_leaderboard, previous_error) {
+            (Some(previous_leaderboard), prev_error) => {
                 output.previous_leaderboard = Some(previous_leaderboard.clone());
 
                 if let Some(changes) = detect_changes(&previous_leaderboard, &leaderboard) {
@@ -310,19 +463,36 @@ where
                                 &changes,
                             )
                             .await
-                            .map_err(|err| ReporterError::ReportChanges(anyhow!(err)))?;
-                        storage
-                            .save(year, leaderboard_id, &leaderboard)
-                            .await
-                            .map_err(|err| StorageError::Save(anyhow!(err)))?;
+                            .map_err(|err| {
+                                let bot_data = BotData {
+                                    leaderboard: Some(leaderboard.clone()),
+                                    error: prev_error.clone(),
+                                };
+                                let reporter_err = ReporterError::ReportChanges(anyhow!(err));
+                                (reporter_err.into(), Some(bot_data))
+                            })?;
                     }
                 }
+
+                Some((leaderboard, prev_error))
             },
-            None if dry_run => (),
-            None => storage
-                .save(year, leaderboard_id, &leaderboard)
+            (None, _) if dry_run => None,
+            (None, prev_error) => Some((leaderboard, prev_error)),
+        };
+        if let Some((leaderboard, prev_error)) = leaderboard_and_prev_error {
+            let bot_data = BotData::for_leaderboard(leaderboard);
+
+            storage
+                .save(year, leaderboard_id, &bot_data)
                 .await
-                .map_err(|err| StorageError::Save(anyhow!(err)))?,
+                .map_err(|err| {
+                    let bot_data = BotData {
+                        leaderboard: bot_data.leaderboard,
+                        error: prev_error.clone(),
+                    };
+                    let storage_err = StorageError::Save(anyhow!(err));
+                    (storage_err.into(), Some(bot_data))
+                })?;
         }
 
         Ok(output)
@@ -343,8 +513,40 @@ where
     .await
     {
         Ok(output) => Ok(output),
-        Err(err) => {
-            reporter.report_error(year, leaderboard_id, &err).await;
+        Err((err, bot_data)) => {
+            let (leaderboard, prev_error) = bot_data.as_ref().split();
+
+            reporter.report_error(
+                year,
+                leaderboard_id,
+                &err,
+                prev_error,
+            ).await;
+
+            if !dry_run {
+                let new_bot_data = BotData {
+                    leaderboard: leaderboard.cloned(),
+                    error: Some(BotErrorData {
+                        kind: err.discriminant(),
+                        message: Some(err.to_string()),
+                    }),
+                };
+                // Don't try to save previous error data if we got the same result as before.
+                if !bot_data.as_ref().is_some_and(|data| *data == new_bot_data) {
+                    if let Err(storage_err) = storage.save(year, leaderboard_id, &new_bot_data).await {
+                        // An error occurred while doing the bot run, and an error also occurred
+                        // while trying to persist information about the last error. ¯\_(ツ)_/¯
+                        let storage_err = crate::Error::Storage(StorageError::Save(anyhow!(storage_err)));
+                        reporter.report_error(
+                            year,
+                            leaderboard_id,
+                            &storage_err,
+                            None,
+                        ).await;
+                    }
+                }
+            }
+
             Err(err)
         },
     }
@@ -442,6 +644,10 @@ mod tests {
                     TEST_YEAR,
                     TEST_LEADERBOARD_ID,
                     &crate::Error::TestErrorWithMessage("broken pipe".into()),
+                    Some(&BotErrorData {
+                        kind: ErrorKind::TestErrorWithMessage,
+                        message: Some("broken pipe".into()),
+                    }),
                 )
                 .await;
         }
@@ -481,7 +687,7 @@ mod tests {
         #[derive(Debug, Default)]
         pub struct SpyReporter {
             pub changes: Vec<(i32, u64, SpiedChanges)>,
-            pub errors: Vec<(i32, u64, String)>,
+            pub errors: Vec<(i32, u64, String, String)>,
         }
 
         impl SpyReporter {
@@ -518,8 +724,19 @@ mod tests {
                 Ok(())
             }
 
-            async fn report_error(&mut self, year: i32, leaderboard_id: u64, error: &crate::Error) {
-                self.errors.push((year, leaderboard_id, error.to_string()));
+            async fn report_error(
+                &mut self,
+                year: i32,
+                leaderboard_id: u64,
+                error: &crate::Error,
+                prev_error: Option<&BotErrorData>,
+            ) {
+                self.errors.push((
+                    year,
+                    leaderboard_id,
+                    error.to_string(),
+                    prev_error.and_then(|prev_error| prev_error.message.clone()).unwrap_or_default(),
+                ));
             }
         }
 
@@ -678,9 +895,11 @@ mod tests {
             use super::*;
 
             #[rstest]
+            #[case::stores_current(false)]
+            #[case::dry_run::does_not_store_current(true)]
             #[awt]
             #[test_log::test(tokio::test)]
-            async fn stores_current(
+            async fn and(
                 config: MemoryConfig,
                 mut storage: MemoryStorage,
                 mut reporter: SpyReporter,
@@ -688,6 +907,7 @@ mod tests {
                 #[from(mock_server_with_leaderboard)]
                 #[with(base_leaderboard::default())]
                 mock_server: MockServer,
+                #[case] dry_run: bool,
                 #[from(base_leaderboard)] expected: Leaderboard,
             ) {
                 let result = run_bot_from(
@@ -695,7 +915,7 @@ mod tests {
                     &config,
                     &mut storage,
                     &mut reporter,
-                    false,
+                    dry_run,
                 )
                 .await;
                 assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
@@ -705,56 +925,14 @@ mod tests {
                     assert_eq!(leaderboard, expected);
                     assert!(changes.is_none());
                 });
-                assert_eq!(storage.len(), 1);
+                assert_eq!(storage.len(), if dry_run { 0 } else { 1 });
                 assert!(!reporter.called());
 
                 let actual = storage
                     .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                     .await
                     .unwrap();
-                assert_eq!(actual, Some(expected));
-            }
-
-            mod dry_run {
-                use super::*;
-
-                #[rstest]
-                #[awt]
-                #[test_log::test(tokio::test)]
-                async fn does_not_store_current(
-                    config: MemoryConfig,
-                    mut storage: MemoryStorage,
-                    mut reporter: SpyReporter,
-                    #[future]
-                    #[from(mock_server_with_leaderboard)]
-                    #[with(base_leaderboard::default())]
-                    mock_server: MockServer,
-                    #[from(base_leaderboard)] expected: Leaderboard,
-                ) {
-                    let result = run_bot_from(
-                        Some(mock_server.uri()),
-                        &config,
-                        &mut storage,
-                        &mut reporter,
-                        true,
-                    )
-                    .await;
-                    assert_matches!(result, Ok(BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes }) => {
-                        assert_eq!(year, TEST_YEAR);
-                        assert_eq!(leaderboard_id, TEST_LEADERBOARD_ID);
-                        assert!(previous_leaderboard.is_none());
-                        assert_eq!(leaderboard, expected);
-                        assert!(changes.is_none());
-                    });
-                    assert!(storage.is_empty());
-                    assert!(!reporter.called());
-
-                    let actual = storage
-                        .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
-                        .await
-                        .unwrap();
-                    assert!(actual.is_none());
-                }
+                assert_eq!(actual, if dry_run { None } else { Some(BotData::for_leaderboard(expected)) });
             }
         }
 
@@ -778,11 +956,13 @@ mod tests {
                 #[case] expected_members_with_new_stars: Vec<u64>,
                 #[values(false, true)] dry_run: bool,
             ) {
+                let bot_data = BotData::for_leaderboard(base);
                 storage
-                    .save(TEST_YEAR, TEST_LEADERBOARD_ID, &base)
+                    .save(TEST_YEAR, TEST_LEADERBOARD_ID, &bot_data)
                     .await
                     .unwrap();
 
+                let base = bot_data.leaderboard.unwrap();
                 let expected = SpiedChanges {
                     previous_leaderboard: base.clone(),
                     leaderboard: leaderboard.clone(),
@@ -815,7 +995,9 @@ mod tests {
                     .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                     .await
                     .unwrap();
-                assert_eq!(current, Some(if dry_run { base } else { leaderboard }));
+                assert_eq!(current, Some(BotData::for_leaderboard(
+                    if dry_run { base } else { leaderboard })
+                ));
 
                 if expected.has_changes() && !dry_run {
                     assert!(reporter.called());
@@ -857,7 +1039,7 @@ mod tests {
                     result,
                     Err(crate::Error::Leaderboard(aoc_leaderboard::Error::NoAccess))
                 );
-                assert!(storage.is_empty());
+                assert_eq!(storage.len(), 1);
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
             }
@@ -870,7 +1052,10 @@ mod tests {
                 mut reporter: SpyReporter,
                 #[future]
                 #[from(mock_server_with_leaderboard)]
+                #[with(base_leaderboard::default())]
                 mock_server: MockServer,
+                #[from(base_leaderboard)]
+                expected_leaderboard: Leaderboard,
             ) {
                 let mut storage = MockStorage::new();
                 storage
@@ -880,6 +1065,17 @@ mod tests {
                     .returning(move |_, _| {
                         Box::pin(ready(Err(crate::Error::TestLoadPreviousError)))
                     });
+                storage
+                    .expect_save()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(BotData {
+                        leaderboard: Some(expected_leaderboard),
+                        error: Some(BotErrorData {
+                            kind: ErrorKind::TestLoadPreviousError,
+                            message: Some("failed to load previous leaderboard data: test".into()),
+                        }),
+                    }))
+                    .times(1)
+                    .returning(move |_, _, _| Box::pin(ready(Ok(()))));
 
                 let result = run_bot_from(
                     Some(mock_server.uri()),
@@ -897,7 +1093,8 @@ mod tests {
                     (
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
-                        "failed to load previous leaderboard data: test".to_string()
+                        "failed to load previous leaderboard data: test".into(),
+                        "".into(),
                     )
                 );
             }
@@ -938,6 +1135,7 @@ mod tests {
                         _year: i32,
                         _leaderboard_id: u64,
                         _error: &crate::Error,
+                        _prev_error: Option<&BotErrorData>,
                     ) {
                         self.errors += 1;
                     }
@@ -946,7 +1144,7 @@ mod tests {
                 let mut reporter = MockReporter::default();
 
                 storage
-                    .save(TEST_YEAR, TEST_LEADERBOARD_ID, &base)
+                    .save(TEST_YEAR, TEST_LEADERBOARD_ID, &BotData::for_leaderboard(base))
                     .await
                     .unwrap();
 
@@ -981,10 +1179,14 @@ mod tests {
                     .expect_load_previous()
                     .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
-                    .returning(move |_, _| Box::pin(ready(Ok(Some(base_leaderboard())))));
+                    .returning(move |_, _| Box::pin(ready(Ok(Some(
+                        BotData::for_leaderboard(base_leaderboard())
+                    )))));
                 storage
                     .expect_save()
-                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(leaderboard_with_new_member()))
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(
+                        BotData::for_leaderboard(leaderboard_with_new_member())
+                    ))
                     .times(1)
                     .returning(move |_, _, _| {
                         Box::pin(ready(Err(crate::Error::TestSaveUpdatedError)))
@@ -1006,7 +1208,8 @@ mod tests {
                     (
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
-                        "failed to save leaderboard data: test".to_string()
+                        "failed to save leaderboard data: test".to_string(),
+                        "".into(),
                     )
                 );
             }
@@ -1030,7 +1233,9 @@ mod tests {
                     .returning(move |_, _| Box::pin(ready(Ok(None))));
                 storage
                     .expect_save()
-                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(base_leaderboard()))
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(
+                        BotData::for_leaderboard(base_leaderboard())
+                    ))
                     .times(1)
                     .returning(move |_, _, _| {
                         Box::pin(ready(Err(crate::Error::TestSaveBaseError)))
@@ -1052,10 +1257,13 @@ mod tests {
                     (
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
-                        "failed to save leaderboard data: test".to_string()
+                        "failed to save leaderboard data: test".to_string(),
+                        "".into(),
                     )
                 );
             }
+
+            // TODO add tests with previous error
         }
     }
 }
