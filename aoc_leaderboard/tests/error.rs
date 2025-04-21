@@ -16,10 +16,26 @@ mod error {
             .unwrap_err()
     }
 
-    #[rstest]
-    fn test_is_http_get_and(reqwest_builder_error: reqwest::Error) {
-        let error: aoc_leaderboard::Error = reqwest_builder_error.into();
-        assert!(error.is_http_get_and(|err| err.is_builder()));
+    mod is_http_get_and {
+        use super::*;
+
+        #[rstest]
+        fn test_matching(reqwest_builder_error: reqwest::Error) {
+            let error: aoc_leaderboard::Error = reqwest_builder_error.into();
+            assert!(error.is_http_get_and(|err| err.is_builder()));
+        }
+
+        #[rstest]
+        fn test_http_get_but_predicate_fails(reqwest_builder_error: reqwest::Error) {
+            let error: aoc_leaderboard::Error = reqwest_builder_error.into();
+            assert!(!error.is_http_get_and(|err| err.is_status()));
+        }
+
+        #[test]
+        fn test_non_matching() {
+            let error = aoc_leaderboard::Error::NoAccess;
+            assert!(!error.is_http_get_and(|err| err.is_builder()));
+        }
     }
 }
 
