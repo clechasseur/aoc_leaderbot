@@ -2,17 +2,16 @@
 
 use std::collections::HashMap;
 
-use aoc_leaderboard::aoc::Leaderboard;
 use serde::{Deserialize, Serialize};
 
-use crate::leaderbot::Storage;
+use crate::leaderbot::{BotData, Storage};
 
 /// Bot storage that keeps data in memory.
 ///
 /// Can be persisted through [`serde`] if required.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MemoryStorage {
-    previous: HashMap<u64, HashMap<i32, Leaderboard>>,
+    previous: HashMap<u64, HashMap<i32, BotData>>,
 }
 
 impl MemoryStorage {
@@ -40,7 +39,7 @@ impl Storage for MemoryStorage {
         &self,
         year: i32,
         leaderboard_id: u64,
-    ) -> Result<Option<Leaderboard>, Self::Err> {
+    ) -> Result<Option<BotData>, Self::Err> {
         Ok(self
             .previous
             .get(&leaderboard_id)
@@ -53,12 +52,12 @@ impl Storage for MemoryStorage {
         &mut self,
         year: i32,
         leaderboard_id: u64,
-        leaderboard: &Leaderboard,
+        bot_data: &BotData,
     ) -> Result<(), Self::Err> {
         self.previous
             .entry(leaderboard_id)
             .or_default()
-            .insert(year, leaderboard.clone());
+            .insert(year, bot_data.clone());
 
         Ok(())
     }

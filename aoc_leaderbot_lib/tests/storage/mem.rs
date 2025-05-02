@@ -2,7 +2,7 @@ mod memory_storage {
     use aoc_leaderboard::aoc::Leaderboard;
     use aoc_leaderboard::test_helpers::{test_leaderboard, TEST_LEADERBOARD_ID, TEST_YEAR};
     use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryStorage;
-    use aoc_leaderbot_lib::leaderbot::Storage;
+    use aoc_leaderbot_lib::leaderbot::{BotData, Storage};
     use rstest::rstest;
 
     mod new {
@@ -43,7 +43,7 @@ mod memory_storage {
             assert!(storage.is_empty());
 
             storage
-                .save(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
+                .save(TEST_YEAR, TEST_LEADERBOARD_ID, &BotData::for_leaderboard(leaderboard))
                 .await
                 .unwrap();
 
@@ -70,7 +70,7 @@ mod memory_storage {
             assert!(previous.is_none());
 
             storage
-                .save(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
+                .save(TEST_YEAR, TEST_LEADERBOARD_ID, &BotData::for_leaderboard(leaderboard))
                 .await
                 .unwrap();
 
@@ -78,7 +78,7 @@ mod memory_storage {
                 .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                 .await
                 .unwrap();
-            assert_eq!(previous, Some(expected));
+            assert_eq!(previous, Some(BotData::for_leaderboard(expected)));
 
             let previous = storage
                 .load_previous(TEST_YEAR - 1, TEST_LEADERBOARD_ID)

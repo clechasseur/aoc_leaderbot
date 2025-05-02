@@ -8,7 +8,6 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub enum Error {
     /// DynamoDB error.
     #[cfg(feature = "dynamodb-base")]
-    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
     #[error(transparent)]
     Dynamo(#[from] DynamoDbError),
 }
@@ -17,7 +16,6 @@ pub enum Error {
 ///
 /// [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 #[cfg(feature = "dynamodb-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
 #[derive(Debug, thiserror::Error)]
 pub enum DynamoDbError {
     /// Error occurred while loading previous leaderboard from DynamoDB table.
@@ -61,7 +59,6 @@ pub enum DynamoDbError {
 
 /// Error pertaining to loading leaderboard data from DynamoDB.
 #[cfg(feature = "dynamodb-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
 #[derive(Debug, thiserror::Error)]
 pub enum LoadPreviousDynamoDbError {
     /// Error that occurred while trying to load previous leaderboard data from DynamoDB.
@@ -81,7 +78,6 @@ pub enum LoadPreviousDynamoDbError {
 
 /// Error pertaining to saving leaderboard data in DynamoDB.
 #[cfg(feature = "dynamodb-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
 #[derive(Debug, thiserror::Error)]
 pub enum SaveDynamoDbError {
     /// Error that occurred while trying to save leaderboard data in DynamoDB.
@@ -101,7 +97,6 @@ pub enum SaveDynamoDbError {
 
 /// Error pertaining to creating a DynamoDB table to store leaderboard data.
 #[cfg(feature = "dynamodb-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "dynamodb-base")))]
 #[derive(Debug, thiserror::Error)]
 pub enum CreateDynamoDbTableError {
     /// Error that occurred while trying to create DynamoDB table.
