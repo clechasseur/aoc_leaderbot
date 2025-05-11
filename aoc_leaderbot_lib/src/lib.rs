@@ -22,7 +22,8 @@
 //! ### [`Storage`]
 //!
 //! This trait abstracts the bot's storage facility.  It is used to load leaderboard data from a
-//! previous run and to save any new leaderboard data.
+//! previous run and to save any new leaderboard data, as well as store information about errors
+//! that might be seen during bot execution.
 //!
 //! ### [`Reporter`]
 //!

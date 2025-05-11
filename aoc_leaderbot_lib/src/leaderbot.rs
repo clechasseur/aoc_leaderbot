@@ -16,7 +16,6 @@ use chrono::{Datelike, Local};
 use gratte::IntoDiscriminant;
 use serde::{Deserialize, Serialize};
 use crate::error::{ReporterError, StorageError};
-use crate::ErrorKind;
 
 /// Trait that must be implemented to provide the parameters required by the
 /// bot to monitor an [Advent of Code] leaderboard.
@@ -48,141 +47,6 @@ pub trait Config {
     fn aoc_session(&self) -> String;
 }
 
-/// Data that can be stored by the bot in a [`Storage`].
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BotData {
-    /// Optional leaderboard data.
-    ///
-    /// Will be used to store the previous leaderboard data when the bot executes.
-    pub leaderboard: Option<Leaderboard>,
-
-    /// Optional error.
-    ///
-    /// Will be used to store information about any error that is encountered
-    /// during bot execution, so that we know not to report the same error
-    /// more than once.
-    pub error: Option<BotErrorData>,
-}
-
-impl BotData {
-    /// Creates a bot data instance with a leaderboard instance and no error.
-    pub fn for_leaderboard(leaderboard: Leaderboard) -> Self {
-        Self { leaderboard: Some(leaderboard), error: None }
-    }
-}
-
-/// Data associated with an error that occurred while the bot executes.
-///
-/// Will be stored in [`BotData`] when such an error occurs.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct BotErrorData {
-    /// Kind of error encountered.
-    pub kind: ErrorKind,
-
-    /// Optional error message.
-    pub message: Option<String>,
-}
-
-/// Trait used to augment types to split a `BotData`.
-pub trait BotDataSplitExt {
-    /// Type of first tuple element returned by [`split`](Self::split).
-    /// Will be either [`Leaderboard`] or a reference to it.
-    type LeaderboardType;
-
-    /// Type of second tuple element returned by [`split`](Self::split).
-    /// Will be either [`BotErrorData`] or a reference to it.
-    type BotErrorDataType;
-
-    /// Splits `self`, which contains a [`BotData`], into a tuple of its inner
-    /// [`Leaderboard`] and [`BotErrorData`] (or references to them).
-    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>);
-}
-
-impl BotDataSplitExt for BotData {
-    type LeaderboardType = Leaderboard;
-    type BotErrorDataType = BotErrorData;
-
-    /// Splits this [`BotData`] into a tuple of [`Option`]s of its [`Leaderboard`]
-    /// and [`BotErrorData`].
-    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
-        (self.leaderboard, self.error)
-    }
-}
-
-impl<'a> BotDataSplitExt for &'a BotData {
-    type LeaderboardType = &'a Leaderboard;
-    type BotErrorDataType = &'a BotErrorData;
-
-    /// Splits this [`BotData`] reference into a tuple of [`Option`]s of references
-    /// to its [`Leaderboard`] and [`BotErrorData`].
-    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
-        (self.leaderboard.as_ref(), self.error.as_ref())
-    }
-}
-
-impl<S> BotDataSplitExt for Option<S>
-where
-    S: BotDataSplitExt,
-{
-    type LeaderboardType = S::LeaderboardType;
-    type BotErrorDataType = S::BotErrorDataType;
-
-    /// If this [`Option`] is [`Some(value)`], splits `value` into a tuple of corresponding
-    /// [`Leaderboard`] and [`BotErrorData`], otherwise returns `(None, None)`.
-    // noinspection DuplicatedCode
-    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
-        self.map(|splittable| splittable.split()).unwrap_or((None, None))
-    }
-}
-
-impl<'a, S> BotDataSplitExt for &'a Option<S>
-where
-    &'a S: BotDataSplitExt,
-{
-    type LeaderboardType = <&'a S as BotDataSplitExt>::LeaderboardType;
-    type BotErrorDataType = <&'a S as BotDataSplitExt>::BotErrorDataType;
-
-    /// If this [`Option`] reference is [`Some(value)`], splits `value` into a tuple of
-    /// corresponding [`Leaderboard`] and [`BotErrorData`] references, otherwise returns
-    /// `(None, None)`.
-    // noinspection DuplicatedCode
-    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
-        self.as_ref().map(|splittable| splittable.split()).unwrap_or((None, None))
-    }
-}
-
-impl<S, E> BotDataSplitExt for Result<S, E>
-where
-    S: BotDataSplitExt,
-{
-    type LeaderboardType = S::LeaderboardType;
-    type BotErrorDataType = S::BotErrorDataType;
-
-    /// If this [`Result`] is [`Ok(value)`], splits `value` into a tuple of corresponding
-    /// [`Leaderboard`] and [`BotErrorData`], otherwise returns `(None, None)`, dropping
-    /// the error.
-    // noinspection DuplicatedCode
-    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
-        self.map(|splittable| splittable.split()).unwrap_or((None, None))
-    }
-}
-
-impl<'a, S, E> BotDataSplitExt for &'a Result<S, E>
-where
-    &'a S: BotDataSplitExt,
-{
-    type LeaderboardType = <&'a S as BotDataSplitExt>::LeaderboardType;
-    type BotErrorDataType = <&'a S as BotDataSplitExt>::BotErrorDataType;
-
-    /// If this [`Result`] reference is [`Ok(value)`], splits `value` into a tuple of
-    /// corresponding [`Leaderboard`] and [`BotErrorData`] references , otherwise returns
-    /// `(None, None)`.
-    // noinspection DuplicatedCode
-    fn split(self) -> (Option<Self::LeaderboardType>, Option<Self::BotErrorDataType>) {
-        self.as_ref().map(|splittable| splittable.split()).unwrap_or((None, None))
-    }
-}
-
 /// Trait that must be implemented to persist the data required by the bot
 /// in-between every invocation.
 #[cfg_attr(test, mockall::automock(type Err=crate::Error;))]
@@ -190,23 +54,49 @@ pub trait Storage {
     /// Type of error used by this storage.
     type Err: Error + Send;
 
-    /// Loads any leaderboard data persisted by a previous bot run.
+    /// Loads any leaderboard data persisted by a previous bot run as well
+    /// as information about any error that occurred during the last run.
     ///
-    /// If loading was successful but no previous data exists, this method
-    /// should return `Ok(None)`.
+    /// If load is successful, returns a tuple with two elements:
+    /// 1. The last leaderboard saved via a call to [`save_success`]. Note that
+    ///    this will be returned even if the last run resulted in an error.
+    /// 2. The kind of error that occurred during the last bot run, if any,
+    ///    as passed to [`save_error`].
+    ///
+    /// [`save_success`]: Self::save_success
+    /// [`save_error`]: Self::save_error
     fn load_previous(
         &self,
         year: i32,
         leaderboard_id: u64,
-    ) -> impl Future<Output = Result<Option<BotData>, Self::Err>> + Send;
+    ) -> impl Future<Output = Result<(Option<Leaderboard>, Option<crate::ErrorKind>), Self::Err>> + Send;
 
-    /// Saves the given leaderboard data to storage so that the next bot run
-    /// can fetch it using [`load_previous`](Self::load_previous).
-    fn save(
+    /// Saves the result of a successful bot run: the latest version of the [`Leaderboard`].
+    ///
+    /// If the previous bot run resulted in an error persisted via [`save_error`],
+    /// that last error should be cleared.
+    ///
+    /// [`save_error`]: Self::save_error
+    fn save_success(
         &mut self,
         year: i32,
         leaderboard_id: u64,
-        bot_data: &BotData,
+        leaderboard: &Leaderboard,
+    ) -> impl Future<Output = Result<(), Self::Err>> + Send;
+
+    /// Saves the result of a failed bot run: the kind of error encountered.
+    ///
+    /// If there exists data about the latest version of the [`Leaderboard`],
+    /// as saved by a previous call to [`save_success`], it should **not** be
+    /// cleared, since it must be returned if [`load_previous`] is called.
+    ///
+    /// [`save_success`]: Self::save_success
+    /// [`load_previous`]: Self::load_previous
+    fn save_error(
+        &mut self,
+        year: i32,
+        leaderboard_id: u64,
+        error_kind: crate::ErrorKind,
     ) -> impl Future<Output = Result<(), Self::Err>> + Send;
 }
 
@@ -279,21 +169,14 @@ pub trait Reporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
-    ///
-    /// If the bot gets the same error twice, it will include
-    /// information about the previous error.
     #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self)))]
     fn report_error(
         &mut self,
         year: i32,
         leaderboard_id: u64,
-        error: &crate::Error,
-        previous_error: Option<&BotErrorData>,
+        error: crate::Error,
     ) -> impl Future<Output = ()> + Send {
         eprintln!("Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}");
-        if let Some(previous_error) = previous_error {
-            eprintln!("This is the same error that happened during last run; previous error info: {previous_error:?}");
-        }
         ready(())
     }
 }
@@ -319,24 +202,13 @@ pub struct BotOutput {
     pub changes: Option<Changes>,
 }
 
-impl BotOutput {
-    /// Creates a new [`BotOutput`] with current leaderboard data.
-    ///
-    /// The [`previous_leaderboard`](Self::previous_leaderboard) and
-    /// [`changes`](Self::changes) field will both be set to `None`.
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", ret))]
-    pub fn new(year: i32, leaderboard_id: u64, leaderboard: Leaderboard) -> Self {
-        Self { year, leaderboard_id, previous_leaderboard: None, leaderboard, changes: None }
-    }
-}
-
 /// Runs the bot's core functionality.
 ///
-/// Reads the [`config`], fetches the current leaderboard data, then fetches the previous
-/// leaderboard data from [`storage`]. If there was no previous leaderboard (e.g. this is
-/// the first run), saves the current leaderboard to storage and exits; otherwise, computes
-/// if the leaderboard has new members and/or members who got new stars and calls the
-/// [`reporter`] if some diff is found.
+/// Reads the [`config`], fetches the previous leaderboard data from [`storage`], then
+/// fetches current leaderboard data via [`Leaderboard::get`]. If there was no previous
+/// leaderboard (e.g. this is the first run), saves the current leaderboard to storage
+/// and exits; otherwise, computes if the leaderboard has new members and/or members who
+/// got new stars and calls the [`reporter`] if some diff is found.
 ///
 /// If the `dry_run` parameter is set to `true`, then the bot will fetch data and compute
 /// changes but will not persist or report them.
@@ -385,19 +257,17 @@ where
     R: Reporter,
     <R as Reporter>::Err: Error + Sync + 'static,
 {
-    async fn internal_run_bot<B, S, R>(
+    async fn get_leaderboard_and_changes<B, R>(
         advent_of_code_base: Option<B>,
         year: i32,
         leaderboard_id: u64,
         aoc_session: &str,
-        storage: &mut S,
+        previous_leaderboard: Option<Leaderboard>,
         reporter: &mut R,
         dry_run: bool,
-    ) -> crate::Result<BotOutput, (crate::Error, Option<BotData>)>
+    ) -> crate::Result<BotOutput, crate::Error>
     where
         B: AsRef<str> + Debug,
-        S: Storage,
-        <S as Storage>::Err: Error + Sync + 'static,
         R: Reporter,
         <R as Reporter>::Err: Error + Sync + 'static,
     {
@@ -426,73 +296,36 @@ where
             })
         }
 
-        let reporter: &mut R = reporter;
+        let leaderboard =
+            get_leaderboard(advent_of_code_base, year, leaderboard_id, aoc_session).await?;
 
-        let leaderboard_result =
-            get_leaderboard(advent_of_code_base, year, leaderboard_id, aoc_session).await;
-        let load_previous_result = storage
-            .load_previous(year, leaderboard_id)
-            .await
-            .map_err(|err| StorageError::LoadPrevious(anyhow!(err)));
-        let (leaderboard, previous_data) = match (leaderboard_result, load_previous_result) {
-            (Err(get_err), load_res) => {
-                return Err((get_err, load_res.ok().flatten()));
-            },
-            (Ok(leaderboard), Err(load_err)) => {
-                return Err((load_err.into(), Some(BotData::for_leaderboard(leaderboard))))
-            },
-            (Ok(leaderboard), Ok(bot_data)) => (leaderboard, bot_data),
+        // TODO don't check for changes if we don't have previous leaderboard
+
+        let changes = detect_changes(previous_leaderboard.as_ref(), &leaderboard);
+        let output = BotOutput {
+            year,
+            leaderboard_id,
+            previous_leaderboard,
+            leaderboard,
+            changes,
         };
 
-        let mut output = BotOutput::new(year, leaderboard_id, leaderboard.clone());
-        let (previous_leaderboard, previous_error) = previous_data.split();
-        let leaderboard_and_prev_error = match (previous_leaderboard, previous_error) {
-            (Some(previous_leaderboard), prev_error) => {
-                output.previous_leaderboard = Some(previous_leaderboard.clone());
-
-                if let Some(changes) = detect_changes(&previous_leaderboard, &leaderboard) {
-                    output.changes = Some(changes.clone());
-
-                    if !dry_run {
-                        reporter
-                            .report_changes(
-                                year,
-                                leaderboard_id,
-                                &previous_leaderboard,
-                                &leaderboard,
-                                &changes,
-                            )
-                            .await
-                            .map_err(|err| {
-                                let bot_data = BotData {
-                                    leaderboard: Some(leaderboard.clone()),
-                                    error: prev_error.clone(),
-                                };
-                                let reporter_err = ReporterError::ReportChanges(anyhow!(err));
-                                (reporter_err.into(), Some(bot_data))
-                            })?;
-                    }
-                }
-
-                Some((leaderboard, prev_error))
+        match (&output.previous_leaderboard, &output.changes) {
+            (Some(previous_leaderboard), Some(changes)) if !dry_run => {
+                reporter
+                    .report_changes(
+                        year,
+                        leaderboard_id,
+                        previous_leaderboard,
+                        &output.leaderboard,
+                        changes,
+                    )
+                    .await
+                    .map_err(|err| {
+                        ReporterError::ReportChanges(anyhow!(err))
+                    })?;
             },
-            (None, _) if dry_run => None,
-            (None, prev_error) => Some((leaderboard, prev_error)),
-        };
-        if let Some((leaderboard, prev_error)) = leaderboard_and_prev_error {
-            let bot_data = BotData::for_leaderboard(leaderboard);
-
-            storage
-                .save(year, leaderboard_id, &bot_data)
-                .await
-                .map_err(|err| {
-                    let bot_data = BotData {
-                        leaderboard: bot_data.leaderboard,
-                        error: prev_error.clone(),
-                    };
-                    let storage_err = StorageError::Save(anyhow!(err));
-                    (storage_err.into(), Some(bot_data))
-                })?;
+            _ => (),
         }
 
         Ok(output)
@@ -500,6 +333,47 @@ where
 
     let (year, leaderboard_id, aoc_session) =
         (config.year(), config.leaderboard_id(), config.aoc_session());
+
+    let previous_result = storage.load_previous(year, leaderboard_id).await;
+    let (output_result, previous_error) = match previous_result {
+        Ok((previous_leaderboard, previous_error)) => {
+            let output_result = get_leaderboard_and_changes(
+                advent_of_code_base,
+                year,
+                leaderboard_id,
+                &aoc_session,
+                previous_leaderboard,
+                reporter,
+                dry_run,
+            ).await;
+            (output_result, previous_error)
+        },
+        Err(err) => {
+            (Err(StorageError::LoadPrevious(anyhow!(err)).into()), None)
+        },
+    };
+
+    match output_result {
+        Ok(output) => {
+            // TODO persist success if there are changes
+
+            Ok(output)
+        },
+        Err(err) if previous_error.is_some_and(|err_kind| err_kind == (&err).into()) => {
+            // An error occurred but it's the same kind of error reported previously; don't
+            // spam the reporter when this happens, simply avoid reporting the same error twice.
+            Err(err),
+        },
+        Err(err) if !dry_run => {
+            reporter.report_error(
+                year,
+                leaderboard_id,
+                err,
+            ).await;
+
+            match storage.save_error()
+        },
+    }
 
     match internal_run_bot(
         advent_of_code_base,
@@ -554,28 +428,33 @@ where
 
 #[cfg_attr(not(coverage_nightly), tracing::instrument(ret))]
 fn detect_changes(
-    previous_leaderboard: &Leaderboard,
+    previous_leaderboard: Option<&Leaderboard>,
     leaderboard: &Leaderboard,
 ) -> Option<Changes> {
-    let new_members = leaderboard
-        .members
-        .keys()
-        .filter(|id| !previous_leaderboard.members.contains_key(id))
-        .copied()
-        .collect();
-    let members_with_new_stars = leaderboard
-        .members
-        .values()
-        .filter(|member| {
-            previous_leaderboard
+    match previous_leaderboard {
+        Some(previous_leaderboard) => {
+            let new_members = leaderboard
                 .members
-                .get(&member.id)
-                .is_some_and(|prev| prev.stars < member.stars)
-        })
-        .map(|member| member.id)
-        .collect();
+                .keys()
+                .filter(|id| !previous_leaderboard.members.contains_key(id))
+                .copied()
+                .collect();
+            let members_with_new_stars = leaderboard
+                .members
+                .values()
+                .filter(|member| {
+                    previous_leaderboard
+                        .members
+                        .get(&member.id)
+                        .is_some_and(|prev| prev.stars < member.stars)
+                })
+                .map(|member| member.id)
+                .collect();
 
-    Changes::if_needed(new_members, members_with_new_stars)
+            Changes::if_needed(new_members, members_with_new_stars)
+        },
+        None => None,
+    }
 }
 
 #[cfg(test)]
