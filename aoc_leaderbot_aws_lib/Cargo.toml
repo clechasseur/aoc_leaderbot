@@ -72,6 +72,3 @@ assert_matches = { workspace = true }
 rstest = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros"] }
-
-[build-dependencies]
-rustc_version = { workspace = true }

@@ -12,9 +12,9 @@ use std::fmt::Debug;
 use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
 use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
 use derive_builder::Builder;
+use gratte::{Display, EnumProperty, EnumString};
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumProperty, EnumString};
 use tracing::{error, trace};
 use veil::Redact;
 

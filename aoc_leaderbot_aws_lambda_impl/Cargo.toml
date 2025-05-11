@@ -67,6 +67,3 @@ rstest = { workspace = true }
 serial_test = { workspace = true, features = ["file_locks"] }
 testcontainers-modules = { workspace = true, features = ["dynamodb"] }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
-
-[build-dependencies]
-rustc_version = { workspace = true }

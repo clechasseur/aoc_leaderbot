@@ -42,7 +42,6 @@ pub struct Leaderboard {
 }
 
 #[cfg(feature = "http")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "http")))]
 impl Leaderboard {
     /// Fetches this leaderboard's data from the [Advent of Code] website.
     ///
