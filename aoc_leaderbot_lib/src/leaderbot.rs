@@ -174,7 +174,7 @@ pub trait Reporter {
         &mut self,
         year: i32,
         leaderboard_id: u64,
-        error: crate::Error,
+        error: &crate::Error,
     ) -> impl Future<Output = ()> + Send {
         eprintln!("Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}");
         ready(())
@@ -299,8 +299,6 @@ where
         let leaderboard =
             get_leaderboard(advent_of_code_base, year, leaderboard_id, aoc_session).await?;
 
-        // TODO don't check for changes if we don't have previous leaderboard
-
         let changes = detect_changes(previous_leaderboard.as_ref(), &leaderboard);
         let output = BotOutput {
             year,
@@ -335,7 +333,7 @@ where
         (config.year(), config.leaderboard_id(), config.aoc_session());
 
     let previous_result = storage.load_previous(year, leaderboard_id).await;
-    let (output_result, previous_error) = match previous_result {
+    let (mut output_result, previous_error) = match previous_result {
         Ok((previous_leaderboard, previous_error)) => {
             let output_result = get_leaderboard_and_changes(
                 advent_of_code_base,
@@ -353,76 +351,40 @@ where
         },
     };
 
-    match output_result {
-        Ok(output) => {
-            // TODO persist success if there are changes
+    if let Ok(output) = output_result {
+        output_result = match storage.save_success(year, leaderboard_id, &output.leaderboard).await {
+            Ok(()) => Ok(output),
+            Err(err) => Err(StorageError::Save(anyhow!(err)).into()),
+        };
+    }
 
-            Ok(output)
-        },
-        Err(err) if previous_error.is_some_and(|err_kind| err_kind == (&err).into()) => {
-            // An error occurred but it's the same kind of error reported previously; don't
+    match output_result {
+        Err(err) if previous_error.is_some_and(|err_kind| err_kind == err.discriminant()) => {
+            // An error occurred, but it's the same kind of error reported previously; don't
             // spam the reporter when this happens, simply avoid reporting the same error twice.
-            Err(err),
+            Err(err)
         },
         Err(err) if !dry_run => {
             reporter.report_error(
                 year,
                 leaderboard_id,
-                err,
-            ).await;
-
-            match storage.save_error()
-        },
-    }
-
-    match internal_run_bot(
-        advent_of_code_base,
-        year,
-        leaderboard_id,
-        &aoc_session,
-        storage,
-        reporter,
-        dry_run,
-    )
-    .await
-    {
-        Ok(output) => Ok(output),
-        Err((err, bot_data)) => {
-            let (leaderboard, prev_error) = bot_data.as_ref().split();
-
-            reporter.report_error(
-                year,
-                leaderboard_id,
                 &err,
-                prev_error,
             ).await;
 
-            if !dry_run {
-                let new_bot_data = BotData {
-                    leaderboard: leaderboard.cloned(),
-                    error: Some(BotErrorData {
-                        kind: err.discriminant(),
-                        message: Some(err.to_string()),
-                    }),
-                };
-                // Don't try to save previous error data if we got the same result as before.
-                if !bot_data.as_ref().is_some_and(|data| *data == new_bot_data) {
-                    if let Err(storage_err) = storage.save(year, leaderboard_id, &new_bot_data).await {
-                        // An error occurred while doing the bot run, and an error also occurred
-                        // while trying to persist information about the last error. ¯\_(ツ)_/¯
-                        let storage_err = crate::Error::Storage(StorageError::Save(anyhow!(storage_err)));
-                        reporter.report_error(
-                            year,
-                            leaderboard_id,
-                            &storage_err,
-                            None,
-                        ).await;
-                    }
-                }
+            if let Err(storage_err) = storage.save_error(year, leaderboard_id, (&err).into()).await {
+                // An error occurred while doing the bot run, and an error also occurred
+                // while trying to persist information about the last error. ¯\_(ツ)_/¯
+                let storage_err = StorageError::Save(anyhow!(storage_err)).into();
+                reporter.report_error(
+                    year,
+                    leaderboard_id,
+                    &storage_err,
+                ).await;
             }
 
             Err(err)
         },
+        output_result => output_result,
     }
 }
 
@@ -523,10 +485,6 @@ mod tests {
                     TEST_YEAR,
                     TEST_LEADERBOARD_ID,
                     &crate::Error::TestErrorWithMessage("broken pipe".into()),
-                    Some(&BotErrorData {
-                        kind: ErrorKind::TestErrorWithMessage,
-                        message: Some("broken pipe".into()),
-                    }),
                 )
                 .await;
         }
@@ -537,10 +495,13 @@ mod tests {
         use std::future::ready;
 
         use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
+        use aoc_leaderboard::wiremock::MockServer;
         use assert_matches::assert_matches;
         use mockall::predicate::eq;
 
         use super::*;
+        use crate::ErrorKind;
+        use crate::error::{ReporterErrorKind, StorageErrorKind};
         use crate::leaderbot::config::mem::MemoryConfig;
         use crate::leaderbot::storage::mem::MemoryStorage;
 
@@ -566,7 +527,7 @@ mod tests {
         #[derive(Debug, Default)]
         pub struct SpyReporter {
             pub changes: Vec<(i32, u64, SpiedChanges)>,
-            pub errors: Vec<(i32, u64, String, String)>,
+            pub errors: Vec<(i32, u64, String)>,
         }
 
         impl SpyReporter {
@@ -608,13 +569,11 @@ mod tests {
                 year: i32,
                 leaderboard_id: u64,
                 error: &crate::Error,
-                prev_error: Option<&BotErrorData>,
             ) {
                 self.errors.push((
                     year,
                     leaderboard_id,
                     error.to_string(),
-                    prev_error.and_then(|prev_error| prev_error.message.clone()).unwrap_or_default(),
                 ));
             }
         }
@@ -769,8 +728,6 @@ mod tests {
 
         // noinspection DuplicatedCode
         mod without_previous {
-            use aoc_leaderboard::wiremock::MockServer;
-
             use super::*;
 
             #[rstest]
@@ -807,11 +764,12 @@ mod tests {
                 assert_eq!(storage.len(), if dry_run { 0 } else { 1 });
                 assert!(!reporter.called());
 
-                let actual = storage
+                let (actual_leaderboard, actual_err) = storage
                     .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                     .await
                     .unwrap();
-                assert_eq!(actual, if dry_run { None } else { Some(BotData::for_leaderboard(expected)) });
+                assert!(actual_err.is_none());
+                assert_eq!(actual_leaderboard, if dry_run { None } else { Some(expected) });
             }
         }
 
@@ -835,13 +793,11 @@ mod tests {
                 #[case] expected_members_with_new_stars: Vec<u64>,
                 #[values(false, true)] dry_run: bool,
             ) {
-                let bot_data = BotData::for_leaderboard(base);
                 storage
-                    .save(TEST_YEAR, TEST_LEADERBOARD_ID, &bot_data)
+                    .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &base)
                     .await
                     .unwrap();
 
-                let base = bot_data.leaderboard.unwrap();
                 let expected = SpiedChanges {
                     previous_leaderboard: base.clone(),
                     leaderboard: leaderboard.clone(),
@@ -870,12 +826,13 @@ mod tests {
                 });
 
                 assert_eq!(storage.len(), 1);
-                let current = storage
+                let (current_leaderboard, current_err) = storage
                     .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                     .await
                     .unwrap();
-                assert_eq!(current, Some(BotData::for_leaderboard(
-                    if dry_run { base } else { leaderboard })
+                assert!(current_err.is_none());
+                assert_eq!(current_leaderboard, Some(
+                    if dry_run { base } else { leaderboard }
                 ));
 
                 if expected.has_changes() && !dry_run {
@@ -891,8 +848,6 @@ mod tests {
         }
 
         mod errors {
-            use aoc_leaderboard::wiremock::MockServer;
-
             use super::*;
 
             #[rstest]
@@ -900,25 +855,40 @@ mod tests {
             #[test_log::test(tokio::test)]
             async fn leaderboard_get_error(
                 config: MemoryConfig,
-                mut storage: MemoryStorage,
                 mut reporter: SpyReporter,
                 #[future]
                 #[from(mock_server_with_inaccessible_leaderboard)]
                 mock_server: MockServer,
+                #[values(false, true)] dry_run: bool,
             ) {
+                let mut storage = MockStorage::new();
+                storage
+                    .expect_load_previous()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
+                    .times(1)
+                    .returning(|_, _| {
+                        Box::pin(ready(Ok((None, None))))
+                    });
+                if !dry_run {
+                    storage
+                        .expect_save_error()
+                        .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)))
+                        .times(1)
+                        .returning(move |_, _, _| Box::pin(ready(Ok(()))));
+                }
+
                 let result = run_bot_from(
                     Some(mock_server.uri()),
                     &config,
                     &mut storage,
                     &mut reporter,
-                    false,
+                    dry_run,
                 )
                 .await;
                 assert_matches!(
                     result,
                     Err(crate::Error::Leaderboard(aoc_leaderboard::Error::NoAccess))
                 );
-                assert_eq!(storage.len(), 1);
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
             }
@@ -931,10 +901,8 @@ mod tests {
                 mut reporter: SpyReporter,
                 #[future]
                 #[from(mock_server_with_leaderboard)]
-                #[with(base_leaderboard::default())]
                 mock_server: MockServer,
-                #[from(base_leaderboard)]
-                expected_leaderboard: Leaderboard,
+                #[values(false, true)] dry_run: bool,
             ) {
                 let mut storage = MockStorage::new();
                 storage
@@ -944,24 +912,20 @@ mod tests {
                     .returning(move |_, _| {
                         Box::pin(ready(Err(crate::Error::TestLoadPreviousError)))
                     });
-                storage
-                    .expect_save()
-                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(BotData {
-                        leaderboard: Some(expected_leaderboard),
-                        error: Some(BotErrorData {
-                            kind: ErrorKind::TestLoadPreviousError,
-                            message: Some("failed to load previous leaderboard data: test".into()),
-                        }),
-                    }))
-                    .times(1)
-                    .returning(move |_, _, _| Box::pin(ready(Ok(()))));
+                if !dry_run {
+                    storage
+                        .expect_save_error()
+                        .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::TestLoadPreviousError))
+                        .times(1)
+                        .returning(move |_, _, _| Box::pin(ready(Ok(()))));
+                }
 
                 let result = run_bot_from(
                     Some(mock_server.uri()),
                     &config,
                     &mut storage,
                     &mut reporter,
-                    false,
+                    dry_run,
                 )
                 .await;
                 assert_matches!(result, Err(crate::Error::Storage(StorageError::LoadPrevious(_))));
@@ -973,7 +937,6 @@ mod tests {
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
                         "failed to load previous leaderboard data: test".into(),
-                        "".into(),
                     )
                 );
             }
@@ -983,13 +946,29 @@ mod tests {
             #[test_log::test(tokio::test)]
             async fn report_changes_error(
                 config: MemoryConfig,
-                mut storage: MemoryStorage,
                 #[from(base_leaderboard)] base: Leaderboard,
                 #[future]
                 #[from(mock_server_with_leaderboard)]
                 #[with(leaderboard_with_new_member::default())]
                 mock_server: MockServer,
+                #[values(false, true)] dry_run: bool,
             ) {
+                let mut storage = MockStorage::new();
+                storage
+                    .expect_load_previous()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
+                    .times(1)
+                    .returning(move |_, _| {
+                        Box::pin(ready(Ok((Some(base.clone()), None))))
+                    });
+                if !dry_run {
+                    storage
+                        .expect_save_error()
+                        .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Reporter(ReporterErrorKind::ReportChanges)))
+                        .times(1)
+                        .returning(move |_, _, _| Box::pin(ready(Ok(()))));
+                }
+
                 #[derive(Debug, Default)]
                 struct MockReporter {
                     pub errors: usize,
@@ -1014,7 +993,6 @@ mod tests {
                         _year: i32,
                         _leaderboard_id: u64,
                         _error: &crate::Error,
-                        _prev_error: Option<&BotErrorData>,
                     ) {
                         self.errors += 1;
                     }
@@ -1022,17 +1000,12 @@ mod tests {
 
                 let mut reporter = MockReporter::default();
 
-                storage
-                    .save(TEST_YEAR, TEST_LEADERBOARD_ID, &BotData::for_leaderboard(base))
-                    .await
-                    .unwrap();
-
                 let result = run_bot_from(
                     Some(mock_server.uri()),
                     &config,
                     &mut storage,
                     &mut reporter,
-                    false,
+                    dry_run,
                 )
                 .await;
                 assert_matches!(
@@ -1058,18 +1031,21 @@ mod tests {
                     .expect_load_previous()
                     .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
-                    .returning(move |_, _| Box::pin(ready(Ok(Some(
-                        BotData::for_leaderboard(base_leaderboard())
-                    )))));
+                    .returning(move |_, _| Box::pin(ready(Ok(
+                        (Some(base_leaderboard()), None)
+                    ))));
                 storage
-                    .expect_save()
-                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(
-                        BotData::for_leaderboard(leaderboard_with_new_member())
-                    ))
+                    .expect_save_success()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(leaderboard_with_new_member()))
                     .times(1)
                     .returning(move |_, _, _| {
                         Box::pin(ready(Err(crate::Error::TestSaveUpdatedError)))
                     });
+                storage
+                    .expect_save_error()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Storage(StorageErrorKind::Save)))
+                    .times(1)
+                    .returning(move |_, _, _| Box::pin(ready(Ok(()))));
 
                 let result = run_bot_from(
                     Some(mock_server.uri()),
@@ -1088,7 +1064,6 @@ mod tests {
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
                         "failed to save leaderboard data: test".to_string(),
-                        "".into(),
                     )
                 );
             }
@@ -1109,16 +1084,19 @@ mod tests {
                     .expect_load_previous()
                     .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
-                    .returning(move |_, _| Box::pin(ready(Ok(None))));
+                    .returning(move |_, _| Box::pin(ready(Ok((None, None)))));
                 storage
-                    .expect_save()
-                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(
-                        BotData::for_leaderboard(base_leaderboard())
-                    ))
+                    .expect_save_success()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(base_leaderboard()))
                     .times(1)
                     .returning(move |_, _, _| {
                         Box::pin(ready(Err(crate::Error::TestSaveBaseError)))
                     });
+                storage
+                    .expect_save_error()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Storage(StorageErrorKind::Save)))
+                    .times(1)
+                    .returning(move |_, _, _| Box::pin(ready(Ok(()))));
 
                 let result = run_bot_from(
                     Some(mock_server.uri()),
@@ -1137,7 +1115,6 @@ mod tests {
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
                         "failed to save leaderboard data: test".to_string(),
-                        "".into(),
                     )
                 );
             }
