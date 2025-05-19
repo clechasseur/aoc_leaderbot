@@ -46,6 +46,19 @@ pub enum DynamoDbError {
         source: SaveDynamoDbError,
     },
 
+    /// Error occurred while saving last error information in DynamoDB table.
+    #[error("failed to save last error information for leaderboard with id {leaderboard_id} for year {year}: {source}")]
+    SaveLastError {
+        /// ID of leaderboard to persist.
+        leaderboard_id: u64,
+
+        /// Year to persist.
+        year: i32,
+
+        /// The error that occurred while trying to save last error information.
+        source: SaveDynamoDbError,
+    },
+
     /// Error occurred while creating a table to store leaderboard data
     #[error("failed to create table {table_name}: {source}")]
     CreateTable {
@@ -86,6 +99,18 @@ pub enum SaveDynamoDbError {
         #[from]
         aws_sdk_dynamodb::error::SdkError<
             aws_sdk_dynamodb::operation::put_item::PutItemError,
+            aws_sdk_dynamodb::config::http::HttpResponse,
+        >,
+    ),
+
+    /// Error that occurred while trying to update leaderboard data in DynamoDB.
+    ///
+    /// Such updates are used to store last error information.
+    #[error("error updating leaderboard data: {0}")]
+    UpdateItem(
+        #[from]
+        aws_sdk_dynamodb::error::SdkError<
+            aws_sdk_dynamodb::operation::update_item::UpdateItemError,
             aws_sdk_dynamodb::config::http::HttpResponse,
         >,
     ),

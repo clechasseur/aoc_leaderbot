@@ -128,11 +128,11 @@ impl LocalTable {
     /// The leaderboard will be associated with the test
     /// values [`LEADERBOARD_ID`] and [`YEAR`].
     pub async fn save_leaderboard(&self, leaderboard: &Leaderboard) {
-        let leaderboard_data = DynamoDbLeaderboardData {
-            leaderboard_id: TEST_LEADERBOARD_ID,
-            year: TEST_YEAR,
-            leaderboard_data: leaderboard.clone(),
-        };
+        let leaderboard_data = DynamoDbLeaderboardData::for_success(
+            TEST_YEAR,
+            TEST_LEADERBOARD_ID,
+            leaderboard.clone(),
+        );
         let item = serde_dynamo::to_item(leaderboard_data)
             .expect("leaderboard data should be serializable");
 
@@ -162,7 +162,7 @@ impl LocalTable {
             .await
             .expect("leaderboard data should exist in the test table")
             .item
-            .map(|item| {
+            .and_then(|item| {
                 let data: DynamoDbLeaderboardData = serde_dynamo::from_item(item)
                     .expect("leaderboard data should be deserializable");
                 data.leaderboard_data
