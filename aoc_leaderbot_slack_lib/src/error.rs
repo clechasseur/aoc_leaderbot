@@ -94,7 +94,9 @@ mod tests {
         #[test]
         #[serial(slack_webhook_reporter_env)]
         fn reporter_builder() {
-            env::remove_var(WEBHOOK_URL_ENV_VAR);
+            unsafe {
+                env::remove_var(WEBHOOK_URL_ENV_VAR);
+            }
 
             let error = SlackWebhookReporter::builder()
                 .build_for_test()

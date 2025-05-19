@@ -1,3 +1,5 @@
+use itertools::repeat_n;
+
 pub trait SlackWebhookReporterStringExt {
     fn right_pad(self, width: usize, with: char) -> String;
 }
@@ -9,10 +11,13 @@ where
     fn right_pad(self, width: usize, with: char) -> String {
         let mut s = self.into();
 
-        let missing = width.saturating_sub(s.chars().count());
-        for _ in 0..missing {
-            s.push(with);
+        
+        match width.saturating_sub(s.chars().count()) {
+            0 => s,
+            missing => {
+                s.extend(repeat_n(with, missing));
+                s
+            },
         }
-        s
     }
 }

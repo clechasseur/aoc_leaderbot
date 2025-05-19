@@ -317,7 +317,7 @@ mod slack_webhook_reporter {
         serde_json::from_value(member_json).unwrap()
     }
 
-    fn set_optional_env_var<K, V>(key: K, value: Option<V>)
+    unsafe fn set_optional_env_var<K, V>(key: K, value: Option<V>)
     where
         K: AsRef<OsStr>,
         V: AsRef<OsStr>,
@@ -328,7 +328,7 @@ mod slack_webhook_reporter {
         }
     }
 
-    fn set_reporter_env_vars<W, C, S>(
+    unsafe fn set_reporter_env_vars<W, C, S>(
         webhook_url: Option<W>,
         channel: Option<C>,
         sort_order: Option<S>,
@@ -365,11 +365,13 @@ mod slack_webhook_reporter {
         #[test]
         #[serial(slack_webhook_reporter_env)]
         fn with_correct_defaults() {
-            set_reporter_env_vars(
-                Some("https://webhook-url"),
-                Some("#aoc_leaderbot_test"),
-                None::<&OsStr>,
-            );
+            unsafe {
+                set_reporter_env_vars(
+                    Some("https://webhook-url"),
+                    Some("#aoc_leaderbot_test"),
+                    None::<&OsStr>,
+                );
+            }
 
             let result = SlackWebhookReporter::builder().build();
             assert!(result.is_ok());
@@ -394,7 +396,9 @@ mod slack_webhook_reporter {
             #[test]
             #[serial(slack_webhook_reporter_env)]
             fn webhook_url() {
-                set_reporter_env_vars(None::<&OsStr>, Some("#aoc_leaderbot_test"), None::<&OsStr>);
+                unsafe {
+                    set_reporter_env_vars(None::<&OsStr>, Some("#aoc_leaderbot_test"), None::<&OsStr>);
+                }
 
                 let result = SlackWebhookReporter::builder().build();
                 assert_matches!(
@@ -410,7 +414,9 @@ mod slack_webhook_reporter {
             #[test]
             #[serial(slack_webhook_reporter_env)]
             fn channel() {
-                set_reporter_env_vars(Some("https://webhook-url"), None::<&OsStr>, None::<&OsStr>);
+                unsafe {
+                    set_reporter_env_vars(Some("https://webhook-url"), None::<&OsStr>, None::<&OsStr>);
+                }
 
                 let result = SlackWebhookReporter::builder().build();
                 assert_matches!(
@@ -430,11 +436,13 @@ mod slack_webhook_reporter {
             #[test]
             #[serial(slack_webhook_reporter_env)]
             fn invalid_sort_order_value() {
-                set_reporter_env_vars(
-                    None::<&OsStr>,
-                    None::<&OsStr>,
-                    Some("not_a_sort_order_value"),
-                );
+                unsafe {
+                    set_reporter_env_vars(
+                        None::<&OsStr>,
+                        None::<&OsStr>,
+                        Some("not_a_sort_order_value"),
+                    );
+                }
 
                 let result = SlackWebhookReporter::builder()
                     .webhook_url("https://webhook-url")
@@ -451,11 +459,13 @@ mod slack_webhook_reporter {
             #[test]
             #[serial(slack_webhook_reporter_env)]
             fn invalid_sort_order_unicode() {
-                set_reporter_env_vars(
-                    None::<&OsStr>,
-                    None::<&OsStr>,
-                    Some(get_invalid_os_string()),
-                );
+                unsafe {
+                    set_reporter_env_vars(
+                        None::<&OsStr>,
+                        None::<&OsStr>,
+                        Some(get_invalid_os_string()),
+                    );
+                }
 
                 let result = SlackWebhookReporter::builder()
                     .webhook_url("https://webhook-url")
@@ -498,7 +508,9 @@ mod slack_webhook_reporter {
                     progressing_member: LeaderboardMember,
                     new_member: LeaderboardMember,
                 ) {
-                    set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+                    unsafe {
+                        set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+                    }
 
                     let mut reporter = reporter(&mock_server, sort_order);
 
@@ -550,7 +562,9 @@ mod slack_webhook_reporter {
                     owner: LeaderboardMember,
                     new_member: LeaderboardMember,
                 ) {
-                    set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+                    unsafe {
+                        set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+                    }
 
                     let mut reporter = offline_reporter(&mock_server);
 
@@ -613,7 +627,9 @@ mod slack_webhook_reporter {
                 #[from(working_mock_server)]
                 mock_server: MockServer,
             ) {
-                set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+                unsafe {
+                    set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+                }
 
                 let mut reporter = reporter(&mock_server, None);
 
@@ -640,7 +656,9 @@ mod slack_webhook_reporter {
                 #[from(working_mock_server)]
                 mock_server: MockServer,
             ) {
-                set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+                unsafe {
+                    set_reporter_env_vars(None::<&OsStr>, None::<&OsStr>, None::<&OsStr>);
+                }
 
                 let mut reporter = offline_reporter(&mock_server);
 
