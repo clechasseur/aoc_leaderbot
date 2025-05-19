@@ -351,12 +351,15 @@ where
         },
     };
 
-    if let Ok(output) = output_result {
-        output_result = match storage.save_success(year, leaderboard_id, &output.leaderboard).await {
-            Ok(()) => Ok(output),
-            Err(err) => Err(StorageError::Save(anyhow!(err)).into()),
-        };
-    }
+    output_result = match output_result {
+        Ok(output) if !dry_run => {
+            match storage.save_success(year, leaderboard_id, &output.leaderboard).await {
+                Ok(()) => Ok(output),
+                Err(err) => Err(StorageError::Save(anyhow!(err)).into()),
+            }
+        },
+        output_result => output_result,
+    };
 
     match output_result {
         Err(err) if previous_error.is_some_and(|err_kind| err_kind == err.discriminant()) => {
@@ -889,8 +892,12 @@ mod tests {
                     result,
                     Err(crate::Error::Leaderboard(aoc_leaderboard::Error::NoAccess))
                 );
-                assert!(reporter.called());
-                assert_eq!(reporter.errors.len(), 1);
+                if dry_run {
+                    assert!(!reporter.called());
+                } else {
+                    assert!(reporter.called());
+                    assert_eq!(reporter.errors.len(), 1);
+                }
             }
 
             #[rstest]
@@ -915,7 +922,7 @@ mod tests {
                 if !dry_run {
                     storage
                         .expect_save_error()
-                        .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::TestLoadPreviousError))
+                        .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Storage(StorageErrorKind::LoadPrevious)))
                         .times(1)
                         .returning(move |_, _, _| Box::pin(ready(Ok(()))));
                 }
@@ -929,16 +936,20 @@ mod tests {
                 )
                 .await;
                 assert_matches!(result, Err(crate::Error::Storage(StorageError::LoadPrevious(_))));
-                assert!(reporter.called());
-                assert_eq!(reporter.errors.len(), 1);
-                assert_eq!(
-                    reporter.errors[0],
-                    (
-                        TEST_YEAR,
-                        TEST_LEADERBOARD_ID,
-                        "failed to load previous leaderboard data: test".into(),
-                    )
-                );
+                if dry_run {
+                    assert!(!reporter.called());
+                } else {
+                    assert!(reporter.called());
+                    assert_eq!(reporter.errors.len(), 1);
+                    assert_eq!(
+                        reporter.errors[0],
+                        (
+                            TEST_YEAR,
+                            TEST_LEADERBOARD_ID,
+                            "failed to load previous leaderboard data: test".into(),
+                        )
+                    );
+                }
             }
 
             #[rstest]
@@ -951,7 +962,6 @@ mod tests {
                 #[from(mock_server_with_leaderboard)]
                 #[with(leaderboard_with_new_member::default())]
                 mock_server: MockServer,
-                #[values(false, true)] dry_run: bool,
             ) {
                 let mut storage = MockStorage::new();
                 storage
@@ -961,13 +971,11 @@ mod tests {
                     .returning(move |_, _| {
                         Box::pin(ready(Ok((Some(base.clone()), None))))
                     });
-                if !dry_run {
-                    storage
-                        .expect_save_error()
-                        .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Reporter(ReporterErrorKind::ReportChanges)))
-                        .times(1)
-                        .returning(move |_, _, _| Box::pin(ready(Ok(()))));
-                }
+                storage
+                    .expect_save_error()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Reporter(ReporterErrorKind::ReportChanges)))
+                    .times(1)
+                    .returning(move |_, _, _| Box::pin(ready(Ok(()))));
 
                 #[derive(Debug, Default)]
                 struct MockReporter {
@@ -1005,7 +1013,7 @@ mod tests {
                     &config,
                     &mut storage,
                     &mut reporter,
-                    dry_run,
+                    false,
                 )
                 .await;
                 assert_matches!(

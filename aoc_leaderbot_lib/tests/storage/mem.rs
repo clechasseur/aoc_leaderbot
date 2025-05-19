@@ -2,7 +2,7 @@ mod memory_storage {
     use aoc_leaderboard::aoc::Leaderboard;
     use aoc_leaderboard::test_helpers::{test_leaderboard, TEST_LEADERBOARD_ID, TEST_YEAR};
     use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryStorage;
-    use aoc_leaderbot_lib::leaderbot::{BotData, Storage};
+    use aoc_leaderbot_lib::leaderbot::Storage;
     use rstest::rstest;
 
     mod new {
@@ -12,22 +12,24 @@ mod memory_storage {
         async fn new() {
             let storage = MemoryStorage::new();
 
-            let previous = storage
+            let (previous_leaderboard, previous_error) = storage
                 .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                 .await
                 .unwrap();
-            assert!(previous.is_none());
+            assert!(previous_leaderboard.is_none());
+            assert!(previous_error.is_none());
         }
 
         #[test_log::test(tokio::test)]
         async fn default() {
             let storage = MemoryStorage::default();
 
-            let previous = storage
+            let (previous_leaderboard, previous_error) = storage
                 .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                 .await
                 .unwrap();
-            assert!(previous.is_none());
+            assert!(previous_leaderboard.is_none());
+            assert!(previous_error.is_none());
         }
     }
 
@@ -43,7 +45,7 @@ mod memory_storage {
             assert!(storage.is_empty());
 
             storage
-                .save(TEST_YEAR, TEST_LEADERBOARD_ID, &BotData::for_leaderboard(leaderboard))
+                .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
                 .await
                 .unwrap();
 
@@ -63,28 +65,31 @@ mod memory_storage {
         ) {
             let mut storage = MemoryStorage::new();
 
-            let previous = storage
+            let (previous_leaderboard, previous_error) = storage
                 .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                 .await
                 .unwrap();
-            assert!(previous.is_none());
+            assert!(previous_leaderboard.is_none());
+            assert!(previous_error.is_none());
 
             storage
-                .save(TEST_YEAR, TEST_LEADERBOARD_ID, &BotData::for_leaderboard(leaderboard))
+                .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
                 .await
                 .unwrap();
 
-            let previous = storage
+            let (previous_leaderboard, previous_error) = storage
                 .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                 .await
                 .unwrap();
-            assert_eq!(previous, Some(BotData::for_leaderboard(expected)));
+            assert_eq!(previous_leaderboard, Some(expected));
+            assert!(previous_error.is_none());
 
-            let previous = storage
+            let (previous_leaderboard, previous_error) = storage
                 .load_previous(TEST_YEAR - 1, TEST_LEADERBOARD_ID)
                 .await
                 .unwrap();
-            assert!(previous.is_none());
+            assert!(previous_leaderboard.is_none());
+            assert!(previous_error.is_none());
         }
     }
 }
