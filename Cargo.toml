@@ -45,7 +45,7 @@ serde_with = "3.12.0"
 serial_test = "3.2.0"
 strum = "0.27.1"
 test-log = { version = "0.2.17", default-features = false }
-testcontainers-modules = "0.12.0"
+testcontainers-modules = "0.12.1"
 thiserror = "2.0.12"
 tokio = "1.45.0"
 tracing = "0.1.41"
