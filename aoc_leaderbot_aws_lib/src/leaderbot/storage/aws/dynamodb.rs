@@ -130,7 +130,7 @@ impl DynamoDbStorage {
             .await
             .map_err(|source| DynamoDbError::CreateTable {
                 table_name: self.table_name.clone(),
-                source: source.into(),
+                source: Box::new(source).into(),
             })?;
 
         self.wait_for_table_creation(&output).await
@@ -180,7 +180,7 @@ impl DynamoDbStorage {
                 .await
                 .map_err(|source| DynamoDbError::CreateTable {
                     table_name: self.table_name.clone(),
-                    source: source.into(),
+                    source: Box::new(source).into(),
                 })?;
             status = output
                 .table()
@@ -212,7 +212,9 @@ impl Storage for DynamoDbStorage {
             .key(RANGE_KEY, AttributeValue::N(year.to_string()))
             .send()
             .await
-            .map_err(|err| load_previous_error(err.into()))?
+            .map_err(|err| {
+                load_previous_error(Box::new(err).into())
+            })?
             .item
             .map(|item| {
                 let data: Result<DynamoDbLeaderboardData, _> = serde_dynamo::from_item(item);
@@ -247,7 +249,7 @@ impl Storage for DynamoDbStorage {
             .set_item(Some(item))
             .send()
             .await
-            .map_err(|err| save_error(err.into()))?;
+            .map_err(|err| save_error(Box::new(err).into()))?;
 
         Ok(())
     }
@@ -275,7 +277,7 @@ impl Storage for DynamoDbStorage {
             .expression_attribute_values(":last_error", attribute_value)
             .send()
             .await
-            .map_err(|err| save_error(err.into()))?;
+            .map_err(|err| save_error(Box::new(err).into()))?;
 
         Ok(())
     }

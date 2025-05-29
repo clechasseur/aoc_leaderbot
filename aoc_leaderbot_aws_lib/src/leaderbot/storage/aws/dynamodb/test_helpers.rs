@@ -10,10 +10,8 @@ use aws_config::BehaviorVersion;
 use aws_sdk_dynamodb::types::AttributeValue;
 use rstest::fixture;
 use uuid::Uuid;
-
-use crate::leaderbot::storage::aws::dynamodb::{
-    DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, RANGE_KEY,
-};
+use aoc_leaderbot_lib::ErrorKind;
+use crate::leaderbot::storage::aws::dynamodb::{DynamoDbLastErrorInformation, DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, LAST_ERROR, RANGE_KEY};
 
 /// Endpoint URL for a locally-running DynamoDB.
 pub const LOCAL_ENDPOINT_URL: &str = "http://localhost:8000";
@@ -125,8 +123,10 @@ impl LocalTable {
 
     /// Saves the given [`Leaderboard`] to the test table.
     ///
-    /// The leaderboard will be associated with the test
-    /// values [`LEADERBOARD_ID`] and [`YEAR`].
+    /// The leaderboard will be associated with the test values
+    /// [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
+    ///
+    /// Any existing data (including last error) will be overwritten.
     pub async fn save_leaderboard(&self, leaderboard: &Leaderboard) {
         let leaderboard_data = DynamoDbLeaderboardData::for_success(
             TEST_YEAR,
@@ -145,14 +145,37 @@ impl LocalTable {
             .expect("leaderboard data should be storable in the test table");
     }
 
-    /// Loads a [`Leaderboard`] from the test table directly,
-    /// using the test values [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
+    /// Saves the given [last error](ErrorKind) to the test table.
     ///
-    /// Loads the data from the table through the DynamoDB client,
-    /// not via the [`DynamoDbStorage`] wrapper.
+    /// The last error will be associated with the test values
+    /// [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
     ///
-    /// Panics if there was no leaderboard data in the table.
-    pub async fn load_leaderboard(&self) -> Leaderboard {
+    /// Any existing leaderboard data will be kept.
+    pub async fn save_last_error(&self, error_kind: ErrorKind) {
+        let last_error = DynamoDbLastErrorInformation(error_kind);
+        let attribute_value = serde_dynamo::to_attribute_value(last_error)
+            .expect("last error should be serializable");
+
+        self.client()
+            .update_item()
+            .table_name(self.name())
+            .key(HASH_KEY, AttributeValue::N(TEST_LEADERBOARD_ID.to_string()))
+            .key(RANGE_KEY, AttributeValue::N(TEST_YEAR.to_string()))
+            .update_expression("SET #last_error = :last_error")
+            .expression_attribute_names("#last_error", LAST_ERROR)
+            .expression_attribute_values(":last_error", attribute_value)
+            .send()
+            .await
+            .expect("last error should be storable in the test table");
+    }
+
+    /// Loads a [`Leaderboard`] and any associated [last error](ErrorKind) from
+    /// the test table directly, using the test values [`TEST_LEADERBOARD_ID`]
+    /// and [`TEST_YEAR`].
+    ///
+    /// Loads the data from the table through the DynamoDB client, not via the
+    /// [`DynamoDbStorage`] wrapper.
+    pub async fn load_leaderboard_and_last_error(&self) -> (Option<Leaderboard>, Option<ErrorKind>) {
         self.client()
             .get_item()
             .table_name(self.name())
@@ -160,14 +183,14 @@ impl LocalTable {
             .key(RANGE_KEY, AttributeValue::N(TEST_YEAR.to_string()))
             .send()
             .await
-            .expect("leaderboard data should exist in the test table")
+            .expect("leaderboard data should be accessible")
             .item
-            .and_then(|item| {
+            .map(|item| {
                 let data: DynamoDbLeaderboardData = serde_dynamo::from_item(item)
                     .expect("leaderboard data should be deserializable");
-                data.leaderboard_data
+                (data.leaderboard_data, data.last_error.map(|le| le.0))
             })
-            .expect("leaderboard data should exist in the test table")
+            .unwrap_or_default()
     }
 
     /// Creates a test table wrapper, calls the provided
@@ -217,11 +240,17 @@ impl LocalTable {
     }
 }
 
+/// [`rstest`] fixture providing a [`LocalTable`] wrapper, but without any backing table.
+///
+/// Equivalent to [`LocalTable::without_table`].
 #[fixture]
 pub async fn local_non_existent_table() -> LocalTable {
     LocalTable::without_table().await
 }
 
+/// [`rstest`] fixture providing a [`LocalTable`] with a backing table.
+///
+/// Equivalent to [`LocalTable::with_table`].
 #[fixture]
 pub async fn local_table() -> LocalTable {
     LocalTable::with_table().await

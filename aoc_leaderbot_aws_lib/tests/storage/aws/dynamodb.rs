@@ -12,6 +12,7 @@ mod dynamo_storage {
     use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::{
         HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
     };
+    use aoc_leaderbot_lib::ErrorKind;
     use aoc_leaderbot_lib::leaderbot::Storage;
     use assert_matches::assert_matches;
     use aws_sdk_dynamodb::types::AttributeValue;
@@ -24,27 +25,70 @@ mod dynamo_storage {
             use super::*;
 
             #[test_log::test]
-            fn without_data() {
+            fn without_existing() {
                 LocalTable::run_test(|mut table| async move {
                     let previous_leaderboard = table
                         .storage()
                         .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                         .await;
-                    assert_matches!(previous_leaderboard, Ok(None));
+                    assert_matches!(previous_leaderboard, Ok((None, None)));
                 });
             }
 
             #[rstest]
             #[test_log::test]
-            fn with_data(#[from(test_leaderboard)] expected_leaderboard: Leaderboard) {
+            fn with_existing_leaderboard(#[from(test_leaderboard)] expected_leaderboard: Leaderboard) {
                 LocalTable::run_test(|mut table| async move {
                     table.save_leaderboard(&expected_leaderboard).await;
 
-                    let previous_leaderboard = table
+                    let previous = table
                         .storage()
                         .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                         .await;
-                    assert_matches!(previous_leaderboard, Ok(Some(actual_leaderboard)) if actual_leaderboard == expected_leaderboard);
+                    assert_matches!(previous, Ok((Some(actual_leaderboard), None)) => {
+                        assert_eq!(expected_leaderboard, actual_leaderboard);
+                    });
+                });
+            }
+
+            #[test_log::test]
+            fn with_existing_last_error() {
+                LocalTable::run_test(|mut table| async move {
+                    table.save_last_error(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)).await;
+
+                    let previous = table
+                        .storage()
+                        .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                        .await;
+                    assert_matches!(previous, Ok((None, Some(actual_last_error))) => {
+                        assert_eq!(
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                            actual_last_error
+                        );
+                    });
+                });
+            }
+
+            #[rstest]
+            #[test_log::test]
+            fn with_existing_leaderboard_and_last_error(
+                #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
+            ) {
+                LocalTable::run_test(|mut table| async move {
+                    table.save_leaderboard(&expected_leaderboard).await;
+                    table.save_last_error(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)).await;
+
+                    let previous = table
+                        .storage()
+                        .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                        .await;
+                    assert_matches!(previous, Ok((Some(actual_leaderboard), Some(actual_last_error))) => {
+                        assert_eq!(expected_leaderboard, actual_leaderboard);
+                        assert_eq!(
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                            actual_last_error
+                        );
+                    });
                 });
             }
 
@@ -72,38 +116,11 @@ mod dynamo_storage {
                                 year,
                                 source: LoadPreviousDynamoDbError::GetItem(_),
                             }
-                        )) if leaderboard_id == TEST_LEADERBOARD_ID && year == TEST_YEAR
+                        )) => {
+                            assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
+                            assert_eq!(TEST_YEAR, year);
+                        }
                     );
-                }
-
-                #[test_log::test]
-                fn missing_leaderboard_data() {
-                    LocalTable::run_test(|mut table| async move {
-                        table
-                            .client()
-                            .put_item()
-                            .table_name(table.name())
-                            .item(HASH_KEY, AttributeValue::N(TEST_LEADERBOARD_ID.to_string()))
-                            .item(RANGE_KEY, AttributeValue::N(TEST_YEAR.to_string()))
-                            .send()
-                            .await
-                            .unwrap();
-
-                        let previous_leaderboard = table
-                            .storage()
-                            .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
-                            .await;
-                        assert_matches!(
-                            previous_leaderboard,
-                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                                DynamoDbError::LoadPreviousLeaderboard {
-                                    leaderboard_id,
-                                    year,
-                                    source: LoadPreviousDynamoDbError::Deserialize(_),
-                                }
-                            )) if leaderboard_id == TEST_LEADERBOARD_ID && year == TEST_YEAR
-                        );
-                    });
                 }
 
                 #[test_log::test]
@@ -132,7 +149,10 @@ mod dynamo_storage {
                                     year,
                                     source: LoadPreviousDynamoDbError::Deserialize(_),
                                 }
-                            )) if leaderboard_id == TEST_LEADERBOARD_ID && year == TEST_YEAR
+                            )) => {
+                                assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
+                                assert_eq!(TEST_YEAR, year);
+                            }
                         );
                     });
                 }
@@ -166,14 +186,17 @@ mod dynamo_storage {
                                     year,
                                     source: LoadPreviousDynamoDbError::Deserialize(_),
                                 }
-                            )) if leaderboard_id == TEST_LEADERBOARD_ID && year == TEST_YEAR
+                            )) => {
+                                assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
+                                assert_eq!(TEST_YEAR, year);
+                            }
                         );
                     });
                 }
             }
         }
 
-        pub mod save {
+        pub mod save_success {
             use super::*;
 
             #[rstest]
@@ -182,18 +205,23 @@ mod dynamo_storage {
                 LocalTable::run_test(|mut table| async move {
                     table
                         .storage()
-                        .save(TEST_YEAR, TEST_LEADERBOARD_ID, &expected_leaderboard)
+                        .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &expected_leaderboard)
                         .await
                         .unwrap();
 
-                    let actual_leaderboard = table.load_leaderboard().await;
-                    assert_eq!(expected_leaderboard, actual_leaderboard);
+                    let (actual_leaderboard, actual_last_error) = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual_leaderboard, Some(actual_leaderboard) => {
+                        assert_eq!(expected_leaderboard, actual_leaderboard);
+                    });
+                    assert!(actual_last_error.is_none());
                 });
             }
 
             #[rstest]
             #[test_log::test]
-            fn with_existing(#[from(test_leaderboard)] previous_leaderboard: Leaderboard) {
+            fn with_existing_leaderboard(
+                #[from(test_leaderboard)] previous_leaderboard: Leaderboard,
+            ) {
                 LocalTable::run_test(|mut table| async move {
                     table.save_leaderboard(&previous_leaderboard).await;
 
@@ -203,12 +231,61 @@ mod dynamo_storage {
                     };
                     table
                         .storage()
-                        .save(TEST_YEAR, TEST_LEADERBOARD_ID, &expected_leaderboard)
+                        .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &expected_leaderboard)
                         .await
                         .unwrap();
 
-                    let actual_leaderboard = table.load_leaderboard().await;
-                    assert_eq!(expected_leaderboard, actual_leaderboard);
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                        assert_eq!(expected_leaderboard, actual_leaderboard);
+                    });
+                });
+            }
+
+            #[rstest]
+            #[test_log::test]
+            fn with_existing_last_error(
+                #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
+            ) {
+                LocalTable::run_test(|mut table| async move {
+                    table.save_last_error(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)).await;
+
+                    table
+                        .storage()
+                        .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &expected_leaderboard)
+                        .await
+                        .unwrap();
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                        assert_eq!(expected_leaderboard, actual_leaderboard);
+                    });
+                });
+            }
+
+            #[rstest]
+            #[test_log::test]
+            fn with_existing_leaderboard_and_last_error(
+                #[from(test_leaderboard)] previous_leaderboard: Leaderboard,
+            ) {
+                LocalTable::run_test(|mut table| async move {
+                    table.save_leaderboard(&previous_leaderboard).await;
+                    table.save_last_error(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)).await;
+
+                    let expected_leaderboard = Leaderboard {
+                        day1_ts: previous_leaderboard.day1_ts + 1,
+                        ..previous_leaderboard
+                    };
+                    table
+                        .storage()
+                        .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &expected_leaderboard)
+                        .await
+                        .unwrap();
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                        assert_eq!(expected_leaderboard, actual_leaderboard);
+                    });
                 });
             }
 
@@ -227,7 +304,7 @@ mod dynamo_storage {
                     let mut table = table;
                     let save_result = table
                         .storage()
-                        .save(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
+                        .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
                         .await;
                     assert_matches!(
                         save_result,
@@ -237,7 +314,157 @@ mod dynamo_storage {
                                 year,
                                 source: SaveDynamoDbError::PutItem(_),
                             }
-                        )) if leaderboard_id == TEST_LEADERBOARD_ID && year == TEST_YEAR
+                        )) => {
+                            assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
+                            assert_eq!(TEST_YEAR, year);
+                        }
+                    );
+                }
+            }
+        }
+
+        pub mod save_error {
+            use super::*;
+
+            #[test_log::test]
+            fn without_existing() {
+                LocalTable::run_test(|mut table| async move {
+                    table
+                        .storage()
+                        .save_error(
+                            TEST_YEAR,
+                            TEST_LEADERBOARD_ID,
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                        )
+                        .await
+                        .unwrap();
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (None, Some(actual_last_error)) => {
+                        assert_eq!(
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                            actual_last_error,
+                        );
+                    });
+                });
+            }
+
+            #[rstest]
+            #[test_log::test]
+            fn with_existing_leaderboard(
+                #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
+            ) {
+                LocalTable::run_test(|mut table| async move {
+                    table.save_leaderboard(&expected_leaderboard).await;
+
+                    table
+                        .storage()
+                        .save_error(
+                            TEST_YEAR,
+                            TEST_LEADERBOARD_ID,
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                        )
+                        .await
+                        .unwrap();
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (Some(actual_leaderboard), Some(actual_last_error)) => {
+                        assert_eq!(expected_leaderboard, actual_leaderboard);
+                        assert_eq!(
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                            actual_last_error,
+                        );
+                    });
+                });
+            }
+
+            #[test_log::test]
+            fn with_existing_last_error() {
+                LocalTable::run_test(|mut table| async move {
+                    table.save_last_error(ErrorKind::MissingField).await;
+
+                    table
+                        .storage()
+                        .save_error(
+                            TEST_YEAR,
+                            TEST_LEADERBOARD_ID,
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                        )
+                        .await
+                        .unwrap();
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (None, Some(actual_last_error)) => {
+                        assert_eq!(
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                            actual_last_error,
+                        );
+                    });
+                });
+            }
+
+            #[rstest]
+            #[test_log::test]
+            fn with_existing_leaderboard_and_last_error(
+                #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
+            ) {
+                LocalTable::run_test(|mut table| async move {
+                    table.save_leaderboard(&expected_leaderboard).await;
+                    table.save_last_error(ErrorKind::MissingField).await;
+
+                    table
+                        .storage()
+                        .save_error(
+                            TEST_YEAR,
+                            TEST_LEADERBOARD_ID,
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                        )
+                        .await
+                        .unwrap();
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (Some(actual_leaderboard), Some(actual_last_error)) => {
+                        assert_eq!(expected_leaderboard, actual_leaderboard);
+                        assert_eq!(
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                            actual_last_error,
+                        );
+                    });
+                });
+            }
+
+            pub mod errors {
+                use super::*;
+
+                #[rstest]
+                #[awt]
+                #[test_log::test(tokio::test)]
+                async fn update_item(
+                    #[future]
+                    #[from(local_non_existent_table)]
+                    table: LocalTable,
+                ) {
+                    let mut table = table;
+                    let save_result = table
+                        .storage()
+                        .save_error(
+                            TEST_YEAR,
+                            TEST_LEADERBOARD_ID,
+                            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                        )
+                        .await;
+                    assert_matches!(
+                        save_result,
+                        Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                            DynamoDbError::SaveLastError {
+                                leaderboard_id,
+                                year,
+                                source: SaveDynamoDbError::UpdateItem(_),
+                            }
+                        )) => {
+                            assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
+                            assert_eq!(TEST_YEAR, year);
+                        }
                     );
                 }
             }

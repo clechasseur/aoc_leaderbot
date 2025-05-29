@@ -70,7 +70,7 @@ pub enum DynamoDbError {
     },
 }
 
-/// Error pertaining to loading leaderboard data from DynamoDB.
+/// Error pertaining to loading data from DynamoDB.
 #[cfg(feature = "dynamodb-base")]
 #[derive(Debug, thiserror::Error)]
 pub enum LoadPreviousDynamoDbError {
@@ -78,10 +78,10 @@ pub enum LoadPreviousDynamoDbError {
     #[error("error loading leaderboard data: {0}")]
     GetItem(
         #[from]
-        aws_sdk_dynamodb::error::SdkError<
+        Box<aws_sdk_dynamodb::error::SdkError<
             aws_sdk_dynamodb::operation::get_item::GetItemError,
             aws_sdk_dynamodb::config::http::HttpResponse,
-        >,
+        >>,
     ),
 
     /// Failed to deserialize leaderboard data.
@@ -89,34 +89,32 @@ pub enum LoadPreviousDynamoDbError {
     Deserialize(#[from] serde_dynamo::Error),
 }
 
-/// Error pertaining to saving leaderboard data in DynamoDB.
+/// Error pertaining to saving data in DynamoDB.
 #[cfg(feature = "dynamodb-base")]
 #[derive(Debug, thiserror::Error)]
 pub enum SaveDynamoDbError {
-    /// Error that occurred while trying to save leaderboard data in DynamoDB.
+    /// Error that occurred while trying to save data in DynamoDB.
     #[error("error saving leaderboard data: {0}")]
     PutItem(
         #[from]
-        aws_sdk_dynamodb::error::SdkError<
+        Box<aws_sdk_dynamodb::error::SdkError<
             aws_sdk_dynamodb::operation::put_item::PutItemError,
             aws_sdk_dynamodb::config::http::HttpResponse,
-        >,
+        >>,
     ),
 
-    /// Error that occurred while trying to update leaderboard data in DynamoDB.
-    ///
-    /// Such updates are used to store last error information.
-    #[error("error updating leaderboard data: {0}")]
+    /// Error that occurred while trying to upsert data in DynamoDB.
+    #[error("error upserting last error information: {0}")]
     UpdateItem(
         #[from]
-        aws_sdk_dynamodb::error::SdkError<
+        Box<aws_sdk_dynamodb::error::SdkError<
             aws_sdk_dynamodb::operation::update_item::UpdateItemError,
             aws_sdk_dynamodb::config::http::HttpResponse,
-        >,
+        >>,
     ),
 
-    /// Failed to serialize leaderboard data.
-    #[error("failed to serialize leaderboard data: {0}")]
+    /// Failed to serialize data to DynamoDB format.
+    #[error("failed to serialize data for DynamoDB: {0}")]
     Serialize(#[from] serde_dynamo::Error),
 }
 
@@ -128,19 +126,19 @@ pub enum CreateDynamoDbTableError {
     #[error("error creating table: {0}")]
     CreateTable(
         #[from]
-        aws_sdk_dynamodb::error::SdkError<
+        Box<aws_sdk_dynamodb::error::SdkError<
             aws_sdk_dynamodb::operation::create_table::CreateTableError,
             aws_sdk_dynamodb::config::http::HttpResponse,
-        >,
+        >>,
     ),
 
     /// Error that occurred while trying to wait for DynamoDB table to be created.
     #[error("error getting table description: {0}")]
     DescribeTable(
         #[from]
-        aws_sdk_dynamodb::error::SdkError<
+        Box<aws_sdk_dynamodb::error::SdkError<
             aws_sdk_dynamodb::operation::describe_table::DescribeTableError,
             aws_sdk_dynamodb::config::http::HttpResponse,
-        >,
+        >>,
     ),
 }
