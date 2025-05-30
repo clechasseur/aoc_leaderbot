@@ -11,7 +11,6 @@ where
     fn right_pad(self, width: usize, with: char) -> String {
         let mut s = self.into();
 
-        
         match width.saturating_sub(s.chars().count()) {
             0 => s,
             missing => {

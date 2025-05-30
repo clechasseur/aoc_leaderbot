@@ -78,10 +78,12 @@ pub enum LoadPreviousDynamoDbError {
     #[error("error loading leaderboard data: {0}")]
     GetItem(
         #[from]
-        Box<aws_sdk_dynamodb::error::SdkError<
-            aws_sdk_dynamodb::operation::get_item::GetItemError,
-            aws_sdk_dynamodb::config::http::HttpResponse,
-        >>,
+        Box<
+            aws_sdk_dynamodb::error::SdkError<
+                aws_sdk_dynamodb::operation::get_item::GetItemError,
+                aws_sdk_dynamodb::config::http::HttpResponse,
+            >,
+        >,
     ),
 
     /// Failed to deserialize leaderboard data.
@@ -97,20 +99,24 @@ pub enum SaveDynamoDbError {
     #[error("error saving leaderboard data: {0}")]
     PutItem(
         #[from]
-        Box<aws_sdk_dynamodb::error::SdkError<
-            aws_sdk_dynamodb::operation::put_item::PutItemError,
-            aws_sdk_dynamodb::config::http::HttpResponse,
-        >>,
+        Box<
+            aws_sdk_dynamodb::error::SdkError<
+                aws_sdk_dynamodb::operation::put_item::PutItemError,
+                aws_sdk_dynamodb::config::http::HttpResponse,
+            >,
+        >,
     ),
 
     /// Error that occurred while trying to upsert data in DynamoDB.
     #[error("error upserting last error information: {0}")]
     UpdateItem(
         #[from]
-        Box<aws_sdk_dynamodb::error::SdkError<
-            aws_sdk_dynamodb::operation::update_item::UpdateItemError,
-            aws_sdk_dynamodb::config::http::HttpResponse,
-        >>,
+        Box<
+            aws_sdk_dynamodb::error::SdkError<
+                aws_sdk_dynamodb::operation::update_item::UpdateItemError,
+                aws_sdk_dynamodb::config::http::HttpResponse,
+            >,
+        >,
     ),
 
     /// Failed to serialize data to DynamoDB format.
@@ -126,19 +132,23 @@ pub enum CreateDynamoDbTableError {
     #[error("error creating table: {0}")]
     CreateTable(
         #[from]
-        Box<aws_sdk_dynamodb::error::SdkError<
-            aws_sdk_dynamodb::operation::create_table::CreateTableError,
-            aws_sdk_dynamodb::config::http::HttpResponse,
-        >>,
+        Box<
+            aws_sdk_dynamodb::error::SdkError<
+                aws_sdk_dynamodb::operation::create_table::CreateTableError,
+                aws_sdk_dynamodb::config::http::HttpResponse,
+            >,
+        >,
     ),
 
     /// Error that occurred while trying to wait for DynamoDB table to be created.
     #[error("error getting table description: {0}")]
     DescribeTable(
         #[from]
-        Box<aws_sdk_dynamodb::error::SdkError<
-            aws_sdk_dynamodb::operation::describe_table::DescribeTableError,
-            aws_sdk_dynamodb::config::http::HttpResponse,
-        >>,
+        Box<
+            aws_sdk_dynamodb::error::SdkError<
+                aws_sdk_dynamodb::operation::describe_table::DescribeTableError,
+                aws_sdk_dynamodb::config::http::HttpResponse,
+            >,
+        >,
     ),
 }

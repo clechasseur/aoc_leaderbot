@@ -397,7 +397,11 @@ mod slack_webhook_reporter {
             #[serial(slack_webhook_reporter_env)]
             fn webhook_url() {
                 unsafe {
-                    set_reporter_env_vars(None::<&OsStr>, Some("#aoc_leaderbot_test"), None::<&OsStr>);
+                    set_reporter_env_vars(
+                        None::<&OsStr>,
+                        Some("#aoc_leaderbot_test"),
+                        None::<&OsStr>,
+                    );
                 }
 
                 let result = SlackWebhookReporter::builder().build();
@@ -415,7 +419,11 @@ mod slack_webhook_reporter {
             #[serial(slack_webhook_reporter_env)]
             fn channel() {
                 unsafe {
-                    set_reporter_env_vars(Some("https://webhook-url"), None::<&OsStr>, None::<&OsStr>);
+                    set_reporter_env_vars(
+                        Some("https://webhook-url"),
+                        None::<&OsStr>,
+                        None::<&OsStr>,
+                    );
                 }
 
                 let result = SlackWebhookReporter::builder().build();

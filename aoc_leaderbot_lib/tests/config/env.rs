@@ -28,7 +28,10 @@ mod get_env_config {
             if set_year {
                 env::set_var(var_name(ENV_CONFIG_YEAR_SUFFIX), TEST_YEAR.to_string());
             }
-            env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), TEST_LEADERBOARD_ID.to_string());
+            env::set_var(
+                var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX),
+                TEST_LEADERBOARD_ID.to_string(),
+            );
             env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), TEST_AOC_SESSION);
         }
 

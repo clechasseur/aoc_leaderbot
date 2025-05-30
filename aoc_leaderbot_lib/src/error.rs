@@ -3,8 +3,9 @@
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::num::ParseIntError;
-use serde::{Deserialize, Serialize};
+
 use gratte::{EnumDiscriminants, EnumIs, IntoDiscriminant};
+use serde::{Deserialize, Serialize};
 
 /// Custom [`Result`](std::result::Result) type that defaults to this crate's [`Error`] type.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -194,7 +195,10 @@ impl ErrorKind {
 
     /// Returns `true` if the enum is [`ErrorKind::Leaderboard`] of the given
     /// [`aoc_leaderboard::ErrorKind`].
-    pub fn is_leaderboard_of_kind(&self, leaderboard_error_kind: aoc_leaderboard::ErrorKind) -> bool {
+    pub fn is_leaderboard_of_kind(
+        &self,
+        leaderboard_error_kind: aoc_leaderboard::ErrorKind,
+    ) -> bool {
         *self == ErrorKind::Leaderboard(leaderboard_error_kind)
     }
 
@@ -259,10 +263,7 @@ impl IntoDiscriminant for Error {
 
 /// A version of [`env::VarError`] with additional variants.
 #[derive(Debug, thiserror::Error, EnumDiscriminants, EnumIs)]
-#[strum_discriminants(
-    name(EnvVarErrorKind),
-    derive(Serialize, Deserialize)
-)]
+#[strum_discriminants(name(EnvVarErrorKind), derive(Serialize, Deserialize))]
 pub enum EnvVarError {
     /// Environment variable is not present.
     ///
@@ -572,11 +573,7 @@ impl From<&StorageError> for ErrorKind {
 /// [`Reporter`]: crate::leaderbot::Reporter
 #[derive(Debug, thiserror::Error, EnumDiscriminants)]
 #[non_exhaustive]
-#[strum_discriminants(
-    name(ReporterErrorKind),
-    derive(Serialize, Deserialize),
-    non_exhaustive
-)]
+#[strum_discriminants(name(ReporterErrorKind), derive(Serialize, Deserialize), non_exhaustive)]
 pub enum ReporterError {
     /// Error while trying to report changes detected in leaderboard data.
     #[error("failed to report changes to leaderboard: {0}")]
@@ -587,7 +584,7 @@ impl ReporterError {
     /// Returns `true` if the enum is [`ReporterError::ReportChanges`] and the internal
     /// [`anyhow::Error`] matches the given predicate.
     pub fn is_report_changes_and<P>(&self, predicate: P) -> bool
-    where 
+    where
         P: FnOnce(&anyhow::Error) -> bool,
     {
         match self {

@@ -6,12 +6,16 @@ use std::future::Future;
 
 use aoc_leaderboard::aoc::Leaderboard;
 use aoc_leaderboard::test_helpers::{TEST_LEADERBOARD_ID, TEST_YEAR};
+use aoc_leaderbot_lib::ErrorKind;
 use aws_config::BehaviorVersion;
 use aws_sdk_dynamodb::types::AttributeValue;
 use rstest::fixture;
 use uuid::Uuid;
-use aoc_leaderbot_lib::ErrorKind;
-use crate::leaderbot::storage::aws::dynamodb::{DynamoDbLastErrorInformation, DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, LAST_ERROR, RANGE_KEY};
+
+use crate::leaderbot::storage::aws::dynamodb::{
+    DynamoDbLastErrorInformation, DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, LAST_ERROR,
+    RANGE_KEY,
+};
 
 /// Endpoint URL for a locally-running DynamoDB.
 pub const LOCAL_ENDPOINT_URL: &str = "http://localhost:8000";
@@ -175,7 +179,9 @@ impl LocalTable {
     ///
     /// Loads the data from the table through the DynamoDB client, not via the
     /// [`DynamoDbStorage`] wrapper.
-    pub async fn load_leaderboard_and_last_error(&self) -> (Option<Leaderboard>, Option<ErrorKind>) {
+    pub async fn load_leaderboard_and_last_error(
+        &self,
+    ) -> (Option<Leaderboard>, Option<ErrorKind>) {
         self.client()
             .get_item()
             .table_name(self.name())

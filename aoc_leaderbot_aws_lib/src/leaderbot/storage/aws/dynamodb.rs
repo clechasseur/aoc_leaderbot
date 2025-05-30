@@ -10,6 +10,7 @@ use std::time::Duration;
 
 use aoc_leaderboard::aoc::Leaderboard;
 use aoc_leaderbot_lib::leaderbot::Storage;
+use aoc_leaderbot_lib::ErrorKind;
 use aws_config::SdkConfig;
 use aws_sdk_dynamodb::operation::create_table::CreateTableOutput;
 use aws_sdk_dynamodb::types::{
@@ -18,7 +19,7 @@ use aws_sdk_dynamodb::types::{
 };
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
-use aoc_leaderbot_lib::ErrorKind;
+
 use crate::error::DynamoDbError;
 
 /// The hash key (aka partition key) used by [`DynamoDbStorage`].
@@ -67,12 +68,7 @@ pub struct DynamoDbLeaderboardData {
 impl DynamoDbLeaderboardData {
     /// Creates a [`DynamoDbLeaderboardData`] to store the result of a successful bot run.
     pub fn for_success(year: i32, leaderboard_id: u64, leaderboard: Leaderboard) -> Self {
-        Self {
-            leaderboard_id,
-            year,
-            leaderboard_data: Some(leaderboard),
-            last_error: None,
-        }
+        Self { leaderboard_id, year, leaderboard_data: Some(leaderboard), last_error: None }
     }
 }
 
@@ -212,15 +208,11 @@ impl Storage for DynamoDbStorage {
             .key(RANGE_KEY, AttributeValue::N(year.to_string()))
             .send()
             .await
-            .map_err(|err| {
-                load_previous_error(Box::new(err).into())
-            })?
+            .map_err(|err| load_previous_error(Box::new(err).into()))?
             .item
             .map(|item| {
                 let data: Result<DynamoDbLeaderboardData, _> = serde_dynamo::from_item(item);
-                data.map(|data| {
-                    (data.leaderboard_data, data.last_error.map(|le| le.0))
-                })
+                data.map(|data| (data.leaderboard_data, data.last_error.map(|le| le.0)))
             })
             .transpose()
             .map(Option::unwrap_or_default)
@@ -236,11 +228,8 @@ impl Storage for DynamoDbStorage {
     ) -> Result<(), Self::Err> {
         let save_error = |source| DynamoDbError::SaveLeaderboard { leaderboard_id, year, source };
 
-        let leaderboard_data = DynamoDbLeaderboardData::for_success(
-            year,
-            leaderboard_id,
-            leaderboard.clone(),
-        );
+        let leaderboard_data =
+            DynamoDbLeaderboardData::for_success(year, leaderboard_id, leaderboard.clone());
         let item = serde_dynamo::to_item(leaderboard_data).map_err(|err| save_error(err.into()))?;
 
         self.client
@@ -264,8 +253,8 @@ impl Storage for DynamoDbStorage {
         let save_error = |source| DynamoDbError::SaveLastError { leaderboard_id, year, source };
 
         let last_error = DynamoDbLastErrorInformation(error_kind);
-        let attribute_value = serde_dynamo::to_attribute_value(last_error)
-            .map_err(|err| save_error(err.into()))?;
+        let attribute_value =
+            serde_dynamo::to_attribute_value(last_error).map_err(|err| save_error(err.into()))?;
 
         self.client
             .update_item()

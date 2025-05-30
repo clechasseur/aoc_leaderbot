@@ -1,10 +1,12 @@
 //! Bot storage keeping data in memory.
 
 use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
+
 use aoc_leaderboard::aoc::Leaderboard;
-use crate::ErrorKind;
+use serde::{Deserialize, Serialize};
+
 use crate::leaderbot::Storage;
+use crate::ErrorKind;
 
 /// Bot storage that keeps data in memory.
 ///
@@ -41,9 +43,7 @@ impl Storage for MemoryStorage {
         leaderboard_id: u64,
     ) -> Result<(Option<Leaderboard>, Option<ErrorKind>), Self::Err> {
         match self.previous.get(&(year, leaderboard_id)) {
-            Some((leaderboard, error_kind)) => {
-                Ok((leaderboard.as_ref().cloned(), *error_kind))
-            }
+            Some((leaderboard, error_kind)) => Ok((leaderboard.as_ref().cloned(), *error_kind)),
             None => Ok((None, None)),
         }
     }
@@ -55,8 +55,9 @@ impl Storage for MemoryStorage {
         leaderboard_id: u64,
         leaderboard: &Leaderboard,
     ) -> Result<(), Self::Err> {
-        self.previous.insert((year, leaderboard_id), (Some(leaderboard.clone()), None));
-        
+        self.previous
+            .insert((year, leaderboard_id), (Some(leaderboard.clone()), None));
+
         Ok(())
     }
 
@@ -67,11 +68,9 @@ impl Storage for MemoryStorage {
         leaderboard_id: u64,
         error_kind: ErrorKind,
     ) -> Result<(), Self::Err> {
-        let (_, prev_err) = self.previous
-            .entry((year, leaderboard_id))
-            .or_default();
+        let (_, prev_err) = self.previous.entry((year, leaderboard_id)).or_default();
         *prev_err = Some(error_kind);
-        
+
         Ok(())
     }
 }

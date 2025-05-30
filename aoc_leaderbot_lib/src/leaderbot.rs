@@ -15,6 +15,7 @@ use aoc_leaderboard::aoc::Leaderboard;
 use chrono::{Datelike, Local};
 use gratte::IntoDiscriminant;
 use serde::{Deserialize, Serialize};
+
 use crate::error::{ReporterError, StorageError};
 
 /// Trait that must be implemented to provide the parameters required by the
@@ -300,13 +301,7 @@ where
             get_leaderboard(advent_of_code_base, year, leaderboard_id, aoc_session).await?;
 
         let changes = detect_changes(previous_leaderboard.as_ref(), &leaderboard);
-        let output = BotOutput {
-            year,
-            leaderboard_id,
-            previous_leaderboard,
-            leaderboard,
-            changes,
-        };
+        let output = BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes };
 
         match (&output.previous_leaderboard, &output.changes) {
             (Some(previous_leaderboard), Some(changes)) if !dry_run => {
@@ -319,9 +314,7 @@ where
                         changes,
                     )
                     .await
-                    .map_err(|err| {
-                        ReporterError::ReportChanges(anyhow!(err))
-                    })?;
+                    .map_err(|err| ReporterError::ReportChanges(anyhow!(err)))?;
             },
             _ => (),
         }
@@ -343,17 +336,19 @@ where
                 previous_leaderboard,
                 reporter,
                 dry_run,
-            ).await;
+            )
+            .await;
             (output_result, previous_error)
         },
-        Err(err) => {
-            (Err(StorageError::LoadPrevious(anyhow!(err)).into()), None)
-        },
+        Err(err) => (Err(StorageError::LoadPrevious(anyhow!(err)).into()), None),
     };
 
     output_result = match output_result {
         Ok(output) if !dry_run => {
-            match storage.save_success(year, leaderboard_id, &output.leaderboard).await {
+            match storage
+                .save_success(year, leaderboard_id, &output.leaderboard)
+                .await
+            {
                 Ok(()) => Ok(output),
                 Err(err) => Err(StorageError::Save(anyhow!(err)).into()),
             }
@@ -368,21 +363,18 @@ where
             Err(err)
         },
         Err(err) if !dry_run => {
-            reporter.report_error(
-                year,
-                leaderboard_id,
-                &err,
-            ).await;
+            reporter.report_error(year, leaderboard_id, &err).await;
 
-            if let Err(storage_err) = storage.save_error(year, leaderboard_id, (&err).into()).await {
+            if let Err(storage_err) = storage
+                .save_error(year, leaderboard_id, (&err).into())
+                .await
+            {
                 // An error occurred while doing the bot run, and an error also occurred
                 // while trying to persist information about the last error. ¯\_(ツ)_/¯
                 let storage_err = StorageError::Save(anyhow!(storage_err)).into();
-                reporter.report_error(
-                    year,
-                    leaderboard_id,
-                    &storage_err,
-                ).await;
+                reporter
+                    .report_error(year, leaderboard_id, &storage_err)
+                    .await;
             }
 
             Err(err)
@@ -503,10 +495,10 @@ mod tests {
         use mockall::predicate::eq;
 
         use super::*;
-        use crate::ErrorKind;
         use crate::error::{ReporterErrorKind, StorageErrorKind};
         use crate::leaderbot::config::mem::MemoryConfig;
         use crate::leaderbot::storage::mem::MemoryStorage;
+        use crate::ErrorKind;
 
         const OWNER: u64 = 42;
         const MEMBER_1: u64 = 23;
@@ -567,17 +559,8 @@ mod tests {
                 Ok(())
             }
 
-            async fn report_error(
-                &mut self,
-                year: i32,
-                leaderboard_id: u64,
-                error: &crate::Error,
-            ) {
-                self.errors.push((
-                    year,
-                    leaderboard_id,
-                    error.to_string(),
-                ));
+            async fn report_error(&mut self, year: i32, leaderboard_id: u64, error: &crate::Error) {
+                self.errors.push((year, leaderboard_id, error.to_string()));
             }
         }
 
@@ -834,9 +817,7 @@ mod tests {
                     .await
                     .unwrap();
                 assert!(current_err.is_none());
-                assert_eq!(current_leaderboard, Some(
-                    if dry_run { base } else { leaderboard }
-                ));
+                assert_eq!(current_leaderboard, Some(if dry_run { base } else { leaderboard }));
 
                 if expected.has_changes() && !dry_run {
                     assert!(reporter.called());
@@ -869,13 +850,15 @@ mod tests {
                     .expect_load_previous()
                     .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
-                    .returning(|_, _| {
-                        Box::pin(ready(Ok((None, None))))
-                    });
+                    .returning(|_, _| Box::pin(ready(Ok((None, None)))));
                 if !dry_run {
                     storage
                         .expect_save_error()
-                        .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)))
+                        .with(
+                            eq(TEST_YEAR),
+                            eq(TEST_LEADERBOARD_ID),
+                            eq(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)),
+                        )
                         .times(1)
                         .returning(move |_, _, _| Box::pin(ready(Ok(()))));
                 }
@@ -922,7 +905,11 @@ mod tests {
                 if !dry_run {
                     storage
                         .expect_save_error()
-                        .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Storage(StorageErrorKind::LoadPrevious)))
+                        .with(
+                            eq(TEST_YEAR),
+                            eq(TEST_LEADERBOARD_ID),
+                            eq(ErrorKind::Storage(StorageErrorKind::LoadPrevious)),
+                        )
                         .times(1)
                         .returning(move |_, _, _| Box::pin(ready(Ok(()))));
                 }
@@ -968,12 +955,14 @@ mod tests {
                     .expect_load_previous()
                     .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
-                    .returning(move |_, _| {
-                        Box::pin(ready(Ok((Some(base.clone()), None))))
-                    });
+                    .returning(move |_, _| Box::pin(ready(Ok((Some(base.clone()), None)))));
                 storage
                     .expect_save_error()
-                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Reporter(ReporterErrorKind::ReportChanges)))
+                    .with(
+                        eq(TEST_YEAR),
+                        eq(TEST_LEADERBOARD_ID),
+                        eq(ErrorKind::Reporter(ReporterErrorKind::ReportChanges)),
+                    )
                     .times(1)
                     .returning(move |_, _, _| Box::pin(ready(Ok(()))));
 
@@ -1039,9 +1028,7 @@ mod tests {
                     .expect_load_previous()
                     .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
                     .times(1)
-                    .returning(move |_, _| Box::pin(ready(Ok(
-                        (Some(base_leaderboard()), None)
-                    ))));
+                    .returning(move |_, _| Box::pin(ready(Ok((Some(base_leaderboard()), None)))));
                 storage
                     .expect_save_success()
                     .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(leaderboard_with_new_member()))
@@ -1051,7 +1038,11 @@ mod tests {
                     });
                 storage
                     .expect_save_error()
-                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Storage(StorageErrorKind::Save)))
+                    .with(
+                        eq(TEST_YEAR),
+                        eq(TEST_LEADERBOARD_ID),
+                        eq(ErrorKind::Storage(StorageErrorKind::Save)),
+                    )
                     .times(1)
                     .returning(move |_, _, _| Box::pin(ready(Ok(()))));
 
@@ -1102,7 +1093,11 @@ mod tests {
                     });
                 storage
                     .expect_save_error()
-                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID), eq(ErrorKind::Storage(StorageErrorKind::Save)))
+                    .with(
+                        eq(TEST_YEAR),
+                        eq(TEST_LEADERBOARD_ID),
+                        eq(ErrorKind::Storage(StorageErrorKind::Save)),
+                    )
                     .times(1)
                     .returning(move |_, _, _| Box::pin(ready(Ok(()))));
 

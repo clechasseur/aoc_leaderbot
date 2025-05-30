@@ -12,8 +12,8 @@ mod dynamo_storage {
     use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::{
         HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
     };
-    use aoc_leaderbot_lib::ErrorKind;
     use aoc_leaderbot_lib::leaderbot::Storage;
+    use aoc_leaderbot_lib::ErrorKind;
     use assert_matches::assert_matches;
     use aws_sdk_dynamodb::types::AttributeValue;
     use rstest::rstest;
@@ -37,7 +37,9 @@ mod dynamo_storage {
 
             #[rstest]
             #[test_log::test]
-            fn with_existing_leaderboard(#[from(test_leaderboard)] expected_leaderboard: Leaderboard) {
+            fn with_existing_leaderboard(
+                #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
+            ) {
                 LocalTable::run_test(|mut table| async move {
                     table.save_leaderboard(&expected_leaderboard).await;
 
@@ -54,7 +56,11 @@ mod dynamo_storage {
             #[test_log::test]
             fn with_existing_last_error() {
                 LocalTable::run_test(|mut table| async move {
-                    table.save_last_error(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)).await;
+                    table
+                        .save_last_error(ErrorKind::Leaderboard(
+                            aoc_leaderboard::ErrorKind::NoAccess,
+                        ))
+                        .await;
 
                     let previous = table
                         .storage()
@@ -76,7 +82,11 @@ mod dynamo_storage {
             ) {
                 LocalTable::run_test(|mut table| async move {
                     table.save_leaderboard(&expected_leaderboard).await;
-                    table.save_last_error(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)).await;
+                    table
+                        .save_last_error(ErrorKind::Leaderboard(
+                            aoc_leaderboard::ErrorKind::NoAccess,
+                        ))
+                        .await;
 
                     let previous = table
                         .storage()
@@ -209,7 +219,8 @@ mod dynamo_storage {
                         .await
                         .unwrap();
 
-                    let (actual_leaderboard, actual_last_error) = table.load_leaderboard_and_last_error().await;
+                    let (actual_leaderboard, actual_last_error) =
+                        table.load_leaderboard_and_last_error().await;
                     assert_matches!(actual_leaderboard, Some(actual_leaderboard) => {
                         assert_eq!(expected_leaderboard, actual_leaderboard);
                     });
@@ -248,7 +259,11 @@ mod dynamo_storage {
                 #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
             ) {
                 LocalTable::run_test(|mut table| async move {
-                    table.save_last_error(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)).await;
+                    table
+                        .save_last_error(ErrorKind::Leaderboard(
+                            aoc_leaderboard::ErrorKind::NoAccess,
+                        ))
+                        .await;
 
                     table
                         .storage()
@@ -270,7 +285,11 @@ mod dynamo_storage {
             ) {
                 LocalTable::run_test(|mut table| async move {
                     table.save_leaderboard(&previous_leaderboard).await;
-                    table.save_last_error(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)).await;
+                    table
+                        .save_last_error(ErrorKind::Leaderboard(
+                            aoc_leaderboard::ErrorKind::NoAccess,
+                        ))
+                        .await;
 
                     let expected_leaderboard = Leaderboard {
                         day1_ts: previous_leaderboard.day1_ts + 1,
