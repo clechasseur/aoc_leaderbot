@@ -6,13 +6,14 @@ use aoc_leaderboard::aoc::Leaderboard;
 use serde::{Deserialize, Serialize};
 
 use crate::leaderbot::Storage;
+use crate::ErrorKind;
 
 /// Bot storage that keeps data in memory.
 ///
 /// Can be persisted through [`serde`] if required.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MemoryStorage {
-    previous: HashMap<u64, HashMap<i32, Leaderboard>>,
+    previous: HashMap<(i32, u64), (Option<Leaderboard>, Option<ErrorKind>)>,
 }
 
 impl MemoryStorage {
@@ -23,7 +24,7 @@ impl MemoryStorage {
 
     /// Returns the total number of previous leaderboards in storage.
     pub fn len(&self) -> usize {
-        self.previous.values().map(HashMap::len).sum()
+        self.previous.len()
     }
 
     /// Checks if there are previous leaderboards in storage.
@@ -40,25 +41,35 @@ impl Storage for MemoryStorage {
         &self,
         year: i32,
         leaderboard_id: u64,
-    ) -> Result<Option<Leaderboard>, Self::Err> {
-        Ok(self
-            .previous
-            .get(&leaderboard_id)
-            .and_then(|board_prev| board_prev.get(&year))
-            .cloned())
+    ) -> Result<(Option<Leaderboard>, Option<ErrorKind>), Self::Err> {
+        match self.previous.get(&(year, leaderboard_id)) {
+            Some((leaderboard, error_kind)) => Ok((leaderboard.as_ref().cloned(), *error_kind)),
+            None => Ok((None, None)),
+        }
     }
 
     #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
-    async fn save(
+    async fn save_success(
         &mut self,
         year: i32,
         leaderboard_id: u64,
         leaderboard: &Leaderboard,
     ) -> Result<(), Self::Err> {
         self.previous
-            .entry(leaderboard_id)
-            .or_default()
-            .insert(year, leaderboard.clone());
+            .insert((year, leaderboard_id), (Some(leaderboard.clone()), None));
+
+        Ok(())
+    }
+
+    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
+    async fn save_error(
+        &mut self,
+        year: i32,
+        leaderboard_id: u64,
+        error_kind: ErrorKind,
+    ) -> Result<(), Self::Err> {
+        let (_, prev_err) = self.previous.entry((year, leaderboard_id)).or_default();
+        *prev_err = Some(error_kind);
 
         Ok(())
     }
