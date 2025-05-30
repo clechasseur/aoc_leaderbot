@@ -3,7 +3,7 @@ name = "aoc_leaderbot_aws_lib"
 version.workspace = true
 authors.workspace = true
 edition = "2021"
-rust-version = "1.81.0"
+rust-version = "1.82.0"
 
 readme = "README.md"
 license.workspace = true
