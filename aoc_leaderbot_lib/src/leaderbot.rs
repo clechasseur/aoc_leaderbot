@@ -417,6 +417,7 @@ fn detect_changes(
 #[cfg(test)]
 #[cfg(all(feature = "config-mem", feature = "storage-mem"))]
 #[cfg_attr(coverage_nightly, coverage(off))]
+// noinspection DuplicatedCode
 mod tests {
     use aoc_leaderboard::test_helpers::{
         mock_server_with_inaccessible_leaderboard, mock_server_with_leaderboard, test_leaderboard,
@@ -498,7 +499,6 @@ mod tests {
         use crate::error::{ReporterErrorKind, StorageErrorKind};
         use crate::leaderbot::config::mem::MemoryConfig;
         use crate::leaderbot::storage::mem::MemoryStorage;
-        use crate::ErrorKind;
 
         const OWNER: u64 = 42;
         const MEMBER_1: u64 = 23;
@@ -712,13 +712,12 @@ mod tests {
             leaderboard
         }
 
-        // noinspection DuplicatedCode
         mod without_previous {
             use super::*;
 
             #[rstest]
             #[case::stores_current(false)]
-            #[case::dry_run::does_not_store_current(true)]
+            #[case::dry_run_does_not_store_current(true)]
             #[awt]
             #[test_log::test(tokio::test)]
             async fn and(
@@ -857,7 +856,7 @@ mod tests {
                         .with(
                             eq(TEST_YEAR),
                             eq(TEST_LEADERBOARD_ID),
-                            eq(ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)),
+                            eq(crate::ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)),
                         )
                         .times(1)
                         .returning(move |_, _, _| Box::pin(ready(Ok(()))));
@@ -908,7 +907,7 @@ mod tests {
                         .with(
                             eq(TEST_YEAR),
                             eq(TEST_LEADERBOARD_ID),
-                            eq(ErrorKind::Storage(StorageErrorKind::LoadPrevious)),
+                            eq(crate::ErrorKind::Storage(StorageErrorKind::LoadPrevious)),
                         )
                         .times(1)
                         .returning(move |_, _, _| Box::pin(ready(Ok(()))));
@@ -961,7 +960,7 @@ mod tests {
                     .with(
                         eq(TEST_YEAR),
                         eq(TEST_LEADERBOARD_ID),
-                        eq(ErrorKind::Reporter(ReporterErrorKind::ReportChanges)),
+                        eq(crate::ErrorKind::Reporter(ReporterErrorKind::ReportChanges)),
                     )
                     .times(1)
                     .returning(move |_, _, _| Box::pin(ready(Ok(()))));
@@ -1041,7 +1040,7 @@ mod tests {
                     .with(
                         eq(TEST_YEAR),
                         eq(TEST_LEADERBOARD_ID),
-                        eq(ErrorKind::Storage(StorageErrorKind::Save)),
+                        eq(crate::ErrorKind::Storage(StorageErrorKind::Save)),
                     )
                     .times(1)
                     .returning(move |_, _, _| Box::pin(ready(Ok(()))));
@@ -1096,7 +1095,7 @@ mod tests {
                     .with(
                         eq(TEST_YEAR),
                         eq(TEST_LEADERBOARD_ID),
-                        eq(ErrorKind::Storage(StorageErrorKind::Save)),
+                        eq(crate::ErrorKind::Storage(StorageErrorKind::Save)),
                     )
                     .times(1)
                     .returning(move |_, _, _| Box::pin(ready(Ok(()))));
@@ -1122,7 +1121,44 @@ mod tests {
                 );
             }
 
-            // TODO add tests with previous error
+            #[rstest]
+            #[awt]
+            #[test_log::test(tokio::test)]
+            async fn duplicate_error(
+                config: MemoryConfig,
+                mut reporter: SpyReporter,
+                #[future]
+                #[from(mock_server_with_inaccessible_leaderboard)]
+                mock_server: MockServer,
+            ) {
+                let mut storage = MockStorage::new();
+                storage
+                    .expect_load_previous()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
+                    .times(1)
+                    .returning(|_, _| {
+                        Box::pin(ready(Ok((
+                            None,
+                            Some(crate::ErrorKind::Leaderboard(
+                                aoc_leaderboard::ErrorKind::NoAccess,
+                            )),
+                        ))))
+                    });
+
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
+                assert_matches!(
+                    result,
+                    Err(crate::Error::Leaderboard(aoc_leaderboard::Error::NoAccess))
+                );
+                assert!(!reporter.called());
+            }
         }
     }
 }
