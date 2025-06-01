@@ -25,7 +25,7 @@ rustc-args = [ "--cfg", "docsrs" ]
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+check-cfg = [ "cfg(ci)", "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
 [features]
 default = ["dynamodb"]

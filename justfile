@@ -1,5 +1,8 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
+rustflags := env("RUSTFLAGS", "") + (if env("CI", "") != "" { " --cfg ci" } else { "" })
+export RUSTFLAGS := rustflags
+
 toolchain := ""
 tool := "cargo"
 
