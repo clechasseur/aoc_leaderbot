@@ -70,6 +70,86 @@ mod error {
     }
 }
 
+mod error_kind {
+    use anyhow::anyhow;
+    use aoc_leaderbot_lib::error::{
+        EnvVarError, EnvVarErrorKind, ReporterError, ReporterErrorKind, StorageError,
+        StorageErrorKind,
+    };
+    use aoc_leaderbot_lib::{Error, ErrorKind};
+    use rstest::rstest;
+
+    mod is_something_of_kind {
+        use super::*;
+
+        #[test]
+        fn is_env_of_kind() {
+            let error_kind = ErrorKind::Env(EnvVarErrorKind::NotPresent);
+            assert!(error_kind.is_env_of_kind(EnvVarErrorKind::NotPresent));
+            assert!(!error_kind.is_env_of_kind(EnvVarErrorKind::NotUnicode));
+        }
+
+        #[test]
+        fn is_leaderboard_of_kind() {
+            let error_kind = ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess);
+            assert!(error_kind.is_leaderboard_of_kind(aoc_leaderboard::ErrorKind::NoAccess));
+            assert!(!error_kind.is_leaderboard_of_kind(aoc_leaderboard::ErrorKind::HttpGet));
+        }
+
+        #[test]
+        fn is_storage_of_kind() {
+            let error_kind = ErrorKind::Storage(StorageErrorKind::Save);
+            assert!(error_kind.is_storage_of_kind(StorageErrorKind::Save));
+            assert!(!error_kind.is_storage_of_kind(StorageErrorKind::LoadPrevious));
+        }
+
+        #[test]
+        fn is_reporter_of_kind() {
+            let error_kind = ErrorKind::Reporter(ReporterErrorKind::ReportChanges);
+            assert!(error_kind.is_reporter_of_kind(ReporterErrorKind::ReportChanges));
+            // No other variant exists
+        }
+    }
+
+    mod from_error_ref_for_error_kind {
+        use super::*;
+
+        fn missing_field_error() -> Error {
+            Error::MissingField { target: "SomeType", field: "some_field" }
+        }
+
+        fn env_error() -> Error {
+            Error::Env { var_name: "SOME_VAR".into(), source: EnvVarError::NotPresent }
+        }
+
+        fn leaderboard_error() -> Error {
+            Error::Leaderboard(aoc_leaderboard::Error::NoAccess)
+        }
+
+        fn storage_error() -> Error {
+            Error::Storage(StorageError::LoadPrevious(anyhow!("error")))
+        }
+
+        fn reporter_error() -> Error {
+            Error::Reporter(ReporterError::ReportChanges(anyhow!("error")))
+        }
+
+        #[rstest]
+        #[case::missing_field(missing_field_error(), ErrorKind::MissingField)]
+        #[case::env(env_error(), ErrorKind::Env(EnvVarErrorKind::NotPresent))]
+        #[case::leaderboard(
+            leaderboard_error(),
+            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)
+        )]
+        #[case::storage(storage_error(), ErrorKind::Storage(StorageErrorKind::LoadPrevious))]
+        #[case::reporter(reporter_error(), ErrorKind::Reporter(ReporterErrorKind::ReportChanges))]
+        fn for_variant(#[case] error: Error, #[case] expected_error_kind: ErrorKind) {
+            let actual_error_kind: ErrorKind = (&error).into();
+            assert_eq!(expected_error_kind, actual_error_kind);
+        }
+    }
+}
+
 mod env_var_error {
     use std::env;
 
