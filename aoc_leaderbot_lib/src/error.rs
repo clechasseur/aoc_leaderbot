@@ -81,9 +81,9 @@ pub enum Error {
 impl Error {
     /// Returns `true` if the enum is [`Error::MissingField`] and the target type and
     /// field name match the given predicate.
-    pub fn is_missing_field_and<P, T, F>(&self, predicate: P) -> bool
+    pub fn is_missing_field_and<P>(&self, predicate: P) -> bool
     where
-        P: FnOnce(&str, &str) -> bool,
+        P: FnOnce(&'static str, &'static str) -> bool,
     {
         match self {
             Self::MissingField { target, field } => predicate(target, field),
@@ -93,9 +93,10 @@ impl Error {
 
     /// Returns `true` if the enum is [`Error::Env`] and the environment variable name
     /// and internal [`EnvVarError`] match the given predicate.
-    pub fn is_env_and<P>(&self, predicate: P) -> bool
+    #[allow(clippy::needless_lifetimes)]
+    pub fn is_env_and<'a, P>(&'a self, predicate: P) -> bool
     where
-        P: FnOnce(&str, &EnvVarError) -> bool,
+        P: FnOnce(&'a str, &'a EnvVarError) -> bool,
     {
         match self {
             Error::Env { var_name, source } => predicate(var_name, source),
