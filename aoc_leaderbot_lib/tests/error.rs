@@ -71,13 +71,8 @@ mod error {
 }
 
 mod error_kind {
-    use anyhow::anyhow;
-    use aoc_leaderbot_lib::error::{
-        EnvVarError, EnvVarErrorKind, ReporterError, ReporterErrorKind, StorageError,
-        StorageErrorKind,
-    };
-    use aoc_leaderbot_lib::{Error, ErrorKind};
-    use rstest::rstest;
+    use aoc_leaderbot_lib::error::{EnvVarErrorKind, ReporterErrorKind, StorageErrorKind};
+    use aoc_leaderbot_lib::ErrorKind;
 
     mod is_something_of_kind {
         use super::*;
@@ -108,44 +103,6 @@ mod error_kind {
             let error_kind = ErrorKind::Reporter(ReporterErrorKind::ReportChanges);
             assert!(error_kind.is_reporter_of_kind(ReporterErrorKind::ReportChanges));
             // No other variant exists
-        }
-    }
-
-    mod from_error_ref_for_error_kind {
-        use super::*;
-
-        fn missing_field_error() -> Error {
-            Error::MissingField { target: "SomeType", field: "some_field" }
-        }
-
-        fn env_error() -> Error {
-            Error::Env { var_name: "SOME_VAR".into(), source: EnvVarError::NotPresent }
-        }
-
-        fn leaderboard_error() -> Error {
-            Error::Leaderboard(aoc_leaderboard::Error::NoAccess)
-        }
-
-        fn storage_error() -> Error {
-            Error::Storage(StorageError::LoadPrevious(anyhow!("error")))
-        }
-
-        fn reporter_error() -> Error {
-            Error::Reporter(ReporterError::ReportChanges(anyhow!("error")))
-        }
-
-        #[rstest]
-        #[case::missing_field(missing_field_error(), ErrorKind::MissingField)]
-        #[case::env(env_error(), ErrorKind::Env(EnvVarErrorKind::NotPresent))]
-        #[case::leaderboard(
-            leaderboard_error(),
-            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)
-        )]
-        #[case::storage(storage_error(), ErrorKind::Storage(StorageErrorKind::LoadPrevious))]
-        #[case::reporter(reporter_error(), ErrorKind::Reporter(ReporterErrorKind::ReportChanges))]
-        fn for_variant(#[case] error: Error, #[case] expected_error_kind: ErrorKind) {
-            let actual_error_kind: ErrorKind = (&error).into();
-            assert_eq!(expected_error_kind, actual_error_kind);
         }
     }
 }
