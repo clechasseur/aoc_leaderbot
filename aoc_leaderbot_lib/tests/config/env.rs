@@ -12,6 +12,7 @@ mod get_env_config {
     use assert_matches::assert_matches;
     use chrono::{Datelike, Local};
     use rstest::{fixture, rstest};
+    use serial_test::serial;
     use uuid::Uuid;
 
     #[fixture]
@@ -21,6 +22,7 @@ mod get_env_config {
 
     #[rstest]
     #[test_log::test]
+    #[serial(env)]
     fn valid(env_var_prefix: String, #[values(false, true)] set_year: bool) {
         let var_name = |name| format!("{env_var_prefix}{name}");
 
@@ -47,6 +49,7 @@ mod get_env_config {
 
         #[rstest]
         #[test_log::test]
+        #[serial(env)]
         fn missing_leaderboard_id(env_var_prefix: String) {
             let var_name = |name| format!("{env_var_prefix}{name}");
 
@@ -60,6 +63,7 @@ mod get_env_config {
 
         #[rstest]
         #[test_log::test]
+        #[serial(env)]
         fn missing_aoc_session(env_var_prefix: String) {
             let var_name = |name| format!("{env_var_prefix}{name}");
 
@@ -80,6 +84,7 @@ mod get_env_config {
 
         #[rstest]
         #[test_log::test]
+        #[serial(env)]
         fn invalid_year(env_var_prefix: String) {
             let var_name = |name| format!("{env_var_prefix}{name}");
 
@@ -96,6 +101,7 @@ mod get_env_config {
 
         #[rstest]
         #[test_log::test]
+        #[serial(env)]
         fn invalid_leaderboard_id(env_var_prefix: String) {
             let var_name = |name| format!("{env_var_prefix}{name}");
 

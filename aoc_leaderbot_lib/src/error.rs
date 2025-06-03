@@ -93,10 +93,9 @@ impl Error {
 
     /// Returns `true` if the enum is [`Error::Env`] and the environment variable name
     /// and internal [`EnvVarError`] match the given predicate.
-    #[allow(clippy::needless_lifetimes)]
-    pub fn is_env_and<'a, P>(&'a self, predicate: P) -> bool
+    pub fn is_env_and<P>(&self, predicate: P) -> bool
     where
-        P: FnOnce(&'a str, &'a EnvVarError) -> bool,
+        P: FnOnce(&str, &EnvVarError) -> bool,
     {
         match self {
             Error::Env { var_name, source } => predicate(var_name, source),
@@ -655,41 +654,71 @@ impl From<&ReporterError> for ErrorKind {
 }
 
 #[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use anyhow::anyhow;
     use rstest::rstest;
 
     use super::*;
 
+    fn missing_field_error() -> Error {
+        Error::MissingField { target: "SomeType", field: "some_field" }
+    }
+
+    fn env_error() -> Error {
+        Error::Env { var_name: "SOME_VAR".into(), source: EnvVarError::NotPresent }
+    }
+
+    fn leaderboard_error() -> Error {
+        Error::Leaderboard(aoc_leaderboard::Error::NoAccess)
+    }
+
+    fn storage_error() -> Error {
+        Error::Storage(StorageError::LoadPrevious(anyhow!("error")))
+    }
+
+    fn reporter_error() -> Error {
+        Error::Reporter(ReporterError::ReportChanges(anyhow!("error")))
+    }
+
+    fn test_error_with_message() -> Error {
+        Error::TestErrorWithMessage("error".into())
+    }
+
+    mod partial_eq_error_and_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::missing_field(missing_field_error(), ErrorKind::MissingField)]
+        #[case::env(env_error(), ErrorKind::Env(EnvVarErrorKind::NotPresent))]
+        #[case::leaderboard(
+            leaderboard_error(),
+            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)
+        )]
+        #[case::storage(storage_error(), ErrorKind::Storage(StorageErrorKind::LoadPrevious))]
+        #[case::reporter(reporter_error(), ErrorKind::Reporter(ReporterErrorKind::ReportChanges))]
+        #[case::test_load_previous(Error::TestLoadPreviousError, ErrorKind::TestLoadPreviousError)]
+        #[case::test_load_previous(
+            Error::TestReportChangesError,
+            ErrorKind::TestReportChangesError
+        )]
+        #[case::test_load_previous(Error::TestSaveUpdatedError, ErrorKind::TestSaveUpdatedError)]
+        #[case::test_load_previous(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
+        #[case::test_load_previous(test_error_with_message(), ErrorKind::TestErrorWithMessage)]
+        fn for_variant(#[case] error: Error, #[case] error_kind: ErrorKind) {
+            // This tests `PartialEq<ErrorKind> for Error`
+            assert_eq!(error, error_kind);
+
+            // This tests `PartialEq<Error> for ErrorKind`
+            assert_eq!(error_kind, error);
+        }
+    }
+
     mod error_kind {
         use super::*;
 
-        mod from_error_ref_for_error_kind {
+        mod from_error_for_error_kind {
             use super::*;
-
-            fn missing_field_error() -> Error {
-                Error::MissingField { target: "SomeType", field: "some_field" }
-            }
-
-            fn env_error() -> Error {
-                Error::Env { var_name: "SOME_VAR".into(), source: EnvVarError::NotPresent }
-            }
-
-            fn leaderboard_error() -> Error {
-                Error::Leaderboard(aoc_leaderboard::Error::NoAccess)
-            }
-
-            fn storage_error() -> Error {
-                Error::Storage(StorageError::LoadPrevious(anyhow!("error")))
-            }
-
-            fn reporter_error() -> Error {
-                Error::Reporter(ReporterError::ReportChanges(anyhow!("error")))
-            }
-
-            fn test_error_with_message() -> Error {
-                Error::TestErrorWithMessage("error".into())
-            }
 
             #[rstest]
             #[case::missing_field(missing_field_error(), ErrorKind::MissingField)]
@@ -718,7 +747,42 @@ mod tests {
             #[case::test_load_previous(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
             #[case::test_load_previous(test_error_with_message(), ErrorKind::TestErrorWithMessage)]
             fn for_variant(#[case] error: Error, #[case] expected_error_kind: ErrorKind) {
-                let actual_error_kind: ErrorKind = (&error).into();
+                let actual_error_kind: ErrorKind = error.into();
+                assert_eq!(expected_error_kind, actual_error_kind);
+            }
+        }
+
+        mod from_error_ref_for_error_kind {
+            use super::*;
+
+            #[rstest]
+            #[case::missing_field(&missing_field_error(), ErrorKind::MissingField)]
+            #[case::env(&env_error(), ErrorKind::Env(EnvVarErrorKind::NotPresent))]
+            #[case::leaderboard(
+                &leaderboard_error(),
+                ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)
+            )]
+            #[case::storage(&storage_error(), ErrorKind::Storage(StorageErrorKind::LoadPrevious))]
+            #[case::reporter(
+                &reporter_error(),
+                ErrorKind::Reporter(ReporterErrorKind::ReportChanges)
+            )]
+            #[case::test_load_previous(
+                &Error::TestLoadPreviousError,
+                ErrorKind::TestLoadPreviousError
+            )]
+            #[case::test_load_previous(
+                &Error::TestReportChangesError,
+                ErrorKind::TestReportChangesError
+            )]
+            #[case::test_load_previous(
+                &Error::TestSaveUpdatedError,
+                ErrorKind::TestSaveUpdatedError
+            )]
+            #[case::test_load_previous(&Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
+            #[case::test_load_previous(&test_error_with_message(), ErrorKind::TestErrorWithMessage)]
+            fn for_variant(#[case] error: &Error, #[case] expected_error_kind: ErrorKind) {
+                let actual_error_kind: ErrorKind = error.into();
                 assert_eq!(expected_error_kind, actual_error_kind);
             }
         }

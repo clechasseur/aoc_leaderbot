@@ -51,7 +51,9 @@ veil = { workspace = true, optional = true }
 aoc_leaderboard = { workspace = true, features = ["__test_helpers"] }
 assert_matches = { workspace = true }
 mockall = { workspace = true }
+reqwest = { workspace = true }
 rstest = { workspace = true }
+serial_test = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros"] }
 uuid = { workspace = true, features = ["v4"] }

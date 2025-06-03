@@ -1,3 +1,35 @@
+use std::collections::HashMap;
+use std::env;
+
+use aoc_leaderbot_lib::error::EnvVarError;
+
+fn not_unicode_env_var_error() -> EnvVarError {
+    EnvVarError::NotUnicode("foo".into())
+}
+
+fn int_expected_env_var_error() -> EnvVarError {
+    let actual = "fourty-two".to_string();
+    let source = actual.parse::<i32>().unwrap_err();
+    EnvVarError::IntExpected { actual, source }
+}
+
+fn not_unicode_var_error() -> env::VarError {
+    env::VarError::NotUnicode("foo".into())
+}
+
+fn aoc_leaderboard_http_get_error() -> aoc_leaderboard::Error {
+    // There's no way to create a reqwest::Error outside the reqwest crate, so we'll
+    // have to trigger an actual error to test this.
+    let map_with_non_string_keys: HashMap<_, _> = [(true, "hello"), (false, "world")].into();
+    let client = reqwest::Client::new();
+    let http_error = client
+        .get("/test")
+        .json(&map_with_non_string_keys)
+        .build()
+        .unwrap_err();
+    aoc_leaderboard::Error::from(http_error)
+}
+
 mod error {
     use anyhow::anyhow;
     use aoc_leaderbot_lib::error::{EnvVarError, ReporterError, StorageError};
@@ -19,7 +51,7 @@ mod error {
 
         #[test]
         fn is_env_and() {
-            let predicate = |var_name, source: &EnvVarError| {
+            let predicate = |var_name: &str, source: &EnvVarError| {
                 var_name == "SOME_VAR" && matches!(source, EnvVarError::NotPresent)
             };
 
@@ -71,8 +103,13 @@ mod error {
 }
 
 mod error_kind {
-    use aoc_leaderbot_lib::error::{EnvVarErrorKind, ReporterErrorKind, StorageErrorKind};
+    use aoc_leaderbot_lib::error::{
+        EnvVarError, EnvVarErrorKind, ReporterErrorKind, StorageErrorKind,
+    };
     use aoc_leaderbot_lib::ErrorKind;
+    use rstest::rstest;
+
+    use super::*;
 
     mod is_something_of_kind {
         use super::*;
@@ -105,13 +142,262 @@ mod error_kind {
             // No other variant exists
         }
     }
+
+    mod from_env_var_error_kind_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(
+            EnvVarErrorKind::NotPresent,
+            ErrorKind::Env(EnvVarErrorKind::NotPresent)
+        )]
+        #[case::not_unicode(
+            EnvVarErrorKind::NotUnicode,
+            ErrorKind::Env(EnvVarErrorKind::NotUnicode)
+        )]
+        #[case::int_expected(
+            EnvVarErrorKind::IntExpected,
+            ErrorKind::Env(EnvVarErrorKind::IntExpected)
+        )]
+        fn for_variant(#[case] env_var_error_kind: EnvVarErrorKind, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = env_var_error_kind.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_env_var_error_kind_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(&EnvVarErrorKind::NotPresent, ErrorKind::Env(EnvVarErrorKind::NotPresent))]
+        #[case::not_unicode(&EnvVarErrorKind::NotUnicode, ErrorKind::Env(EnvVarErrorKind::NotUnicode))]
+        #[case::int_expected(&EnvVarErrorKind::IntExpected, ErrorKind::Env(EnvVarErrorKind::IntExpected))]
+        fn for_variant(
+            #[case] env_var_error_kind: &EnvVarErrorKind,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = env_var_error_kind.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_env_var_error_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(EnvVarError::NotPresent, ErrorKind::Env(EnvVarErrorKind::NotPresent))]
+        #[case::not_unicode(
+            not_unicode_env_var_error(),
+            ErrorKind::Env(EnvVarErrorKind::NotUnicode)
+        )]
+        #[case::int_expected(
+            int_expected_env_var_error(),
+            ErrorKind::Env(EnvVarErrorKind::IntExpected)
+        )]
+        fn for_variant(#[case] env_var_error: EnvVarError, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = env_var_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_env_var_error_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(&EnvVarError::NotPresent, ErrorKind::Env(EnvVarErrorKind::NotPresent))]
+        #[case::not_unicode(&not_unicode_env_var_error(), ErrorKind::Env(EnvVarErrorKind::NotUnicode))]
+        #[case::int_expected(&int_expected_env_var_error(), ErrorKind::Env(EnvVarErrorKind::IntExpected))]
+        fn for_variant(#[case] env_var_error: &EnvVarError, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = env_var_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_var_error_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(env::VarError::NotPresent, ErrorKind::Env(EnvVarErrorKind::NotPresent))]
+        #[case::not_unicode(not_unicode_var_error(), ErrorKind::Env(EnvVarErrorKind::NotUnicode))]
+        fn for_variant(#[case] var_error: env::VarError, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = var_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_var_error_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(&env::VarError::NotPresent, ErrorKind::Env(EnvVarErrorKind::NotPresent))]
+        #[case::not_unicode(&not_unicode_var_error(), ErrorKind::Env(EnvVarErrorKind::NotUnicode))]
+        fn for_variant(#[case] var_error: &env::VarError, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = var_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_aoc_leaderboard_error_kind_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::http_get(
+            aoc_leaderboard::ErrorKind::HttpGet,
+            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::HttpGet)
+        )]
+        #[case::no_access(
+            aoc_leaderboard::ErrorKind::NoAccess,
+            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)
+        )]
+        fn for_variant(
+            #[case] aoc_leaderboard_error_kind: aoc_leaderboard::ErrorKind,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = aoc_leaderboard_error_kind.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_aoc_leaderboard_error_kind_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::http_get(&aoc_leaderboard::ErrorKind::HttpGet, ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::HttpGet))]
+        #[case::no_access(&aoc_leaderboard::ErrorKind::NoAccess, ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess))]
+        fn for_variant(
+            #[case] aoc_leaderboard_error_kind: &aoc_leaderboard::ErrorKind,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = aoc_leaderboard_error_kind.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_aoc_leaderboard_error_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::http_get(
+            aoc_leaderboard_http_get_error(),
+            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::HttpGet)
+        )]
+        #[case::no_access(
+            aoc_leaderboard::Error::NoAccess,
+            ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess)
+        )]
+        fn for_variant(
+            #[case] aoc_leaderboard_error: aoc_leaderboard::Error,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = aoc_leaderboard_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_aoc_leaderboard_error_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::http_get(&aoc_leaderboard_http_get_error(), ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::HttpGet))]
+        #[case::no_access(&aoc_leaderboard::Error::NoAccess, ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess))]
+        fn for_variant(
+            #[case] aoc_leaderboard_error: &aoc_leaderboard::Error,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = aoc_leaderboard_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
 }
 
 mod env_var_error {
     use std::env;
+    use std::ffi::OsStr;
+    use std::num::{IntErrorKind, ParseIntError};
 
     use aoc_leaderbot_lib::error::EnvVarError;
+    use aoc_leaderbot_lib::Error;
     use assert_matches::assert_matches;
+    use gratte::IntoDiscriminant;
+    use rstest::rstest;
+
+    use super::*;
+
+    mod is_something_and {
+        use super::*;
+
+        #[test]
+        fn is_not_unicode_and() {
+            let predicate = |invalid_os_str: &OsStr| !invalid_os_str.is_empty();
+
+            let error = not_unicode_env_var_error();
+            assert!(error.is_not_unicode_and(predicate));
+
+            let error = EnvVarError::NotPresent;
+            assert!(!error.is_not_unicode_and(predicate));
+        }
+
+        #[test]
+        fn is_int_expected_and() {
+            let predicate = |actual: &str, source: &ParseIntError| {
+                !actual.is_empty() && *source.kind() == IntErrorKind::InvalidDigit
+            };
+
+            let error = int_expected_env_var_error();
+            assert!(error.is_int_expected_and(predicate));
+
+            let error = EnvVarError::NotPresent;
+            assert!(!error.is_int_expected_and(predicate));
+        }
+    }
+
+    mod partial_eq {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(env::VarError::NotPresent, EnvVarError::NotPresent)]
+        #[case::not_unicode(not_unicode_var_error(), not_unicode_env_var_error())]
+        fn for_variant(#[case] var_error: env::VarError, #[case] env_var_error: EnvVarError) {
+            // This tests `PartialEq<EnvVarError> for env::VarError`
+            assert_eq!(var_error, env_var_error);
+
+            // This tests `PartialEq<env::VarError> for EnvVarError`
+            assert_eq!(env_var_error, var_error);
+
+            // This tests `PartialEq<EnvVarErrorKind> for EnvVarError`
+            let env_var_error_kind = env_var_error.discriminant();
+            assert_eq!(env_var_error, env_var_error_kind);
+
+            // This tests `PartialEq<EnvVarError> for EnvVarErrorKind`
+            assert_eq!(env_var_error_kind, env_var_error);
+
+            // This tests `PartialEq<ErrorKind> for EnvVarErrorKind`
+            let error = Error::Env { var_name: "SOME_VAR".into(), source: env_var_error };
+            let error_kind = error.discriminant();
+            assert_eq!(env_var_error_kind, error_kind);
+
+            // This tests `PartialEq<EnvVarErrorKind> for ErrorKind`
+            assert_eq!(error_kind, env_var_error_kind);
+
+            // This tests `PartialEq<Error> for EnvVarErrorKind`
+            assert_eq!(env_var_error_kind, error);
+
+            // This tests `PartialEq<EnvVarErrorKind> for Error`
+            assert_eq!(error, env_var_error_kind);
+
+            // This tests `PartialEq<env::VarError> for EnvVarErrorKind`
+            assert_eq!(env_var_error_kind, var_error);
+
+            // This tests `PartialEq<EnvVarErrorKind> for env::VarError`
+            assert_eq!(var_error, env_var_error_kind);
+        }
+
+        #[test]
+        fn for_int_expected() {
+            // `IntExpected` doesn't exist in env::VarError
+            assert_ne!(env::VarError::NotPresent, int_expected_env_var_error());
+        }
+    }
 
     mod from_var_error_for_env_var_error {
         use super::*;
@@ -130,6 +416,76 @@ mod env_var_error {
             let actual: EnvVarError = err.into();
 
             assert_matches!(actual, EnvVarError::NotUnicode(value) if value == "foo");
+        }
+    }
+}
+
+mod env_var_error_kind {
+    use std::env;
+
+    use aoc_leaderbot_lib::error::EnvVarErrorKind;
+    use rstest::rstest;
+
+    use super::*;
+
+    mod from_var_error_for_env_var_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(env::VarError::NotPresent, EnvVarErrorKind::NotPresent)]
+        #[case::not_unicode(not_unicode_var_error(), EnvVarErrorKind::NotUnicode)]
+        fn for_variant(
+            #[case] var_error: env::VarError,
+            #[case] env_var_error_kind: EnvVarErrorKind,
+        ) {
+            let env_var_error_kind_from: EnvVarErrorKind = var_error.into();
+            assert_eq!(env_var_error_kind, env_var_error_kind_from);
+        }
+    }
+
+    mod from_var_error_ref_for_env_var_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::not_present(&env::VarError::NotPresent, EnvVarErrorKind::NotPresent)]
+        #[case::not_unicode(&not_unicode_var_error(), EnvVarErrorKind::NotUnicode)]
+        fn for_variant(
+            #[case] var_error: &env::VarError,
+            #[case] env_var_error_kind: EnvVarErrorKind,
+        ) {
+            let env_var_error_kind_from: EnvVarErrorKind = var_error.into();
+            assert_eq!(env_var_error_kind, env_var_error_kind_from);
+        }
+    }
+}
+
+mod storage_error {
+    use anyhow::anyhow;
+    use aoc_leaderbot_lib::error::StorageError;
+
+    mod is_something_and {
+        use super::*;
+
+        #[test]
+        fn is_load_previous_and() {
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
+
+            let error = StorageError::LoadPrevious(anyhow!("error"));
+            assert!(error.is_load_previous_and(predicate));
+
+            let error = StorageError::Save(anyhow!("error"));
+            assert!(!error.is_load_previous_and(predicate));
+        }
+
+        #[test]
+        fn is_save_and() {
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
+
+            let error = StorageError::Save(anyhow!("error"));
+            assert!(error.is_save_and(predicate));
+
+            let error = StorageError::LoadPrevious(anyhow!("error"));
+            assert!(!error.is_save_and(predicate));
         }
     }
 }
