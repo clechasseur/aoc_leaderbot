@@ -36,7 +36,7 @@ gratte = "1.1.1"
 itertools = "0.14.0"
 lambda_runtime = "0.14.1"
 mockall = "0.13.1"
-reqwest = { version = "0.12.18", default-features = false, features = ["rustls-tls"] }
+reqwest = { version = "0.12.19", default-features = false, features = ["rustls-tls"] }
 rstest = "0.25.0"
 serde = "1.0.219"
 serde_dynamo = "4.2.14"
