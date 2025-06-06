@@ -70,11 +70,11 @@ jobs:
           - package: "aoc_leaderboard"
             toolchain: 1.80.1
           - package: "aoc_leaderbot_lib"
-            toolchain: 1.75.0
+            toolchain: 1.80.1
           - package: "aoc_leaderbot_aws_lib"
             toolchain: 1.82.0
           - package: "aoc_leaderbot_slack_lib"
-            toolchain: 1.75.0
+            toolchain: 1.80.1
           - package: "aoc_leaderbot_aws_lambda_impl"
             toolchain: 1.82.0
     runs-on: ${{ matrix.os }}
