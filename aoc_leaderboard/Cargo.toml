@@ -3,7 +3,7 @@ name = "aoc_leaderboard"
 version.workspace = true
 authors.workspace = true
 edition = "2021"
-rust-version = "1.74.1"
+rust-version = "1.80.1"
 
 readme = "README.md"
 license.workspace = true
@@ -35,9 +35,10 @@ required-features = ["http"]
 [features]
 http = ["dep:reqwest", "dep:serde_json", "dep:tracing"]
 
-__test_helpers = ["http", "dep:rstest", "dep:wiremock"]
+__test_helpers = ["http", "dep:chrono", "dep:rstest", "dep:wiremock"]
 
 [dependencies]
+chrono = { workspace = true, optional = true }
 gratte = { workspace = true }
 reqwest = { workspace = true, optional = true, default-features = false, features = ["json"] }
 rstest = { workspace = true, optional = true }

@@ -11,7 +11,8 @@ mod bot_lambda_handler {
     };
     use aoc_leaderboard::reqwest::Method;
     use aoc_leaderboard::test_helpers::{
-        mock_server_with_leaderboard, TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR,
+        mock_server_with_leaderboard, TEST_AOC_SESSION, TEST_DAY_1_TS, TEST_DAY_2_TS,
+        TEST_LEADERBOARD_ID, TEST_YEAR,
     };
     use aoc_leaderboard::wiremock::matchers::{header, method, path};
     use aoc_leaderboard::wiremock::{Mock, MockServer, ResponseTemplate};
@@ -25,7 +26,6 @@ mod bot_lambda_handler {
     use aoc_leaderbot_lib::ErrorKind;
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::LeaderboardSortOrder;
     use assert_matches::assert_matches;
-    use chrono::Local;
     use lambda_runtime::{Context, LambdaEvent};
     use rstest::{fixture, rstest};
     use serial_test::serial;
@@ -44,7 +44,7 @@ mod bot_lambda_handler {
         Leaderboard {
             year: TEST_YEAR,
             owner_id: OWNER,
-            day1_ts: Local::now().timestamp(),
+            day1_ts: *TEST_DAY_1_TS,
             members: {
                 let mut members = HashMap::new();
 
@@ -68,7 +68,7 @@ mod bot_lambda_handler {
                         stars: 2,
                         local_score: 10,
                         global_score: 0,
-                        last_star_ts: Local::now().timestamp(),
+                        last_star_ts: *TEST_DAY_1_TS,
                         completion_day_level: {
                             let mut completion_day_level = HashMap::new();
 
@@ -76,11 +76,11 @@ mod bot_lambda_handler {
                                 1,
                                 CompletionDayLevel {
                                     part_1: PuzzleCompletionInfo {
-                                        get_star_ts: Local::now().timestamp(),
+                                        get_star_ts: *TEST_DAY_1_TS,
                                         star_index: 1,
                                     },
                                     part_2: Some(PuzzleCompletionInfo {
-                                        get_star_ts: Local::now().timestamp(),
+                                        get_star_ts: *TEST_DAY_1_TS,
                                         star_index: 2,
                                     }),
                                 },
@@ -108,7 +108,7 @@ mod bot_lambda_handler {
                 stars: 1,
                 local_score: 2,
                 global_score: 0,
-                last_star_ts: Local::now().timestamp(),
+                last_star_ts: *TEST_DAY_2_TS,
                 completion_day_level: {
                     let mut completion_day_level = HashMap::new();
 
@@ -116,7 +116,7 @@ mod bot_lambda_handler {
                         1,
                         CompletionDayLevel {
                             part_1: PuzzleCompletionInfo {
-                                get_star_ts: Local::now().timestamp(),
+                                get_star_ts: *TEST_DAY_2_TS,
                                 star_index: 1,
                             },
                             part_2: None,

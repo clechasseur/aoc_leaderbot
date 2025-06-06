@@ -491,6 +491,7 @@ mod tests {
         use std::future::ready;
 
         use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
+        use aoc_leaderboard::test_helpers::{TEST_DAY_1_TS, TEST_DAY_2_TS};
         use aoc_leaderboard::wiremock::MockServer;
         use assert_matches::assert_matches;
         use mockall::predicate::eq;
@@ -589,7 +590,7 @@ mod tests {
             Leaderboard {
                 year: TEST_YEAR,
                 owner_id: OWNER,
-                day1_ts: Local::now().timestamp(),
+                day1_ts: *TEST_DAY_1_TS,
                 members: {
                     let mut members = HashMap::new();
 
@@ -613,7 +614,7 @@ mod tests {
                             stars: 2,
                             local_score: 10,
                             global_score: 0,
-                            last_star_ts: Local::now().timestamp(),
+                            last_star_ts: *TEST_DAY_1_TS,
                             completion_day_level: {
                                 let mut completion_day_level = HashMap::new();
 
@@ -621,11 +622,11 @@ mod tests {
                                     1,
                                     CompletionDayLevel {
                                         part_1: PuzzleCompletionInfo {
-                                            get_star_ts: Local::now().timestamp(),
+                                            get_star_ts: *TEST_DAY_1_TS,
                                             star_index: 1,
                                         },
                                         part_2: Some(PuzzleCompletionInfo {
-                                            get_star_ts: Local::now().timestamp(),
+                                            get_star_ts: *TEST_DAY_1_TS,
                                             star_index: 2,
                                         }),
                                     },
@@ -646,14 +647,11 @@ mod tests {
 
             member_1.stars += 1;
             member_1.local_score += 5;
-            member_1.last_star_ts = Local::now().timestamp();
+            member_1.last_star_ts = *TEST_DAY_2_TS;
             member_1.completion_day_level.insert(
                 2,
                 CompletionDayLevel {
-                    part_1: PuzzleCompletionInfo {
-                        get_star_ts: Local::now().timestamp(),
-                        star_index: 3,
-                    },
+                    part_1: PuzzleCompletionInfo { get_star_ts: *TEST_DAY_2_TS, star_index: 3 },
                     part_2: None,
                 },
             );
@@ -671,7 +669,7 @@ mod tests {
                     stars: 1,
                     local_score: 2,
                     global_score: 0,
-                    last_star_ts: Local::now().timestamp(),
+                    last_star_ts: *TEST_DAY_2_TS,
                     completion_day_level: {
                         let mut completion_day_level = HashMap::new();
 
@@ -679,7 +677,7 @@ mod tests {
                             1,
                             CompletionDayLevel {
                                 part_1: PuzzleCompletionInfo {
-                                    get_star_ts: Local::now().timestamp(),
+                                    get_star_ts: *TEST_DAY_2_TS,
                                     star_index: 1,
                                 },
                                 part_2: None,
