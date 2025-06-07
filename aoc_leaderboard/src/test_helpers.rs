@@ -6,7 +6,9 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 
+use chrono::{DateTime, Days, TimeZone, Utc};
 use reqwest::{header, Method, StatusCode};
 use rstest::fixture;
 use wiremock::matchers::{header, method, path};
@@ -17,6 +19,12 @@ use crate::aoc::Leaderboard;
 pub const TEST_YEAR: i32 = 2024;
 pub const TEST_LEADERBOARD_ID: u64 = 12345;
 pub const TEST_AOC_SESSION: &str = "aoc_session";
+
+pub static TEST_DAY_1: LazyLock<DateTime<Utc>> =
+    LazyLock::new(|| Utc.with_ymd_and_hms(TEST_YEAR, 3, 14, 15, 9, 2).unwrap());
+pub static TEST_DAY_1_TS: LazyLock<i64> = LazyLock::new(|| TEST_DAY_1.timestamp());
+pub static TEST_DAY_2_TS: LazyLock<i64> =
+    LazyLock::new(|| (*TEST_DAY_1 + Days::new(1)).timestamp());
 
 pub fn leaderboard_file_path(file_name: &str) -> PathBuf {
     [env!("CARGO_MANIFEST_DIR"), "resources", "tests", "leaderboards", file_name]

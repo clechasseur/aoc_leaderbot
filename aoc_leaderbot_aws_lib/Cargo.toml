@@ -3,7 +3,7 @@ name = "aoc_leaderbot_aws_lib"
 version.workspace = true
 authors.workspace = true
 edition = "2021"
-rust-version = "1.81.0"
+rust-version = "1.82.0"
 
 readme = "README.md"
 license.workspace = true
@@ -25,7 +25,7 @@ rustc-args = [ "--cfg", "docsrs" ]
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+check-cfg = [ "cfg(ci)", "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
 [features]
 default = ["dynamodb"]
@@ -72,6 +72,3 @@ assert_matches = { workspace = true }
 rstest = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros"] }
-
-[build-dependencies]
-rustc_version = { workspace = true }

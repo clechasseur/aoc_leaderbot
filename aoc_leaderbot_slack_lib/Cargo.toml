@@ -3,7 +3,7 @@ name = "aoc_leaderbot_slack_lib"
 version.workspace = true
 authors.workspace = true
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.80.1"
 
 readme = "README.md"
 license.workspace = true
@@ -42,9 +42,9 @@ reporter-webhook = [
     "webhook-base",
     "dep:aoc_leaderboard",
     "dep:aoc_leaderbot_lib",
+    "dep:gratte",
     "dep:itertools",
     "dep:reqwest",
-    "dep:strum",
     "dep:tracing",
     "dep:veil",
 ]
@@ -54,10 +54,10 @@ aoc_leaderboard = { workspace = true, optional = true }
 aoc_leaderbot_lib = { workspace = true, optional = true, default-features = false }
 clap = { workspace = true, optional = true, features = ["derive"] }
 derive_builder = { workspace = true, optional = true }
+gratte = { workspace = true, optional = true }
 itertools = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true, default-features = false }
 serde = { workspace = true, optional = true, features = ["derive"] }
-strum = { workspace = true, optional = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true, optional = true }
 veil = { workspace = true, optional = true }
@@ -75,6 +75,3 @@ serial_test = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = { workspace = true }
 tracing-test = { workspace = true, features = ["no-env-filter"] }
-
-[build-dependencies]
-rustc_version = { workspace = true }

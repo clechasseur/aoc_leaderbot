@@ -56,8 +56,10 @@ impl Default for RemoveAwsEnvVars {
         let access_key_id = env::var("AWS_ACCESS_KEY_ID").ok();
         let secret_access_key = env::var("AWS_SECRET_ACCESS_KEY").ok();
 
-        env::remove_var("AWS_ACCESS_KEY_ID");
-        env::remove_var("AWS_SECRET_ACCESS_KEY");
+        unsafe {
+            env::remove_var("AWS_ACCESS_KEY_ID");
+            env::remove_var("AWS_SECRET_ACCESS_KEY");
+        }
 
         Self { access_key_id, secret_access_key }
     }
@@ -65,11 +67,13 @@ impl Default for RemoveAwsEnvVars {
 
 impl Drop for RemoveAwsEnvVars {
     fn drop(&mut self) {
-        if let Some(access_key_id) = self.access_key_id.take() {
-            env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
-        }
-        if let Some(secret_access_key) = self.secret_access_key.take() {
-            env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
+        unsafe {
+            if let Some(access_key_id) = self.access_key_id.take() {
+                env::set_var("AWS_ACCESS_KEY_ID", access_key_id);
+            }
+            if let Some(secret_access_key) = self.secret_access_key.take() {
+                env::set_var("AWS_SECRET_ACCESS_KEY", secret_access_key);
+            }
         }
     }
 }
