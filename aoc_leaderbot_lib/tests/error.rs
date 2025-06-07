@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::env;
 
-use aoc_leaderbot_lib::error::EnvVarError;
+use anyhow::anyhow;
+use aoc_leaderbot_lib::error::{EnvVarError, ReporterError, StorageError};
+use aoc_leaderbot_lib::Error;
 
 fn not_unicode_env_var_error() -> EnvVarError {
     EnvVarError::NotUnicode("foo".into())
@@ -30,10 +32,32 @@ fn aoc_leaderboard_http_get_error() -> aoc_leaderboard::Error {
     aoc_leaderboard::Error::from(http_error)
 }
 
+fn load_previous_storage_error() -> StorageError {
+    StorageError::LoadPrevious(anyhow!("error"))
+}
+
+fn save_storage_error() -> StorageError {
+    StorageError::Save(anyhow!("error"))
+}
+
+fn load_previous_error() -> Error {
+    Error::Storage(load_previous_storage_error())
+}
+
+fn save_error() -> Error {
+    Error::Storage(save_storage_error())
+}
+
+fn report_changes_reporter_error() -> ReporterError {
+    ReporterError::ReportChanges(anyhow!("error"))
+}
+
+fn report_changes_error() -> Error {
+    Error::Reporter(report_changes_reporter_error())
+}
+
 mod error {
-    use anyhow::anyhow;
-    use aoc_leaderbot_lib::error::{EnvVarError, ReporterError, StorageError};
-    use aoc_leaderbot_lib::Error;
+    use super::*;
 
     mod is_something_and {
         use super::*;
@@ -103,9 +127,7 @@ mod error {
 }
 
 mod error_kind {
-    use aoc_leaderbot_lib::error::{
-        EnvVarError, EnvVarErrorKind, ReporterErrorKind, StorageErrorKind,
-    };
+    use aoc_leaderbot_lib::error::{EnvVarErrorKind, ReporterErrorKind, StorageErrorKind};
     use aoc_leaderbot_lib::ErrorKind;
     use rstest::rstest;
 
@@ -308,6 +330,140 @@ mod error_kind {
             assert_eq!(error_kind, error_kind_from);
         }
     }
+
+    mod from_storage_error_kind_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::load_previous(
+            StorageErrorKind::LoadPrevious,
+            ErrorKind::Storage(StorageErrorKind::LoadPrevious)
+        )]
+        #[case::save(StorageErrorKind::Save, ErrorKind::Storage(StorageErrorKind::Save))]
+        fn for_variant(
+            #[case] storage_error_kind: StorageErrorKind,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = storage_error_kind.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_storage_error_kind_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::load_previous(
+            &StorageErrorKind::LoadPrevious,
+            ErrorKind::Storage(StorageErrorKind::LoadPrevious),
+        )]
+        #[case::save(
+            &StorageErrorKind::Save,
+            ErrorKind::Storage(StorageErrorKind::Save),
+        )]
+        fn for_variant(
+            #[case] storage_error_kind: &StorageErrorKind,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = storage_error_kind.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_storage_error_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::load_previous(
+            load_previous_storage_error(),
+            ErrorKind::Storage(StorageErrorKind::LoadPrevious)
+        )]
+        #[case(save_storage_error(), ErrorKind::Storage(StorageErrorKind::Save))]
+        fn for_variant(#[case] storage_error: StorageError, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = storage_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_storage_error_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::load_previous(
+            &load_previous_storage_error(),
+            ErrorKind::Storage(StorageErrorKind::LoadPrevious),
+        )]
+        #[case(
+            &save_storage_error(),
+            ErrorKind::Storage(StorageErrorKind::Save),
+        )]
+        fn for_variant(#[case] storage_error: &StorageError, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = storage_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_reporter_error_kind_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::report_changes(
+            ReporterErrorKind::ReportChanges,
+            ErrorKind::Reporter(ReporterErrorKind::ReportChanges)
+        )]
+        fn for_variant(
+            #[case] reporter_error_kind: ReporterErrorKind,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = reporter_error_kind.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_reporter_error_kind_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::report_changes(
+            &ReporterErrorKind::ReportChanges,
+            ErrorKind::Reporter(ReporterErrorKind::ReportChanges),
+        )]
+        fn for_variant(
+            #[case] reporter_error_kind: &ReporterErrorKind,
+            #[case] error_kind: ErrorKind,
+        ) {
+            let error_kind_from: ErrorKind = reporter_error_kind.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_reporter_error_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::report_changes(
+            report_changes_reporter_error(),
+            ErrorKind::Reporter(ReporterErrorKind::ReportChanges)
+        )]
+        fn for_variant(#[case] reporter_error: ReporterError, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = reporter_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
+
+    mod from_reporter_error_ref_for_error_kind {
+        use super::*;
+
+        #[rstest]
+        #[case::report_changes(
+            &report_changes_reporter_error(),
+            ErrorKind::Reporter(ReporterErrorKind::ReportChanges),
+        )]
+        fn for_variant(#[case] reporter_error: &ReporterError, #[case] error_kind: ErrorKind) {
+            let error_kind_from: ErrorKind = reporter_error.into();
+            assert_eq!(error_kind, error_kind_from);
+        }
+    }
 }
 
 mod env_var_error {
@@ -315,8 +471,6 @@ mod env_var_error {
     use std::ffi::OsStr;
     use std::num::{IntErrorKind, ParseIntError};
 
-    use aoc_leaderbot_lib::error::EnvVarError;
-    use aoc_leaderbot_lib::Error;
     use assert_matches::assert_matches;
     use gratte::IntoDiscriminant;
     use rstest::rstest;
@@ -460,8 +614,7 @@ mod env_var_error_kind {
 }
 
 mod storage_error {
-    use anyhow::anyhow;
-    use aoc_leaderbot_lib::error::StorageError;
+    use super::*;
 
     mod is_something_and {
         use super::*;
@@ -486,6 +639,93 @@ mod storage_error {
 
             let error = StorageError::LoadPrevious(anyhow!("error"));
             assert!(!error.is_save_and(predicate));
+        }
+    }
+}
+
+mod storage_error_kind {
+    use gratte::IntoDiscriminant;
+    use rstest::rstest;
+
+    use super::*;
+
+    mod partial_eq {
+        use super::*;
+
+        #[rstest]
+        #[case::load_previous(load_previous_storage_error(), load_previous_error())]
+        #[case::save(save_storage_error(), save_error())]
+        fn for_variant(#[case] storage_error: StorageError, #[case] error: Error) {
+            let storage_error_kind = storage_error.discriminant();
+            let error_kind = error.discriminant();
+
+            // This tests `PartialEq<StorageErrorKind> for StorageError`
+            assert_eq!(storage_error, storage_error_kind);
+
+            // This tests `PartialEq<StorageError> for StorageErrorKind`
+            assert_eq!(storage_error_kind, storage_error);
+
+            // This tests `PartialEq<ErrorKind> for StorageErrorKind`
+            assert_eq!(storage_error_kind, error_kind);
+
+            // This tests `PartialEq<StorageErrorKind> for ErrorKind`
+            assert_eq!(error_kind, storage_error_kind);
+
+            // This tests `PartialEq<StorageErrorKind> for Error`
+            assert_eq!(error, storage_error_kind);
+
+            // This tests `PartialEq<Error> for StorageErrorKind`
+            assert_eq!(storage_error_kind, error);
+        }
+    }
+}
+
+mod reporter_error {
+    use gratte::IntoDiscriminant;
+    use rstest::rstest;
+
+    use super::*;
+
+    mod is_something_and {
+        use super::*;
+
+        #[test]
+        fn is_report_changes_and() {
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
+
+            let error = ReporterError::ReportChanges(anyhow!("error"));
+            assert!(error.is_report_changes_and(predicate));
+
+            // No other variant exists
+        }
+    }
+
+    mod partial_eq {
+        use super::*;
+
+        #[rstest]
+        #[case::report_changes(report_changes_reporter_error(), report_changes_error())]
+        fn for_variant(#[case] reporter_error: ReporterError, #[case] error: Error) {
+            let reporter_error_kind = reporter_error.discriminant();
+            let error_kind = error.discriminant();
+
+            // This tests `PartialEq<ReporterErrorKind> for ReporterError`
+            assert_eq!(reporter_error, reporter_error_kind);
+
+            // This tests `PartialEq<ReporterError> for ReporterErrorKind`
+            assert_eq!(reporter_error_kind, reporter_error);
+
+            // This tests `PartialEq<ReporterErrorKind> for ErrorKind`
+            assert_eq!(error_kind, reporter_error_kind);
+
+            // This tests `PartialEq<ErrorKind> for ReporterErrorKind`
+            assert_eq!(reporter_error_kind, error_kind);
+
+            // This tests `PartialEq<ReporterErrorKind> for Error`
+            assert_eq!(error, reporter_error_kind);
+
+            // This tests `PartialEq<Error> for ReporterErrorKind`
+            assert_eq!(reporter_error_kind, error);
         }
     }
 }
