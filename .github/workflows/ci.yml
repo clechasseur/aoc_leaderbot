@@ -139,12 +139,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache Docker images
-        if: ${{ matrix.with-docker }}
-        uses: ScribeMD/docker-cache@fb28c93772363301b8d0a6072ce850224b73f74e # 0.5.0
-        with:
-          key: docker-v0-${{ runner.os }}-${{ hashFiles('**/.dockerignore', '**/Dockerfile*', '**/docker-compose*.yml') }}
-
       - name: Start DB Docker containers
         if: ${{ matrix.with-docker }}
         uses: hoverkraft-tech/compose-action@8be2d741e891ac9b8ac20825e6f3904149599925 # v2.2.0
@@ -176,11 +170,6 @@ jobs:
           tool: just@1.40.0,cargo-llvm-cov@0.6.16
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cache Docker images
-        uses: ScribeMD/docker-cache@fb28c93772363301b8d0a6072ce850224b73f74e # 0.5.0
-        with:
-          key: docker-v0-${{ runner.os }}-${{ hashFiles('**/.dockerignore', '**/Dockerfile*', '**/docker-compose*.yml') }}
 
       - name: Start DB Docker containers
         uses: hoverkraft-tech/compose-action@8be2d741e891ac9b8ac20825e6f3904149599925 # v2.2.0
