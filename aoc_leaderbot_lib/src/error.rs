@@ -74,6 +74,11 @@ pub enum Error {
 
     #[cfg(test)]
     #[doc(hidden)]
+    #[error("test")]
+    TestSaveErrorError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
     #[error("something went wrong: {0}")]
     TestErrorWithMessage(String),
 }
@@ -184,6 +189,10 @@ pub enum ErrorKind {
 
     #[cfg(test)]
     #[doc(hidden)]
+    TestSaveErrorError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
     TestErrorWithMessage,
 }
 
@@ -247,6 +256,8 @@ impl From<&Error> for ErrorKind {
             Error::TestSaveUpdatedError => ErrorKind::TestSaveUpdatedError,
             #[cfg(test)]
             Error::TestSaveBaseError => ErrorKind::TestSaveBaseError,
+            #[cfg(test)]
+            Error::TestSaveErrorError => ErrorKind::TestSaveErrorError,
             #[cfg(test)]
             Error::TestErrorWithMessage(_) => ErrorKind::TestErrorWithMessage,
         }
@@ -479,7 +490,11 @@ pub enum StorageError {
 
     /// Error while trying to save new leaderboard data.
     #[error("failed to save leaderboard data: {0}")]
-    Save(anyhow::Error),
+    SaveSuccess(anyhow::Error),
+
+    /// Error while trying to save previous error.
+    #[error("failed to save previous error: {0}")]
+    SaveError(anyhow::Error),
 }
 
 impl StorageError {
@@ -495,14 +510,26 @@ impl StorageError {
         }
     }
 
-    /// Returns `true` if the enum is [`StorageError::Save`] and the internal
+    /// Returns `true` if the enum is [`StorageError::SaveSuccess`] and the internal
     /// [`anyhow::Error`] matches the given predicate.
-    pub fn is_save_and<P>(&self, predicate: P) -> bool
+    pub fn is_save_success_and<P>(&self, predicate: P) -> bool
     where
         P: FnOnce(&anyhow::Error) -> bool,
     {
         match self {
-            Self::Save(source) => predicate(source),
+            Self::SaveSuccess(source) => predicate(source),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the enum is [`StorageError::SaveError`] and the internal
+    /// [`anyhow::Error`] matches the given predicate.
+    pub fn is_save_error_and<P>(&self, predicate: P) -> bool
+    where
+        P: FnOnce(&anyhow::Error) -> bool,
+    {
+        match self {
+            Self::SaveError(source) => predicate(source),
             _ => false,
         }
     }
@@ -698,13 +725,14 @@ mod tests {
         #[case::storage(storage_error(), ErrorKind::Storage(StorageErrorKind::LoadPrevious))]
         #[case::reporter(reporter_error(), ErrorKind::Reporter(ReporterErrorKind::ReportChanges))]
         #[case::test_load_previous(Error::TestLoadPreviousError, ErrorKind::TestLoadPreviousError)]
-        #[case::test_load_previous(
+        #[case::test_report_changes(
             Error::TestReportChangesError,
             ErrorKind::TestReportChangesError
         )]
-        #[case::test_load_previous(Error::TestSaveUpdatedError, ErrorKind::TestSaveUpdatedError)]
-        #[case::test_load_previous(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
-        #[case::test_load_previous(test_error_with_message(), ErrorKind::TestErrorWithMessage)]
+        #[case::test_save_updated(Error::TestSaveUpdatedError, ErrorKind::TestSaveUpdatedError)]
+        #[case::test_save_base(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
+        #[case::test_save_error(Error::TestSaveErrorError, ErrorKind::TestSaveErrorError)]
+        #[case::test_error_with_message(test_error_with_message(), ErrorKind::TestErrorWithMessage)]
         fn for_variant(#[case] error: Error, #[case] error_kind: ErrorKind) {
             // This tests `PartialEq<ErrorKind> for Error`
             assert_eq!(error, error_kind);
@@ -736,16 +764,17 @@ mod tests {
                 Error::TestLoadPreviousError,
                 ErrorKind::TestLoadPreviousError
             )]
-            #[case::test_load_previous(
+            #[case::test_report_changes(
                 Error::TestReportChangesError,
                 ErrorKind::TestReportChangesError
             )]
-            #[case::test_load_previous(
-                Error::TestSaveUpdatedError,
-                ErrorKind::TestSaveUpdatedError
+            #[case::test_save_updated(Error::TestSaveUpdatedError, ErrorKind::TestSaveUpdatedError)]
+            #[case::test_save_base(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
+            #[case::test_save_error(Error::TestSaveErrorError, ErrorKind::TestSaveErrorError)]
+            #[case::test_error_with_message(
+                test_error_with_message(),
+                ErrorKind::TestErrorWithMessage
             )]
-            #[case::test_load_previous(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
-            #[case::test_load_previous(test_error_with_message(), ErrorKind::TestErrorWithMessage)]
             fn for_variant(#[case] error: Error, #[case] expected_error_kind: ErrorKind) {
                 let actual_error_kind: ErrorKind = error.into();
                 assert_eq!(expected_error_kind, actual_error_kind);
@@ -771,16 +800,17 @@ mod tests {
                 &Error::TestLoadPreviousError,
                 ErrorKind::TestLoadPreviousError
             )]
-            #[case::test_load_previous(
+            #[case::test_report_changes(
                 &Error::TestReportChangesError,
                 ErrorKind::TestReportChangesError
             )]
-            #[case::test_load_previous(
+            #[case::test_save_updated(
                 &Error::TestSaveUpdatedError,
                 ErrorKind::TestSaveUpdatedError
             )]
-            #[case::test_load_previous(&Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
-            #[case::test_load_previous(&test_error_with_message(), ErrorKind::TestErrorWithMessage)]
+            #[case::test_save_base(&Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
+            #[case::test_save_error(&Error::TestSaveErrorError, ErrorKind::TestSaveErrorError)]
+            #[case::test_error_with_message(&test_error_with_message(), ErrorKind::TestErrorWithMessage)]
             fn for_variant(#[case] error: &Error, #[case] expected_error_kind: ErrorKind) {
                 let actual_error_kind: ErrorKind = error.into();
                 assert_eq!(expected_error_kind, actual_error_kind);

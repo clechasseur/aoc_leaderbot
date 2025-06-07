@@ -36,16 +36,24 @@ fn load_previous_storage_error() -> StorageError {
     StorageError::LoadPrevious(anyhow!("error"))
 }
 
-fn save_storage_error() -> StorageError {
-    StorageError::Save(anyhow!("error"))
+fn save_success_storage_error() -> StorageError {
+    StorageError::SaveSuccess(anyhow!("error"))
+}
+
+fn save_error_storage_error() -> StorageError {
+    StorageError::SaveError(anyhow!("error"))
 }
 
 fn load_previous_error() -> Error {
     Error::Storage(load_previous_storage_error())
 }
 
-fn save_error() -> Error {
-    Error::Storage(save_storage_error())
+fn save_success_error() -> Error {
+    Error::Storage(save_success_storage_error())
+}
+
+fn save_error_error() -> Error {
+    Error::Storage(save_error_storage_error())
 }
 
 fn report_changes_reporter_error() -> ReporterError {
@@ -152,8 +160,8 @@ mod error_kind {
 
         #[test]
         fn is_storage_of_kind() {
-            let error_kind = ErrorKind::Storage(StorageErrorKind::Save);
-            assert!(error_kind.is_storage_of_kind(StorageErrorKind::Save));
+            let error_kind = ErrorKind::Storage(StorageErrorKind::SaveSuccess);
+            assert!(error_kind.is_storage_of_kind(StorageErrorKind::SaveSuccess));
             assert!(!error_kind.is_storage_of_kind(StorageErrorKind::LoadPrevious));
         }
 
@@ -339,7 +347,14 @@ mod error_kind {
             StorageErrorKind::LoadPrevious,
             ErrorKind::Storage(StorageErrorKind::LoadPrevious)
         )]
-        #[case::save(StorageErrorKind::Save, ErrorKind::Storage(StorageErrorKind::Save))]
+        #[case::save_success(
+            StorageErrorKind::SaveSuccess,
+            ErrorKind::Storage(StorageErrorKind::SaveSuccess)
+        )]
+        #[case::save_error(
+            StorageErrorKind::SaveError,
+            ErrorKind::Storage(StorageErrorKind::SaveError)
+        )]
         fn for_variant(
             #[case] storage_error_kind: StorageErrorKind,
             #[case] error_kind: ErrorKind,
@@ -357,9 +372,13 @@ mod error_kind {
             &StorageErrorKind::LoadPrevious,
             ErrorKind::Storage(StorageErrorKind::LoadPrevious),
         )]
-        #[case::save(
-            &StorageErrorKind::Save,
-            ErrorKind::Storage(StorageErrorKind::Save),
+        #[case::save_success(
+            &StorageErrorKind::SaveSuccess,
+            ErrorKind::Storage(StorageErrorKind::SaveSuccess),
+        )]
+        #[case::save_error(
+            &StorageErrorKind::SaveError,
+            ErrorKind::Storage(StorageErrorKind::SaveError),
         )]
         fn for_variant(
             #[case] storage_error_kind: &StorageErrorKind,
@@ -378,7 +397,14 @@ mod error_kind {
             load_previous_storage_error(),
             ErrorKind::Storage(StorageErrorKind::LoadPrevious)
         )]
-        #[case(save_storage_error(), ErrorKind::Storage(StorageErrorKind::Save))]
+        #[case::save_success(
+            save_success_storage_error(),
+            ErrorKind::Storage(StorageErrorKind::SaveSuccess)
+        )]
+        #[case::save_error(
+            save_error_storage_error(),
+            ErrorKind::Storage(StorageErrorKind::SaveError)
+        )]
         fn for_variant(#[case] storage_error: StorageError, #[case] error_kind: ErrorKind) {
             let error_kind_from: ErrorKind = storage_error.into();
             assert_eq!(error_kind, error_kind_from);
@@ -393,9 +419,13 @@ mod error_kind {
             &load_previous_storage_error(),
             ErrorKind::Storage(StorageErrorKind::LoadPrevious),
         )]
-        #[case(
-            &save_storage_error(),
-            ErrorKind::Storage(StorageErrorKind::Save),
+        #[case::save_success(
+            &save_success_storage_error(),
+            ErrorKind::Storage(StorageErrorKind::SaveSuccess),
+        )]
+        #[case::save_error(
+            &save_error_storage_error(),
+            ErrorKind::Storage(StorageErrorKind::SaveError),
         )]
         fn for_variant(#[case] storage_error: &StorageError, #[case] error_kind: ErrorKind) {
             let error_kind_from: ErrorKind = storage_error.into();
@@ -626,19 +656,30 @@ mod storage_error {
             let error = StorageError::LoadPrevious(anyhow!("error"));
             assert!(error.is_load_previous_and(predicate));
 
-            let error = StorageError::Save(anyhow!("error"));
+            let error = StorageError::SaveSuccess(anyhow!("error"));
             assert!(!error.is_load_previous_and(predicate));
         }
 
         #[test]
-        fn is_save_and() {
+        fn is_save_success_and() {
             let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
 
-            let error = StorageError::Save(anyhow!("error"));
-            assert!(error.is_save_and(predicate));
+            let error = StorageError::SaveSuccess(anyhow!("error"));
+            assert!(error.is_save_success_and(predicate));
 
             let error = StorageError::LoadPrevious(anyhow!("error"));
-            assert!(!error.is_save_and(predicate));
+            assert!(!error.is_save_success_and(predicate));
+        }
+
+        #[test]
+        fn is_save_error_and() {
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
+
+            let error = StorageError::SaveError(anyhow!("error"));
+            assert!(error.is_save_error_and(predicate));
+
+            let error = StorageError::LoadPrevious(anyhow!("error"));
+            assert!(!error.is_save_error_and(predicate));
         }
     }
 }
@@ -654,7 +695,8 @@ mod storage_error_kind {
 
         #[rstest]
         #[case::load_previous(load_previous_storage_error(), load_previous_error())]
-        #[case::save(save_storage_error(), save_error())]
+        #[case::save_success(save_success_storage_error(), save_success_error())]
+        #[case::save_error(save_error_storage_error(), save_error_error())]
         fn for_variant(#[case] storage_error: StorageError, #[case] error: Error) {
             let storage_error_kind = storage_error.discriminant();
             let error_kind = error.discriminant();

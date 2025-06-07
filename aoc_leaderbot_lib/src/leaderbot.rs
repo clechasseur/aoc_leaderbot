@@ -350,7 +350,7 @@ where
                 .await
             {
                 Ok(()) => Ok(output),
-                Err(err) => Err(StorageError::Save(anyhow!(err)).into()),
+                Err(err) => Err(StorageError::SaveSuccess(anyhow!(err)).into()),
             }
         },
         output_result => output_result,
@@ -371,7 +371,7 @@ where
             {
                 // An error occurred while doing the bot run, and an error also occurred
                 // while trying to persist information about the last error. ¯\_(ツ)_/¯
-                let storage_err = StorageError::Save(anyhow!(storage_err)).into();
+                let storage_err = StorageError::SaveError(anyhow!(storage_err)).into();
                 reporter
                     .report_error(year, leaderboard_id, &storage_err)
                     .await;
@@ -1038,7 +1038,7 @@ mod tests {
                     .with(
                         eq(TEST_YEAR),
                         eq(TEST_LEADERBOARD_ID),
-                        eq(crate::ErrorKind::Storage(StorageErrorKind::Save)),
+                        eq(crate::ErrorKind::Storage(StorageErrorKind::SaveSuccess)),
                     )
                     .times(1)
                     .returning(move |_, _, _| Box::pin(ready(Ok(()))));
@@ -1051,7 +1051,7 @@ mod tests {
                     false,
                 )
                 .await;
-                assert_matches!(result, Err(crate::Error::Storage(StorageError::Save(_))));
+                assert_matches!(result, Err(crate::Error::Storage(StorageError::SaveSuccess(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
                 assert_eq!(
@@ -1093,7 +1093,7 @@ mod tests {
                     .with(
                         eq(TEST_YEAR),
                         eq(TEST_LEADERBOARD_ID),
-                        eq(crate::ErrorKind::Storage(StorageErrorKind::Save)),
+                        eq(crate::ErrorKind::Storage(StorageErrorKind::SaveSuccess)),
                     )
                     .times(1)
                     .returning(move |_, _, _| Box::pin(ready(Ok(()))));
@@ -1106,7 +1106,7 @@ mod tests {
                     false,
                 )
                 .await;
-                assert_matches!(result, Err(crate::Error::Storage(StorageError::Save(_))));
+                assert_matches!(result, Err(crate::Error::Storage(StorageError::SaveSuccess(_))));
                 assert!(reporter.called());
                 assert_eq!(reporter.errors.len(), 1);
                 assert_eq!(
@@ -1117,6 +1117,65 @@ mod tests {
                         "failed to save leaderboard data: test".to_string(),
                     )
                 );
+            }
+
+            #[rstest]
+            #[awt]
+            #[test_log::test(tokio::test)]
+            async fn save_error_error(
+                config: MemoryConfig,
+                mut reporter: SpyReporter,
+                #[future]
+                #[from(mock_server_with_leaderboard)]
+                mock_server: MockServer,
+            ) {
+                let mut storage = MockStorage::new();
+                storage
+                    .expect_load_previous()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
+                    .times(1)
+                    .returning(move |_, _| {
+                        Box::pin(ready(Err(crate::Error::TestLoadPreviousError)))
+                    });
+                storage
+                    .expect_save_error()
+                    .with(
+                        eq(TEST_YEAR),
+                        eq(TEST_LEADERBOARD_ID),
+                        eq(crate::ErrorKind::Storage(StorageErrorKind::LoadPrevious)),
+                    )
+                    .times(1)
+                    .returning(move |_, _, _| {
+                        Box::pin(ready(Err(crate::Error::TestSaveErrorError)))
+                    });
+
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
+                assert_matches!(result, Err(crate::Error::Storage(StorageError::LoadPrevious(_))));
+                assert!(reporter.called());
+                assert_eq!(reporter.errors.len(), 2);
+                assert_eq!(
+                    reporter.errors[0],
+                    (
+                        TEST_YEAR,
+                        TEST_LEADERBOARD_ID,
+                        "failed to load previous leaderboard data: test".to_string(),
+                    )
+                );
+                assert_eq!(
+                    reporter.errors[1],
+                    (
+                        TEST_YEAR,
+                        TEST_LEADERBOARD_ID,
+                        "failed to save previous error: test".to_string(),
+                    )
+                )
             }
 
             #[rstest]
