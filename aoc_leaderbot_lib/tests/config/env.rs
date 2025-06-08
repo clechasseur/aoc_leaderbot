@@ -12,6 +12,7 @@ mod get_env_config {
     use assert_matches::assert_matches;
     use chrono::{Datelike, Local};
     use rstest::{fixture, rstest};
+    use serial_test::serial;
     use uuid::Uuid;
 
     #[fixture]
@@ -21,14 +22,20 @@ mod get_env_config {
 
     #[rstest]
     #[test_log::test]
+    #[serial(env)]
     fn valid(env_var_prefix: String, #[values(false, true)] set_year: bool) {
         let var_name = |name| format!("{env_var_prefix}{name}");
 
-        if set_year {
-            env::set_var(var_name(ENV_CONFIG_YEAR_SUFFIX), TEST_YEAR.to_string());
+        unsafe {
+            if set_year {
+                env::set_var(var_name(ENV_CONFIG_YEAR_SUFFIX), TEST_YEAR.to_string());
+            }
+            env::set_var(
+                var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX),
+                TEST_LEADERBOARD_ID.to_string(),
+            );
+            env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), TEST_AOC_SESSION);
         }
-        env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), TEST_LEADERBOARD_ID.to_string());
-        env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), TEST_AOC_SESSION);
 
         let actual = get_env_config(env_var_prefix).unwrap();
 
@@ -42,10 +49,13 @@ mod get_env_config {
 
         #[rstest]
         #[test_log::test]
+        #[serial(env)]
         fn missing_leaderboard_id(env_var_prefix: String) {
             let var_name = |name| format!("{env_var_prefix}{name}");
 
-            env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), TEST_AOC_SESSION);
+            unsafe {
+                env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), TEST_AOC_SESSION);
+            }
 
             let actual = get_env_config(&env_var_prefix);
             assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source: EnvVarError::NotPresent }) if actual_var_name == var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX));
@@ -53,13 +63,16 @@ mod get_env_config {
 
         #[rstest]
         #[test_log::test]
+        #[serial(env)]
         fn missing_aoc_session(env_var_prefix: String) {
             let var_name = |name| format!("{env_var_prefix}{name}");
 
-            env::set_var(
-                var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX),
-                TEST_LEADERBOARD_ID.to_string(),
-            );
+            unsafe {
+                env::set_var(
+                    var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX),
+                    TEST_LEADERBOARD_ID.to_string(),
+                );
+            }
 
             let actual = get_env_config(&env_var_prefix);
             assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source: EnvVarError::NotPresent }) if actual_var_name == var_name(ENV_CONFIG_AOC_SESSION_SUFFIX));
@@ -71,10 +84,13 @@ mod get_env_config {
 
         #[rstest]
         #[test_log::test]
+        #[serial(env)]
         fn invalid_year(env_var_prefix: String) {
             let var_name = |name| format!("{env_var_prefix}{name}");
 
-            env::set_var(var_name(ENV_CONFIG_YEAR_SUFFIX), "two-thousand-twenty-four");
+            unsafe {
+                env::set_var(var_name(ENV_CONFIG_YEAR_SUFFIX), "two-thousand-twenty-four");
+            }
 
             let actual = get_env_config(&env_var_prefix);
             assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source }) => {
@@ -85,10 +101,13 @@ mod get_env_config {
 
         #[rstest]
         #[test_log::test]
+        #[serial(env)]
         fn invalid_leaderboard_id(env_var_prefix: String) {
             let var_name = |name| format!("{env_var_prefix}{name}");
 
-            env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), "one two three four five");
+            unsafe {
+                env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), "one two three four five");
+            }
 
             let actual = get_env_config(&env_var_prefix);
             assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source }) => {

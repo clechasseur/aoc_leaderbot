@@ -4,7 +4,7 @@ This guide is meant for people wishing to contribute to this open-source project
 
 ### Rust
 
-You need at least **Rust 1.68.2** (_TODO validate this minimum version_) to build this project's code and run the tests. You can install Rust from the [official website](https://www.rust-lang.org/tools/install).
+You need a Rust toolchain to build this project's code and run the tests. You can install Rust from the [official website](https://www.rust-lang.org/tools/install).
 If you already have a version of Rust installed via `rustup` but it's too old, you can update by running
 
 ```bash
@@ -46,6 +46,7 @@ If you want to run tests with coverage locally, you'll need to install [`cargo-l
 ```bash
 cargo install cargo-llvm-cov --locked
 ```
+
 You can also install it via [cargo-binstall](https://github.com/cargo-bins/cargo-binstall):
 
 ```bash

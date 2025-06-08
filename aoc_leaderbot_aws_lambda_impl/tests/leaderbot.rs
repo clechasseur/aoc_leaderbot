@@ -11,7 +11,8 @@ mod bot_lambda_handler {
     };
     use aoc_leaderboard::reqwest::Method;
     use aoc_leaderboard::test_helpers::{
-        mock_server_with_leaderboard, TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR,
+        mock_server_with_leaderboard, TEST_AOC_SESSION, TEST_DAY_1_TS, TEST_DAY_2_TS,
+        TEST_LEADERBOARD_ID, TEST_YEAR,
     };
     use aoc_leaderboard::wiremock::matchers::{header, method, path};
     use aoc_leaderboard::wiremock::{Mock, MockServer, ResponseTemplate};
@@ -22,9 +23,9 @@ mod bot_lambda_handler {
     use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::{
         LocalTable, LOCAL_ENDPOINT_URL,
     };
+    use aoc_leaderbot_lib::ErrorKind;
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::LeaderboardSortOrder;
     use assert_matches::assert_matches;
-    use chrono::Local;
     use lambda_runtime::{Context, LambdaEvent};
     use rstest::{fixture, rstest};
     use serial_test::serial;
@@ -43,7 +44,7 @@ mod bot_lambda_handler {
         Leaderboard {
             year: TEST_YEAR,
             owner_id: OWNER,
-            day1_ts: Local::now().timestamp(),
+            day1_ts: *TEST_DAY_1_TS,
             members: {
                 let mut members = HashMap::new();
 
@@ -67,7 +68,7 @@ mod bot_lambda_handler {
                         stars: 2,
                         local_score: 10,
                         global_score: 0,
-                        last_star_ts: Local::now().timestamp(),
+                        last_star_ts: *TEST_DAY_1_TS,
                         completion_day_level: {
                             let mut completion_day_level = HashMap::new();
 
@@ -75,11 +76,11 @@ mod bot_lambda_handler {
                                 1,
                                 CompletionDayLevel {
                                     part_1: PuzzleCompletionInfo {
-                                        get_star_ts: Local::now().timestamp(),
+                                        get_star_ts: *TEST_DAY_1_TS,
                                         star_index: 1,
                                     },
                                     part_2: Some(PuzzleCompletionInfo {
-                                        get_star_ts: Local::now().timestamp(),
+                                        get_star_ts: *TEST_DAY_1_TS,
                                         star_index: 2,
                                     }),
                                 },
@@ -107,7 +108,7 @@ mod bot_lambda_handler {
                 stars: 1,
                 local_score: 2,
                 global_score: 0,
-                last_star_ts: Local::now().timestamp(),
+                last_star_ts: *TEST_DAY_2_TS,
                 completion_day_level: {
                     let mut completion_day_level = HashMap::new();
 
@@ -115,7 +116,7 @@ mod bot_lambda_handler {
                         1,
                         CompletionDayLevel {
                             part_1: PuzzleCompletionInfo {
-                                get_star_ts: Local::now().timestamp(),
+                                get_star_ts: *TEST_DAY_2_TS,
                                 star_index: 1,
                             },
                             part_2: None,
@@ -202,13 +203,15 @@ mod bot_lambda_handler {
                         assert_eq!(output.leaderboard, current_leaderboard);
                         assert!(output.changes.is_none());
                     });
-                    assert_eq!(table.load_leaderboard().await, current_leaderboard);
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                        assert_eq!(current_leaderboard, actual_leaderboard);
+                    });
                 });
             }
 
             mod test_run {
-                use aoc_leaderbot_lib::leaderbot::Storage;
-
                 use super::*;
 
                 #[rstest]
@@ -219,7 +222,7 @@ mod bot_lambda_handler {
                     run_bot_test(
                         current_leaderboard.clone(),
                         true,
-                        |mock_server, mut table| async move {
+                        |mock_server, table| async move {
                             let incoming_message = incoming_message(true, &mock_server, &table);
                             let event = LambdaEvent::new(incoming_message, Context::default());
                             let result = bot_lambda_handler(event).await;
@@ -231,20 +234,16 @@ mod bot_lambda_handler {
                                 assert_eq!(output.leaderboard, current_leaderboard);
                                 assert!(output.changes.is_none());
                             });
-                            assert_matches!(
-                                table
-                                    .storage()
-                                    .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
-                                    .await,
-                                Ok(None)
-                            );
+
+                            let actual = table.load_leaderboard_and_last_error().await;
+                            assert_matches!(actual, (None, None));
                         },
                     );
                 }
             }
         }
 
-        mod with_previous {
+        mod with_previous_leaderboard {
             use super::*;
 
             mod without_changes {
@@ -268,14 +267,17 @@ mod bot_lambda_handler {
                             assert_matches!(result, Ok(OutgoingMessage { output }) => {
                                 assert_eq!(output.year, TEST_YEAR);
                                 assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
-                                assert_matches!(
-                                    output.previous_leaderboard,
-                                    Some(leaderboard) if leaderboard == current_leaderboard
-                                );
+                                assert_matches!(output.previous_leaderboard, Some(leaderboard) => {
+                                    assert_eq!(current_leaderboard, leaderboard);
+                                });
                                 assert_eq!(output.leaderboard, current_leaderboard);
                                 assert!(output.changes.is_none());
                             });
-                            assert_eq!(table.load_leaderboard().await, current_leaderboard);
+
+                            let actual = table.load_leaderboard_and_last_error().await;
+                            assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                                assert_eq!(current_leaderboard, actual_leaderboard);
+                            });
                         },
                     );
                 }
@@ -301,14 +303,17 @@ mod bot_lambda_handler {
                                 assert_matches!(result, Ok(OutgoingMessage { output }) => {
                                     assert_eq!(output.year, TEST_YEAR);
                                     assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
-                                    assert_matches!(
-                                        output.previous_leaderboard,
-                                        Some(leaderboard) if leaderboard == current_leaderboard
-                                    );
+                                    assert_matches!(output.previous_leaderboard, Some(leaderboard) => {
+                                        assert_eq!(current_leaderboard, leaderboard);
+                                    });
                                     assert_eq!(output.leaderboard, current_leaderboard);
                                     assert!(output.changes.is_none());
                                 });
-                                assert_eq!(table.load_leaderboard().await, current_leaderboard);
+
+                                let actual = table.load_leaderboard_and_last_error().await;
+                                assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                                    assert_eq!(current_leaderboard, actual_leaderboard);
+                                });
                             },
                         );
                     }
@@ -337,17 +342,20 @@ mod bot_lambda_handler {
                             assert_matches!(result, Ok(OutgoingMessage { output }) => {
                                 assert_eq!(output.year, TEST_YEAR);
                                 assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
-                                assert_matches!(
-                                    output.previous_leaderboard,
-                                    Some(leaderboard) if leaderboard == previous_leaderboard
-                                );
+                                assert_matches!(output.previous_leaderboard, Some(leaderboard) => {
+                                    assert_eq!(previous_leaderboard, leaderboard);
+                                });
                                 assert_eq!(output.leaderboard, current_leaderboard);
                                 assert_matches!(output.changes, Some(changes) => {
                                     assert_eq!(changes.new_members, [MEMBER_2].into());
                                     assert!(changes.members_with_new_stars.is_empty());
                                 });
                             });
-                            assert_eq!(table.load_leaderboard().await, current_leaderboard);
+
+                            let actual = table.load_leaderboard_and_last_error().await;
+                            assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                                assert_eq!(current_leaderboard, actual_leaderboard);
+                            });
                         },
                     );
                 }
@@ -374,20 +382,101 @@ mod bot_lambda_handler {
                                 assert_matches!(result, Ok(OutgoingMessage { output }) => {
                                     assert_eq!(output.year, TEST_YEAR);
                                     assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
-                                    assert_matches!(
-                                        output.previous_leaderboard,
-                                        Some(leaderboard) if leaderboard == previous_leaderboard
-                                    );
+                                    assert_matches!(output.previous_leaderboard, Some(leaderboard) => {
+                                        assert_eq!(previous_leaderboard, leaderboard);
+                                    });
                                     assert_eq!(output.leaderboard, current_leaderboard);
                                     assert_matches!(output.changes, Some(changes) => {
                                         assert_eq!(changes.new_members, [MEMBER_2].into());
                                         assert!(changes.members_with_new_stars.is_empty());
                                     });
                                 });
-                                assert_eq!(table.load_leaderboard().await, previous_leaderboard);
+
+                                let actual = table.load_leaderboard_and_last_error().await;
+                                assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                                    assert_eq!(previous_leaderboard, actual_leaderboard);
+                                });
                             },
                         );
                     }
+                }
+            }
+        }
+
+        mod with_previous_last_error {
+            use super::*;
+
+            #[rstest]
+            #[test_log::test]
+            fn overwrites_last_error(#[from(base_leaderboard)] current_leaderboard: Leaderboard) {
+                run_bot_test(current_leaderboard.clone(), false, |mock_server, table| async move {
+                    table
+                        .save_last_error(ErrorKind::Leaderboard(
+                            aoc_leaderboard::ErrorKind::NoAccess,
+                        ))
+                        .await;
+
+                    let incoming_message = incoming_message(false, &mock_server, &table);
+                    let event = LambdaEvent::new(incoming_message, Context::default());
+                    let result = bot_lambda_handler(event).await;
+
+                    assert_matches!(result, Ok(OutgoingMessage { output }) => {
+                        assert_eq!(output.year, TEST_YEAR);
+                        assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
+                        assert!(output.previous_leaderboard.is_none());
+                        assert_eq!(output.leaderboard, current_leaderboard);
+                        assert!(output.changes.is_none());
+                    });
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                        assert_eq!(current_leaderboard, actual_leaderboard);
+                    });
+                });
+            }
+
+            mod test_run {
+                use super::*;
+
+                #[rstest]
+                #[test_log::test]
+                fn does_not_overwrite_last_error(
+                    #[from(base_leaderboard)] current_leaderboard: Leaderboard,
+                ) {
+                    run_bot_test(
+                        current_leaderboard.clone(),
+                        true,
+                        |mock_server, table| async move {
+                            table
+                                .save_last_error(ErrorKind::Leaderboard(
+                                    aoc_leaderboard::ErrorKind::NoAccess,
+                                ))
+                                .await;
+
+                            let incoming_message = incoming_message(true, &mock_server, &table);
+                            let event = LambdaEvent::new(incoming_message, Context::default());
+                            let result = bot_lambda_handler(event).await;
+
+                            assert_matches!(result, Ok(OutgoingMessage { output }) => {
+                                assert_eq!(output.year, TEST_YEAR);
+                                assert_eq!(output.leaderboard_id, TEST_LEADERBOARD_ID);
+                                assert!(output.previous_leaderboard.is_none());
+                                assert_eq!(output.leaderboard, current_leaderboard);
+                                assert!(output.changes.is_none());
+                            });
+
+                            let actual = table.load_leaderboard_and_last_error().await;
+                            assert_matches!(
+                                actual,
+                                (
+                                    None,
+                                    Some(ErrorKind::Leaderboard(
+                                        aoc_leaderboard::ErrorKind::NoAccess
+                                    ))
+                                )
+                            );
+                        },
+                    );
                 }
             }
         }
@@ -408,16 +497,21 @@ mod bot_lambda_handler {
         use super::*;
 
         fn configure_environment(mock_server: &MockServer) {
-            let set_env_config_var = |suffix, value: &str| {
-                env::set_var(format!("{CONFIG_ENV_VAR_PREFIX}{suffix}"), value)
-            };
+            unsafe {
+                let set_env_config_var = |suffix, value: &str| {
+                    env::set_var(format!("{CONFIG_ENV_VAR_PREFIX}{suffix}"), value)
+                };
 
-            set_env_config_var(ENV_CONFIG_YEAR_SUFFIX, &TEST_YEAR.to_string());
-            set_env_config_var(ENV_CONFIG_LEADERBOARD_ID_SUFFIX, &TEST_LEADERBOARD_ID.to_string());
-            set_env_config_var(ENV_CONFIG_AOC_SESSION_SUFFIX, TEST_AOC_SESSION);
+                set_env_config_var(ENV_CONFIG_YEAR_SUFFIX, &TEST_YEAR.to_string());
+                set_env_config_var(
+                    ENV_CONFIG_LEADERBOARD_ID_SUFFIX,
+                    &TEST_LEADERBOARD_ID.to_string(),
+                );
+                set_env_config_var(ENV_CONFIG_AOC_SESSION_SUFFIX, TEST_AOC_SESSION);
 
-            env::set_var(WEBHOOK_URL_ENV_VAR, format!("{}{WEBHOOK_PATH}", mock_server.uri()));
-            env::set_var(CHANNEL_ENV_VAR, CHANNEL);
+                env::set_var(WEBHOOK_URL_ENV_VAR, format!("{}{WEBHOOK_PATH}", mock_server.uri()));
+                env::set_var(CHANNEL_ENV_VAR, CHANNEL);
+            }
         }
 
         fn incoming_message(mock_server: &MockServer, table: &LocalTable) -> IncomingMessage {
@@ -467,7 +561,11 @@ mod bot_lambda_handler {
                             assert!(changes.members_with_new_stars.is_empty());
                         });
                     });
-                    assert_eq!(table.load_leaderboard().await, current_leaderboard);
+
+                    let actual = table.load_leaderboard_and_last_error().await;
+                    assert_matches!(actual, (Some(actual_leaderboard), None) => {
+                        assert_eq!(current_leaderboard, actual_leaderboard);
+                    });
                 });
             }
         }
@@ -481,18 +579,20 @@ mod bot_lambda_handler {
                 #[test_log::test(tokio::test)]
                 #[serial(aws_lambda_env)]
                 async fn invalid_year_env_var() {
-                    env::set_var(
-                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_YEAR_SUFFIX}"),
-                        "invalid",
-                    );
-                    env::set_var(
-                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_LEADERBOARD_ID_SUFFIX}"),
-                        TEST_LEADERBOARD_ID.to_string(),
-                    );
-                    env::set_var(
-                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_AOC_SESSION_SUFFIX}"),
-                        TEST_AOC_SESSION,
-                    );
+                    unsafe {
+                        env::set_var(
+                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_YEAR_SUFFIX}"),
+                            "invalid",
+                        );
+                        env::set_var(
+                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_LEADERBOARD_ID_SUFFIX}"),
+                            TEST_LEADERBOARD_ID.to_string(),
+                        );
+                        env::set_var(
+                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_AOC_SESSION_SUFFIX}"),
+                            TEST_AOC_SESSION,
+                        );
+                    }
 
                     let incoming_message = IncomingMessage::default();
                     let event = LambdaEvent::new(incoming_message, Context::default());
@@ -517,18 +617,20 @@ mod bot_lambda_handler {
                 #[test_log::test(tokio::test)]
                 #[serial(aws_lambda_env)]
                 async fn missing_slack_reporter_env_vars() {
-                    env::remove_var(format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_YEAR_SUFFIX}"));
-                    env::set_var(
-                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_LEADERBOARD_ID_SUFFIX}"),
-                        TEST_LEADERBOARD_ID.to_string(),
-                    );
-                    env::set_var(
-                        format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_AOC_SESSION_SUFFIX}"),
-                        TEST_AOC_SESSION,
-                    );
+                    unsafe {
+                        env::remove_var(format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_YEAR_SUFFIX}"));
+                        env::set_var(
+                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_LEADERBOARD_ID_SUFFIX}"),
+                            TEST_LEADERBOARD_ID.to_string(),
+                        );
+                        env::set_var(
+                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_AOC_SESSION_SUFFIX}"),
+                            TEST_AOC_SESSION,
+                        );
 
-                    env::remove_var(WEBHOOK_URL_ENV_VAR);
-                    env::remove_var(CHANNEL_ENV_VAR);
+                        env::remove_var(WEBHOOK_URL_ENV_VAR);
+                        env::remove_var(CHANNEL_ENV_VAR);
+                    }
 
                     let incoming_message = IncomingMessage::default();
                     let event = LambdaEvent::new(incoming_message, Context::default());

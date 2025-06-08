@@ -37,7 +37,8 @@ where
 #[cfg_attr(coverage_nightly, coverage(off))]
 mod tests {
     use assert_matches::assert_matches;
-    use rstest::fixture;
+    use rstest::{fixture, rstest};
+    use serial_test::serial;
     use uuid::Uuid;
 
     use super::*;
@@ -48,21 +49,25 @@ mod tests {
     }
 
     mod env_var {
-        use rstest::rstest;
-
         use super::*;
 
         #[rstest]
+        #[serial(env)]
         fn valid(test_var_name: String) {
-            env::set_var(&test_var_name, "foo");
+            unsafe {
+                env::set_var(&test_var_name, "foo");
+            }
 
             let actual = env_var(&test_var_name);
             assert_matches!(actual, Ok(value) if value == "foo");
         }
 
         #[rstest]
+        #[serial(env)]
         fn not_present(test_var_name: String) {
-            env::remove_var(&test_var_name); // Just in case 😉
+            unsafe {
+                env::remove_var(&test_var_name); // Just in case 😉
+            }
 
             let actual = env_var(&test_var_name);
             assert_matches!(actual, Err(crate::Error::Env { var_name, source }) => {
@@ -73,21 +78,25 @@ mod tests {
     }
 
     mod int_env_var {
-        use rstest::rstest;
-
         use super::*;
 
         #[rstest]
+        #[serial(env)]
         fn valid_int(test_var_name: String) {
-            env::set_var(&test_var_name, "42");
+            unsafe {
+                env::set_var(&test_var_name, "42");
+            }
 
             let actual = int_env_var::<i32, _>(&test_var_name);
             assert_matches!(actual, Ok(42));
         }
 
         #[rstest]
+        #[serial(env)]
         fn not_present(test_var_name: String) {
-            env::remove_var(&test_var_name); // Just in case 😉
+            unsafe {
+                env::remove_var(&test_var_name); // Just in case 😉
+            }
 
             let actual = int_env_var::<i32, _>(&test_var_name);
             assert_matches!(actual, Err(crate::Error::Env { var_name, source }) => {
@@ -97,8 +106,11 @@ mod tests {
         }
 
         #[rstest]
+        #[serial(env)]
         fn invalid_int(test_var_name: String) {
-            env::set_var(&test_var_name, "forty-two");
+            unsafe {
+                env::set_var(&test_var_name, "forty-two");
+            }
 
             let actual = int_env_var::<i32, _>(&test_var_name);
             assert_matches!(actual, Err(crate::Error::Env { var_name, source }) => {

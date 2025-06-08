@@ -1,7 +1,6 @@
 //! Implementations of [`leaderbot::Reporter`](aoc_leaderbot_lib::leaderbot::Reporter) for Slack.
 
 #[cfg(feature = "reporter-webhook")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "reporter-webhook")))]
 pub mod webhook;
 
 /// Default username used when posting messages to Slack.

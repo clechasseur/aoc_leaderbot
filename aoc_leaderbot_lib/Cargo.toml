@@ -3,7 +3,7 @@ name = "aoc_leaderbot_lib"
 version.workspace = true
 authors.workspace = true
 edition = "2021"
-rust-version = "1.75.0"
+rust-version = "1.80.1"
 
 readme = "README.md"
 license.workspace = true
@@ -41,6 +41,7 @@ anyhow = { workspace = true }
 aoc_leaderboard = { workspace = true, features = ["http"] }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
+gratte = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
@@ -50,10 +51,9 @@ veil = { workspace = true, optional = true }
 aoc_leaderboard = { workspace = true, features = ["__test_helpers"] }
 assert_matches = { workspace = true }
 mockall = { workspace = true }
+reqwest = { workspace = true }
 rstest = { workspace = true }
+serial_test = { workspace = true }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros"] }
 uuid = { workspace = true, features = ["v4"] }
-
-[build-dependencies]
-rustc_version = { workspace = true }

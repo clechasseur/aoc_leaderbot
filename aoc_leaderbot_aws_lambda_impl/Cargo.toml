@@ -3,7 +3,7 @@ name = "aoc_leaderbot_aws_lambda_impl"
 version.workspace = true
 authors.workspace = true
 edition = "2021"
-rust-version = "1.81.0"
+rust-version = "1.82.0"
 
 license.workspace = true
 
@@ -30,7 +30,7 @@ tracing = "active"
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
-check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+check-cfg = [ "cfg(ci)", "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
 
 [[bin]]
 name = "prepare_dynamodb"
@@ -67,6 +67,3 @@ rstest = { workspace = true }
 serial_test = { workspace = true, features = ["file_locks"] }
 testcontainers-modules = { workspace = true, features = ["dynamodb"] }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
-
-[build-dependencies]
-rustc_version = { workspace = true }

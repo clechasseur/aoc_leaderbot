@@ -8,14 +8,12 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 pub enum Error {
     /// Error related to a Slack webhook.
     #[cfg(feature = "webhook-base")]
-    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
     #[error(transparent)]
     Webhook(#[from] WebhookError),
 }
 
 /// Error type used for problems related to Slack webhooks.
 #[cfg(feature = "webhook-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
 #[cfg_attr(feature = "reporter-webhook", derive(veil::Redact))]
 #[cfg_attr(not(feature = "reporter-webhook"), derive(Debug))]
 #[derive(thiserror::Error)]
@@ -24,7 +22,6 @@ pub enum WebhookError {
     ///
     /// [`SlackWebhookReporter`]: crate::leaderbot::reporter::slack::webhook::SlackWebhookReporter
     #[cfg(feature = "reporter-webhook")]
-    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "reporter-webhook")))]
     #[error("error building Slack webhook reporter: {0}")]
     ReporterBuilder(
         #[from] crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError,
@@ -32,7 +29,6 @@ pub enum WebhookError {
 
     /// An error occurred while trying to report leaderboard changes to a Slack webhook.
     #[cfg(feature = "reporter-webhook")]
-    #[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "reporter-webhook")))]
     #[error(
         "error reporting changes to leaderboard id {leaderboard_id} for year {year}: {source}"
     )]
@@ -62,7 +58,6 @@ pub enum WebhookError {
 }
 
 #[cfg(feature = "reporter-webhook")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "reporter-webhook")))]
 impl From<crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError> for Error {
     fn from(
         value: crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilderError,
@@ -72,7 +67,6 @@ impl From<crate::leaderbot::reporter::slack::webhook::SlackWebhookReporterBuilde
 }
 
 #[cfg(feature = "webhook-base")]
-#[cfg_attr(any(nightly_rustc, docsrs), doc(cfg(feature = "webhook-base")))]
 impl From<crate::slack::webhook::WebhookMessageBuilderError> for Error {
     fn from(value: crate::slack::webhook::WebhookMessageBuilderError) -> Self {
         WebhookError::from(value).into()
@@ -100,7 +94,9 @@ mod tests {
         #[test]
         #[serial(slack_webhook_reporter_env)]
         fn reporter_builder() {
-            env::remove_var(WEBHOOK_URL_ENV_VAR);
+            unsafe {
+                env::remove_var(WEBHOOK_URL_ENV_VAR);
+            }
 
             let error = SlackWebhookReporter::builder()
                 .build_for_test()
