@@ -209,7 +209,7 @@ watch *extra_args:
 
 # Run `cargo lambda build`
 build-lambda *extra_args:
-    {{cargo_lambda}} build {{lambda_package_flag}} {{all_targets_flag}} {{all_features_flag}} {{message_format_flag}} {{release_flag}} {{arm64_flag}} {{extra_args}}
+    {{cargo_lambda}} build {{lambda_package_flag}} {{all_features_flag}} {{message_format_flag}} {{release_flag}} {{arm64_flag}} {{extra_args}}
 
 # Run `cargo lambda deploy` using `.env` file
 deploy-lambda *extra_args:
