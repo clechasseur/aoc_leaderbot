@@ -265,8 +265,7 @@ impl SlackWebhookReporterBuilder {
         match env::var(SORT_ORDER_ENV_VAR) {
             Ok(sort_order) => sort_order.parse().map_err(|_| {
                 format!(
-                    "invalid sort_order specified in environment variable {SORT_ORDER_ENV_VAR}: {}",
-                    sort_order
+                    "invalid sort_order specified in environment variable {SORT_ORDER_ENV_VAR}: {sort_order}"
                 )
             }),
             Err(env::VarError::NotPresent) => Ok(LeaderboardSortOrder::default()),
