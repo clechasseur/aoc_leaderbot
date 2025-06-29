@@ -651,7 +651,7 @@ mod storage_error {
 
         #[test]
         fn is_load_previous_and() {
-            let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{anyhow_err:?}").is_empty();
 
             let error = StorageError::LoadPrevious(anyhow!("error"));
             assert!(error.is_load_previous_and(predicate));
@@ -662,7 +662,7 @@ mod storage_error {
 
         #[test]
         fn is_save_success_and() {
-            let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{anyhow_err:?}").is_empty();
 
             let error = StorageError::SaveSuccess(anyhow!("error"));
             assert!(error.is_save_success_and(predicate));
@@ -673,7 +673,7 @@ mod storage_error {
 
         #[test]
         fn is_save_error_and() {
-            let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{anyhow_err:?}").is_empty();
 
             let error = StorageError::SaveError(anyhow!("error"));
             assert!(error.is_save_error_and(predicate));
@@ -733,7 +733,7 @@ mod reporter_error {
 
         #[test]
         fn is_report_changes_and() {
-            let predicate = |anyhow_err: &anyhow::Error| !format!("{:?}", anyhow_err).is_empty();
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{anyhow_err:?}").is_empty();
 
             let error = ReporterError::ReportChanges(anyhow!("error"));
             assert!(error.is_report_changes_and(predicate));
