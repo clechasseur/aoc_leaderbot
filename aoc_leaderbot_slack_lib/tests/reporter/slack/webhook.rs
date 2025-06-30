@@ -323,8 +323,12 @@ mod slack_webhook_reporter {
         V: AsRef<OsStr>,
     {
         match value {
-            Some(v) => env::set_var(key, v),
-            None => env::remove_var(key),
+            Some(v) => unsafe {
+                env::set_var(key, v)
+            },
+            None => unsafe {
+                env::remove_var(key)
+            },
         }
     }
 
@@ -337,9 +341,11 @@ mod slack_webhook_reporter {
         C: AsRef<OsStr>,
         S: AsRef<OsStr>,
     {
-        set_optional_env_var(WEBHOOK_URL_ENV_VAR, webhook_url);
-        set_optional_env_var(CHANNEL_ENV_VAR, channel);
-        set_optional_env_var(SORT_ORDER_ENV_VAR, sort_order);
+        unsafe {
+            set_optional_env_var(WEBHOOK_URL_ENV_VAR, webhook_url);
+            set_optional_env_var(CHANNEL_ENV_VAR, channel);
+            set_optional_env_var(SORT_ORDER_ENV_VAR, sort_order);
+        }
     }
 
     mod builder {
