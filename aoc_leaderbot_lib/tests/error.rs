@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::env;
 
 use anyhow::anyhow;
-use aoc_leaderbot_lib::error::{EnvVarError, ReporterError, StorageError};
 use aoc_leaderbot_lib::Error;
+use aoc_leaderbot_lib::error::{EnvVarError, ReporterError, StorageError};
 
 fn not_unicode_env_var_error() -> EnvVarError {
     EnvVarError::NotUnicode("foo".into())
@@ -135,8 +135,8 @@ mod error {
 }
 
 mod error_kind {
-    use aoc_leaderbot_lib::error::{EnvVarErrorKind, ReporterErrorKind, StorageErrorKind};
     use aoc_leaderbot_lib::ErrorKind;
+    use aoc_leaderbot_lib::error::{EnvVarErrorKind, ReporterErrorKind, StorageErrorKind};
     use rstest::rstest;
 
     use super::*;

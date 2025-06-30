@@ -5,8 +5,8 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use serde_with::DisplayFromStr;
+use serde_with::serde_as;
 
 /// Content of an [Advent of Code] private leaderboard.
 ///
@@ -222,9 +222,9 @@ mod tests {
 
         use super::*;
         use crate::test_helpers::{
+            TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR,
             mock_server_with_inaccessible_leaderboard, mock_server_with_leaderboard,
-            mock_server_with_leaderboard_with_invalid_json, test_leaderboard, TEST_AOC_SESSION,
-            TEST_LEADERBOARD_ID, TEST_YEAR,
+            mock_server_with_leaderboard_with_invalid_json, test_leaderboard,
         };
 
         mod deserialize {
@@ -235,9 +235,11 @@ mod tests {
             fn test_deserialize(#[from(test_leaderboard)] leaderboard: Leaderboard) {
                 assert_eq!(leaderboard.year, 2024);
                 assert_eq!(leaderboard.members.len(), 8);
-                assert!(leaderboard.members[&12345].completion_day_level[&2]
-                    .part_2
-                    .is_some());
+                assert!(
+                    leaderboard.members[&12345].completion_day_level[&2]
+                        .part_2
+                        .is_some()
+                );
             }
         }
 

@@ -1,7 +1,7 @@
 mod memory_config {
     use aoc_leaderboard::test_helpers::{TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR};
-    use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
     use aoc_leaderbot_lib::leaderbot::Config;
+    use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
 
     #[test_log::test]
     fn new() {

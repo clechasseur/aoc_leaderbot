@@ -8,7 +8,7 @@ pub mod storage;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fmt::Debug;
-use std::future::{ready, Future};
+use std::future::{Future, ready};
 
 use anyhow::anyhow;
 use aoc_leaderboard::aoc::Leaderboard;
@@ -177,7 +177,9 @@ pub trait Reporter {
         leaderboard_id: u64,
         error: &crate::Error,
     ) -> impl Future<Output = ()> + Send {
-        eprintln!("Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}");
+        eprintln!(
+            "Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}"
+        );
         ready(())
     }
 }
@@ -420,8 +422,8 @@ fn detect_changes(
 // noinspection DuplicatedCode
 mod tests {
     use aoc_leaderboard::test_helpers::{
-        mock_server_with_inaccessible_leaderboard, mock_server_with_leaderboard, test_leaderboard,
         TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR,
+        mock_server_with_inaccessible_leaderboard, mock_server_with_leaderboard, test_leaderboard,
     };
     use rstest::{fixture, rstest};
 

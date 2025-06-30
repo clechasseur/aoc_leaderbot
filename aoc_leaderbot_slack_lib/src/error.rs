@@ -29,9 +29,7 @@ pub enum WebhookError {
 
     /// An error occurred while trying to report leaderboard changes to a Slack webhook.
     #[cfg(feature = "reporter-webhook")]
-    #[error(
-        "error reporting changes to leaderboard id {leaderboard_id} for year {year}: {source}"
-    )]
+    #[error("error reporting changes to leaderboard id {leaderboard_id} for year {year}: {source}")]
     ReportChanges {
         /// Year of leaderboard that changed.
         year: i32,

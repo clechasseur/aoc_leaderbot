@@ -2,13 +2,13 @@ mod get_env_config {
     use std::env;
 
     use aoc_leaderboard::test_helpers::{TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR};
-    use aoc_leaderbot_lib::error::EnvVarError;
-    use aoc_leaderbot_lib::leaderbot::config::env::{
-        get_env_config, ENV_CONFIG_AOC_SESSION_SUFFIX, ENV_CONFIG_LEADERBOARD_ID_SUFFIX,
-        ENV_CONFIG_YEAR_SUFFIX,
-    };
-    use aoc_leaderbot_lib::leaderbot::Config;
     use aoc_leaderbot_lib::Error;
+    use aoc_leaderbot_lib::error::EnvVarError;
+    use aoc_leaderbot_lib::leaderbot::Config;
+    use aoc_leaderbot_lib::leaderbot::config::env::{
+        ENV_CONFIG_AOC_SESSION_SUFFIX, ENV_CONFIG_LEADERBOARD_ID_SUFFIX, ENV_CONFIG_YEAR_SUFFIX,
+        get_env_config,
+    };
     use assert_matches::assert_matches;
     use chrono::{Datelike, Local};
     use rstest::{fixture, rstest};

@@ -11,17 +11,17 @@ mod bot_lambda_handler {
     };
     use aoc_leaderboard::reqwest::Method;
     use aoc_leaderboard::test_helpers::{
-        mock_server_with_leaderboard, TEST_AOC_SESSION, TEST_DAY_1_TS, TEST_DAY_2_TS,
-        TEST_LEADERBOARD_ID, TEST_YEAR,
+        TEST_AOC_SESSION, TEST_DAY_1_TS, TEST_DAY_2_TS, TEST_LEADERBOARD_ID, TEST_YEAR,
+        mock_server_with_leaderboard,
     };
     use aoc_leaderboard::wiremock::matchers::{header, method, path};
     use aoc_leaderboard::wiremock::{Mock, MockServer, ResponseTemplate};
     use aoc_leaderbot_aws_lambda_impl::leaderbot::{
-        bot_lambda_handler, IncomingDynamoDbStorageInput, IncomingMessage,
-        IncomingSlackWebhookReporterInput, OutgoingMessage,
+        IncomingDynamoDbStorageInput, IncomingMessage, IncomingSlackWebhookReporterInput,
+        OutgoingMessage, bot_lambda_handler,
     };
     use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::{
-        LocalTable, LOCAL_ENDPOINT_URL,
+        LOCAL_ENDPOINT_URL, LocalTable,
     };
     use aoc_leaderbot_lib::ErrorKind;
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::LeaderboardSortOrder;

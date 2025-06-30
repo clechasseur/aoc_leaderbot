@@ -1,9 +1,9 @@
 mod memory_storage {
     use aoc_leaderboard::aoc::Leaderboard;
-    use aoc_leaderboard::test_helpers::{test_leaderboard, TEST_LEADERBOARD_ID, TEST_YEAR};
-    use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryStorage;
-    use aoc_leaderbot_lib::leaderbot::Storage;
+    use aoc_leaderboard::test_helpers::{TEST_LEADERBOARD_ID, TEST_YEAR, test_leaderboard};
     use aoc_leaderbot_lib::ErrorKind;
+    use aoc_leaderbot_lib::leaderbot::Storage;
+    use aoc_leaderbot_lib::leaderbot::storage::mem::MemoryStorage;
     use assert_matches::assert_matches;
     use rstest::rstest;
 

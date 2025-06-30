@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use chrono::{DateTime, Days, TimeZone, Utc};
-use reqwest::{header, Method, StatusCode};
+use reqwest::{Method, StatusCode, header};
 use rstest::fixture;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};

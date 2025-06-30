@@ -172,7 +172,10 @@ mod leaderboard_sort_order {
             let member = base_member("Arthur Dent", 1).with_stars(42);
 
             let member_text = LeaderboardSortOrder::Stars.member_value_text(&member);
-            assert_eq!(member_text, "42\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}");
+            assert_eq!(
+                member_text,
+                "42\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}\u{2007}"
+            );
         }
 
         #[test]
@@ -217,12 +220,12 @@ mod slack_webhook_reporter {
     use aoc_leaderboard::wiremock::{Mock, MockServer, ResponseTemplate};
     use aoc_leaderbot_lib::error::StorageError;
     use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
+    use aoc_leaderbot_slack_lib::Error;
     use aoc_leaderbot_slack_lib::error::WebhookError;
     use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
-        LeaderboardSortOrder, SlackWebhookReporter, SlackWebhookReporterBuilderError,
-        CHANNEL_ENV_VAR, SORT_ORDER_ENV_VAR, WEBHOOK_URL_ENV_VAR,
+        CHANNEL_ENV_VAR, LeaderboardSortOrder, SORT_ORDER_ENV_VAR, SlackWebhookReporter,
+        SlackWebhookReporterBuilderError, WEBHOOK_URL_ENV_VAR,
     };
-    use aoc_leaderbot_slack_lib::Error;
     use assert_matches::assert_matches;
     use reqwest::{Method, StatusCode};
     use rstest::{fixture, rstest};
@@ -323,12 +326,8 @@ mod slack_webhook_reporter {
         V: AsRef<OsStr>,
     {
         match value {
-            Some(v) => unsafe {
-                env::set_var(key, v)
-            },
-            None => unsafe {
-                env::remove_var(key)
-            },
+            Some(v) => unsafe { env::set_var(key, v) },
+            None => unsafe { env::remove_var(key) },
         }
     }
 
@@ -657,7 +656,9 @@ mod slack_webhook_reporter {
                 assert!(logs_contain(&format!(
                     "error for leaderboard {TEST_LEADERBOARD_ID} and year {TEST_YEAR}: {error}"
                 )));
-                assert!(!logs_contain(&format!("error trying to report previous error to Slack webhook for leaderboard {TEST_LEADERBOARD_ID} and year {TEST_YEAR}")));
+                assert!(!logs_contain(&format!(
+                    "error trying to report previous error to Slack webhook for leaderboard {TEST_LEADERBOARD_ID} and year {TEST_YEAR}"
+                )));
             }
 
             #[rstest]
@@ -686,7 +687,9 @@ mod slack_webhook_reporter {
                 assert!(logs_contain(&format!(
                     "error for leaderboard {TEST_LEADERBOARD_ID} and year {TEST_YEAR}: {error}"
                 )));
-                assert!(logs_contain(&format!("error trying to report previous error to Slack webhook for leaderboard {TEST_LEADERBOARD_ID} and year {TEST_YEAR}")));
+                assert!(logs_contain(&format!(
+                    "error trying to report previous error to Slack webhook for leaderboard {TEST_LEADERBOARD_ID} and year {TEST_YEAR}"
+                )));
             }
         }
     }

@@ -9,8 +9,8 @@ pub mod test_helpers;
 use std::time::Duration;
 
 use aoc_leaderboard::aoc::Leaderboard;
-use aoc_leaderbot_lib::leaderbot::Storage;
 use aoc_leaderbot_lib::ErrorKind;
+use aoc_leaderbot_lib::leaderbot::Storage;
 use aws_config::SdkConfig;
 use aws_sdk_dynamodb::operation::create_table::CreateTableOutput;
 use aws_sdk_dynamodb::types::{

@@ -11,13 +11,13 @@ use std::env;
 use std::env::VarError;
 use std::str::FromStr;
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use aoc_leaderboard::aoc::Leaderboard;
 use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
+use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::DEFAULT_USERNAME;
 use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
     LeaderboardSortOrder, SlackWebhookReporter,
 };
-use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::DEFAULT_USERNAME;
 use chrono::{Datelike, Local};
 use clap::Parser;
 use clap_verbosity_flag::{InfoLevel, Verbosity};

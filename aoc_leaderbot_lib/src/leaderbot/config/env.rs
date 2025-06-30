@@ -4,8 +4,8 @@ use std::fmt::Debug;
 
 use crate::detail::{env_var, int_env_var};
 use crate::error::EnvVarError;
-use crate::leaderbot::config::mem::MemoryConfig;
 use crate::leaderbot::Config;
+use crate::leaderbot::config::mem::MemoryConfig;
 
 /// Environment variable name suffix for `year`. See [`get_env_config`].
 pub const ENV_CONFIG_YEAR_SUFFIX: &str = "YEAR";

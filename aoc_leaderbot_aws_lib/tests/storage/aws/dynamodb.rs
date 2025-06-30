@@ -2,18 +2,18 @@
 #[cfg(any(not(ci), target_os = "linux"))]
 mod dynamo_storage {
     use aoc_leaderboard::aoc::Leaderboard;
-    use aoc_leaderboard::test_helpers::{test_leaderboard, TEST_LEADERBOARD_ID, TEST_YEAR};
+    use aoc_leaderboard::test_helpers::{TEST_LEADERBOARD_ID, TEST_YEAR, test_leaderboard};
     use aoc_leaderbot_aws_lib::error::{
         CreateDynamoDbTableError, DynamoDbError, LoadPreviousDynamoDbError, SaveDynamoDbError,
     };
     use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::{
-        local_non_existent_table, LocalTable,
+        LocalTable, local_non_existent_table,
     };
     use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::{
         HASH_KEY, LEADERBOARD_DATA, RANGE_KEY,
     };
-    use aoc_leaderbot_lib::leaderbot::Storage;
     use aoc_leaderbot_lib::ErrorKind;
+    use aoc_leaderbot_lib::leaderbot::Storage;
     use assert_matches::assert_matches;
     use aws_sdk_dynamodb::types::AttributeValue;
     use rstest::rstest;

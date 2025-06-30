@@ -9,7 +9,7 @@
 
 use aoc_leaderbot_aws_lambda_impl::leaderbot::bot_lambda_handler;
 use dotenvy::dotenv;
-use lambda_runtime::{run, service_fn, tracing, Error};
+use lambda_runtime::{Error, run, service_fn, tracing};
 
 #[tokio::main]
 #[cfg_attr(coverage_nightly, coverage(off))]
