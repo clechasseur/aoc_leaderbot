@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::DynamoDbStorage;
 use aoc_leaderbot_lib::leaderbot::config::env::get_env_config;
 use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
-use aoc_leaderbot_lib::leaderbot::{run_bot_from, BotOutput, Config, Reporter};
+use aoc_leaderbot_lib::leaderbot::{BotOutput, Config, Reporter, run_bot_from};
 use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
     LeaderboardSortOrder, SlackWebhookReporter,
 };

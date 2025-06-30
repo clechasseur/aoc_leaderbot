@@ -19,8 +19,8 @@ use tracing::{error, trace};
 use veil::Redact;
 
 use crate::error::WebhookError;
-use crate::leaderbot::reporter::slack::webhook::detail::SlackWebhookReporterStringExt;
 use crate::leaderbot::reporter::slack::USER_AGENT;
+use crate::leaderbot::reporter::slack::webhook::detail::SlackWebhookReporterStringExt;
 use crate::slack::webhook::WebhookMessage;
 
 /// Environment variable from which the Slack webhook URL will be
@@ -364,7 +364,9 @@ impl Reporter for SlackWebhookReporter {
             .and_then(reqwest::Response::error_for_status);
         trace!(?response);
         if let Err(err) = response {
-            error!("error trying to report previous error to Slack webhook for leaderboard {leaderboard_id} and year {year}: {err}");
+            error!(
+                "error trying to report previous error to Slack webhook for leaderboard {leaderboard_id} and year {year}: {err}"
+            );
         }
     }
 }

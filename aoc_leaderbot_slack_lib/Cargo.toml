@@ -2,8 +2,8 @@
 name = "aoc_leaderbot_slack_lib"
 version.workspace = true
 authors.workspace = true
-edition = "2021"
-rust-version = "1.80.1"
+edition.workspace = true
+rust-version = "1.85.1"
 
 readme = "README.md"
 license.workspace = true

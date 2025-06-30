@@ -1,8 +1,8 @@
 mod webhook_message {
     mod builder {
+        use aoc_leaderbot_slack_lib::Error;
         use aoc_leaderbot_slack_lib::error::WebhookError;
         use aoc_leaderbot_slack_lib::slack::webhook::{WebhookMessage, WebhookMessageBuilderError};
-        use aoc_leaderbot_slack_lib::Error;
         use assert_matches::assert_matches;
 
         #[test]

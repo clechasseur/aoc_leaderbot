@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use aoc_leaderboard::aoc::Leaderboard;
 use serde::{Deserialize, Serialize};
 
-use crate::leaderbot::Storage;
 use crate::ErrorKind;
+use crate::leaderbot::Storage;
 
 /// Bot storage that keeps data in memory.
 ///

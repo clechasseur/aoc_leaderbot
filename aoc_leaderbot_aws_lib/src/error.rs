@@ -47,7 +47,9 @@ pub enum DynamoDbError {
     },
 
     /// Error occurred while saving last error information in DynamoDB table.
-    #[error("failed to save last error information for leaderboard with id {leaderboard_id} for year {year}: {source}")]
+    #[error(
+        "failed to save last error information for leaderboard with id {leaderboard_id} for year {year}: {source}"
+    )]
     SaveLastError {
         /// ID of leaderboard to persist.
         leaderboard_id: u64,
