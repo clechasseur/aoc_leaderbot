@@ -1,6 +1,6 @@
 # aoc_leaderbot_lib
 
-[![CI](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/clechasseur/aoc_leaderbot/branch/main/graph/badge.svg?token=qSFdAkbb8U)](https://codecov.io/gh/clechasseur/aoc_leaderbot) [![Security audit](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/audit-check.yml/badge.svg?branch=main)](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/audit-check.yml) [![crates.io](https://img.shields.io/crates/v/aoc_leaderbot_lib.svg)](https://crates.io/crates/aoc_leaderbot_lib) [![downloads](https://img.shields.io/crates/d/aoc_leaderbot_lib.svg)](https://crates.io/crates/aoc_leaderbot_lib) [![docs.rs](https://img.shields.io/badge/docs-latest-blue.svg)](https://docs.rs/aoc_leaderbot_lib) [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](../CODE_OF_CONDUCT.md)
+[![CI](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/clechasseur/aoc_leaderbot/branch/main/graph/badge.svg?token=qSFdAkbb8U)](https://codecov.io/gh/clechasseur/aoc_leaderbot) [![Security audit](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/audit-check.yml/badge.svg?branch=main)](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/audit-check.yml) [![crates.io](https://img.shields.io/crates/v/aoc_leaderbot_lib.svg)](https://crates.io/crates/aoc_leaderbot_lib) [![Crates.io MSRV](https://img.shields.io/crates/msrv/aoc_leaderbot_lib)](https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot_lib) [![downloads](https://img.shields.io/crates/d/aoc_leaderbot_lib.svg)](https://crates.io/crates/aoc_leaderbot_lib) [![docs.rs](https://img.shields.io/badge/docs-latest-blue.svg)](https://docs.rs/aoc_leaderbot_lib) [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](../CODE_OF_CONDUCT.md)
 
 Library implementing the core functionalities of [`aoc_leaderbot`](https://github.com/clechasseur/aoc_leaderbot), a bot that can watch an [Advent of Code](https://adventofcode.com/) private leaderboard for changes and report them to various channels like Slack.
 
@@ -75,10 +75,6 @@ Required feature: `storage-mem`
 
 This implementation of `Storage` simply stores its data in memory.
 Although this means that it would technically lose its data upon program exit, the whole storage can be persisted using [`serde`](https://serde.rs/), which means it's a possibly-decent implementation.
-
-## Minimum Rust version
-
-`aoc_leaderbot_lib` currently builds on Rust 1.75 or newer.
 
 ## Contributing / Local development
 
