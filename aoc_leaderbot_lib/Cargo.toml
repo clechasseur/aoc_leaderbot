@@ -3,7 +3,7 @@ name = "aoc_leaderbot_lib"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-rust-version = "1.88.0"
+rust-version.workspace = true
 
 readme = "README.md"
 license.workspace = true
@@ -17,7 +17,7 @@ description = "Support library for aoc_leaderbot, an Advent of Code leaderboard-
 keywords = [ "aoc", "advent-of-code" ]
 categories = [ "asynchronous" ]
 
-include = [ "src/**/*", "tests/**/*", "build.rs", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
