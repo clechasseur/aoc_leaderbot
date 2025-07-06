@@ -3,20 +3,19 @@ name = "aoc_leaderbot_aws_lambda_impl"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-rust-version = "1.88.0"
+rust-version.workspace = true
 
 license.workspace = true
 
-homepage = "https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot_aws_lambda_impl#readme"
+homepage.workspace = true
 repository.workspace = true
-documentation = "https://docs.rs/aoc_leaderbot_aws_lambda_impl/"
 
 description = "Implementation of an Advent of Code leaderboard-watching bot running in AWS Lambda"
 
 keywords = [ "aoc", "advent-of-code", "aws" ]
 categories = [ "asynchronous" ]
 
-include = [ "src/**/*", "tests/**/*", "build.rs", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = false
@@ -63,7 +62,6 @@ assert_cmd = { workspace = true }
 assert_matches = { workspace = true }
 aws-config = { workspace = true, features = ["behavior-version-latest"] }
 aws-sdk-dynamodb = { workspace = true }
-chrono = { workspace = true }
 rstest = { workspace = true }
 serial_test = { workspace = true, features = ["file_locks"] }
 testcontainers-modules = { workspace = true, features = ["dynamodb"] }
