@@ -19,7 +19,7 @@ homepage = "https://github.com/clechasseur/aoc_leaderbot#readme"
 repository = "https://github.com/clechasseur/aoc_leaderbot"
 
 [workspace.dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.99"
 aoc_leaderboard = { version = "0.3.0", path = "aoc_leaderboard" }
 aoc_leaderbot_aws_lib = { version = "0.3.0", path = "aoc_leaderbot_aws_lib" }
 aoc_leaderbot_lib = { version = "0.3.0", path = "aoc_leaderbot_lib", default-features = false }
