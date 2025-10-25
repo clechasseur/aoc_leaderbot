@@ -98,6 +98,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "aoc_leaderbot_aws_lambda"
+version = "0.3.0"
+
+[[package]]
 name = "aoc_leaderbot_aws_lambda_impl"
 version = "0.3.0"
 dependencies = [
@@ -110,7 +114,6 @@ dependencies = [
  "assert_matches",
  "aws-config",
  "aws-sdk-dynamodb",
- "chrono",
  "clap",
  "dotenvy",
  "lambda_runtime",

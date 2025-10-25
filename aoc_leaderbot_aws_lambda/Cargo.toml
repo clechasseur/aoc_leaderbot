@@ -1,0 +1,29 @@
+[package]
+name = "aoc_leaderbot_aws_lambda"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+license.workspace = true
+
+homepage.workspace = true
+repository.workspace = true
+
+description = "An Advent of Code leaderboard-watching bot running in AWS Lambda"
+
+keywords = [ "aoc", "advent-of-code", "aws" ]
+categories = [ "asynchronous" ]
+
+include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
+
+[package.metadata.docs.rs]
+all-features = true
+targets = [ "x86_64-unknown-linux-gnu" ]
+rustc-args = [ "--cfg", "docsrs" ]
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [ "cfg(ci)", "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+
+[dependencies]
