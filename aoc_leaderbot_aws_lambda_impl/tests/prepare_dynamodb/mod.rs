@@ -1,7 +1,7 @@
 use std::env;
 
 use aoc_leaderbot_aws_lambda_impl::leaderbot::DEFAULT_DYNAMODB_TABLE_NAME;
-use assert_cmd::Command;
+use assert_cmd::{Command, cargo_bin};
 use assert_matches::assert_matches;
 use aws_config::BehaviorVersion;
 use aws_sdk_dynamodb::operation::describe_table::DescribeTableOutput;
@@ -12,8 +12,7 @@ use testcontainers_modules::dynamodb_local::DynamoDb;
 use testcontainers_modules::testcontainers::runners::AsyncRunner;
 use testcontainers_modules::testcontainers::{ContainerAsync, ImageExt};
 
-const DYNAMODB_LOCAL_TAG: &str = "2.6.1";
-const PREPARE_DYNAMODB_BIN_NAME: &str = "prepare_dynamodb";
+const DYNAMODB_LOCAL_TAG: &str = "3.1.0";
 
 #[fixture]
 async fn local_dynamodb() -> (ContainerAsync<DynamoDb>, String) {
@@ -85,8 +84,7 @@ impl Drop for RemoveAwsEnvVars {
 async fn with_default_table_name(#[future] local_dynamodb: (ContainerAsync<DynamoDb>, String)) {
     let (_dynamodb, endpoint_url) = local_dynamodb;
 
-    Command::cargo_bin(PREPARE_DYNAMODB_BIN_NAME)
-        .unwrap()
+    Command::new(cargo_bin!("prepare_dynamodb"))
         .arg("--test-endpoint-url")
         .arg(&endpoint_url)
         .assert()
@@ -104,8 +102,7 @@ async fn with_custom_table_name(#[future] local_dynamodb: (ContainerAsync<Dynamo
 
     let table_name = "aoc_leaderbot_test_table_name";
 
-    Command::cargo_bin(PREPARE_DYNAMODB_BIN_NAME)
-        .unwrap()
+    Command::new(cargo_bin!("prepare_dynamodb"))
         .arg("--table-name")
         .arg(table_name)
         .arg("--test-endpoint-url")
@@ -121,8 +118,7 @@ async fn with_custom_table_name(#[future] local_dynamodb: (ContainerAsync<Dynamo
 fn without_connection() {
     let _remove_aws_env_vars = RemoveAwsEnvVars::default();
 
-    Command::cargo_bin(PREPARE_DYNAMODB_BIN_NAME)
-        .unwrap()
+    Command::new(cargo_bin!("prepare_dynamodb"))
         .assert()
         .failure();
 }
