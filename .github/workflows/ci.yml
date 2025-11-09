@@ -86,7 +86,7 @@ jobs:
           cache-on-failure: true
 
       - name: Install required tools
-        uses: taiki-e/install-action@e7ef886cf8f69c25ecef6bbc2858a42e273496ec # v2.62.28
+        uses: taiki-e/install-action@f535147c22906d77695e11cb199e764aa610a4fc # v2.62.46
         with:
           tool: just@1.40.0,cargo-hack@0.6.36,cargo-minimal-versions@0.1.30,cargo-msrv-prep@2.1.1
         env:
@@ -123,7 +123,7 @@ jobs:
           cache-on-failure: true
 
       - name: Install required tools
-        uses: taiki-e/install-action@e7ef886cf8f69c25ecef6bbc2858a42e273496ec # v2.62.28
+        uses: taiki-e/install-action@f535147c22906d77695e11cb199e764aa610a4fc # v2.62.46
         with:
           tool: just@1.40.0,cargo-hack@0.6.36
         env:
@@ -155,7 +155,7 @@ jobs:
           cache: false
 
       - name: Install required tools
-        uses: taiki-e/install-action@e7ef886cf8f69c25ecef6bbc2858a42e273496ec # v2.62.28
+        uses: taiki-e/install-action@f535147c22906d77695e11cb199e764aa610a4fc # v2.62.46
         with:
           tool: just@1.40.0,cargo-llvm-cov@0.6.16
         env:
@@ -177,7 +177,7 @@ jobs:
           fail_ci_if_error: true
 
       - name: Archive code coverage results
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: llvm-cov-code-coverage-report
           path: |
@@ -198,7 +198,7 @@ jobs:
           cache: false
 
       - name: Install just
-        uses: taiki-e/install-action@e7ef886cf8f69c25ecef6bbc2858a42e273496ec # v2.62.28
+        uses: taiki-e/install-action@f535147c22906d77695e11cb199e764aa610a4fc # v2.62.46
         with:
           tool: just@1.40.0
         env:
