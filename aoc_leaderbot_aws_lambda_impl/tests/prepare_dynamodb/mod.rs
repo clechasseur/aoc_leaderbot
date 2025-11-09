@@ -1,7 +1,7 @@
 use std::env;
 
 use aoc_leaderbot_aws_lambda_impl::leaderbot::DEFAULT_DYNAMODB_TABLE_NAME;
-use assert_cmd::{cargo_bin, Command};
+use assert_cmd::{Command, cargo_bin};
 use assert_matches::assert_matches;
 use aws_config::BehaviorVersion;
 use aws_sdk_dynamodb::operation::describe_table::DescribeTableOutput;
