@@ -13,6 +13,10 @@ use serde_with::serde_as;
 /// Private leaderboards can be fetched from the Advent of Code website
 /// via their API URL: `https://adventofcode.com/{year}/leaderboard/private/view/{leaderboard_id}.json`
 ///
+/// Also, in 2025 the Advent of Code website added the capability to generate
+/// a read-only link for a leaderboard. This link includes a _view key_ and can be
+/// fetched anonymously by appending `?view_key={view_key}` to the above URL.
+///
 /// Leaderboards exist across all years, but can only be fetched for a specific
 /// year at a time.
 ///
@@ -45,10 +49,6 @@ pub struct Leaderboard {
 impl Leaderboard {
     /// Fetches this leaderboard's data from the [Advent of Code] website.
     ///
-    /// In order to fetch a private leaderboard's data, you must provide
-    /// your Advent of Code `session` cookie, which can be fetched from the
-    /// browser's cookie store when logged into the website.
-    ///
     /// # Warning
     ///
     /// The Advent of Code private leaderboard page (which can be visited
@@ -59,15 +59,13 @@ impl Leaderboard {
     ///
     /// [Advent of Code]: https://adventofcode.com/
     #[cfg_attr(coverage_nightly, coverage(off))]
-    #[cfg_attr(
-        not(coverage_nightly),
-        tracing::instrument(skip(aoc_session), ret(level = "trace"), err)
-    )]
-    pub async fn get<S>(year: i32, id: u64, aoc_session: S) -> crate::Result<Self>
-    where
-        S: AsRef<str>,
-    {
-        Self::get_from(Self::http_client()?, "https://adventofcode.com", year, id, aoc_session)
+    #[cfg_attr(not(coverage), tracing::instrument(ret(level = "trace"), err))]
+    pub async fn get(
+        year: i32,
+        id: u64,
+        credentials: &LeaderboardCredentials,
+    ) -> crate::Result<Self> {
+        Self::get_from(Self::http_client()?, "https://adventofcode.com", year, id, credentials)
             .await
     }
 
@@ -80,34 +78,43 @@ impl Leaderboard {
     /// [Advent of Code]: https://adventofcode.com/
     /// [`get`]: Self::get
     #[cfg_attr(
-        not(coverage_nightly),
-        tracing::instrument(
-            skip(http_client, aoc_session),
-            level = "debug",
-            ret(level = "trace"),
-            err
-        )
+        not(coverage),
+        tracing::instrument(skip(http_client), level = "debug", ret(level = "trace"), err)
     )]
-    pub async fn get_from<B, S>(
+    pub async fn get_from<B>(
         http_client: reqwest::Client,
         base: B,
         year: i32,
         id: u64,
-        aoc_session: S,
+        credentials: &LeaderboardCredentials,
     ) -> crate::Result<Self>
     where
         B: AsRef<str> + std::fmt::Debug,
-        S: AsRef<str>,
     {
-        let response = http_client
-            .get(format!("{}/{year}/leaderboard/private/view/{id}.json", base.as_ref()))
-            .header(reqwest::header::COOKIE, format!("session={}", aoc_session.as_ref()))
+        let mut request = http_client.get(format!(
+            "{}/{year}/leaderboard/private/view/{id}.json{}",
+            base.as_ref(),
+            credentials.view_key_url_suffix()
+        ));
+        if let Some(cookie_header) = credentials.session_cookie_header_value() {
+            request = request.header(reqwest::header::COOKIE, cookie_header);
+        }
+
+        let response = request
             .send()
             .await
             .and_then(reqwest::Response::error_for_status);
         match response {
             Ok(response) => Ok(response.json().await?),
-            Err(err) if err.is_redirect() => Err(crate::Error::NoAccess),
+            // Note: since 2025, the AoC website actually returns an error when trying to access
+            // a leaderboard you don't have access to... but it's a `400 Bad Request` 😭
+            Err(err)
+                if err
+                    .status()
+                    .is_some_and(|status| status == reqwest::StatusCode::BAD_REQUEST) =>
+            {
+                Err(crate::Error::NoAccess)
+            },
             Err(err) => Err(err.into()),
         }
     }
@@ -120,20 +127,93 @@ impl Leaderboard {
     ///
     /// [Advent of Code]: https://adventofcode.com/
     /// [`get`]: Self::get
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", err))]
+    #[cfg_attr(not(coverage), tracing::instrument(level = "trace", err))]
     pub fn http_client() -> crate::Result<reqwest::Client> {
-        // When trying to fetch the data of a private leaderboard you do
-        // not have access to, the AoC website redirects to the main leaderboard,
-        // so we won't follow redirect and consider that an unauthorized error.
         Ok(reqwest::Client::builder()
-            .redirect(reqwest::redirect::Policy::limited(0))
             .user_agent(Self::http_user_agent())
             .build()?)
     }
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", ret))]
+    #[cfg_attr(not(coverage), tracing::instrument(level = "trace", ret))]
     fn http_user_agent() -> String {
         format!("clechasseur/{}@{}", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"))
+    }
+}
+
+/// Credentials necessary to fetch the content of a leaderboard from
+/// the [Advent of Code] website.
+///
+/// If the leaderboard has a read-only link, it can be fetched using its
+/// `view_key`; otherwise, an Advent of Code `session` cookie is required.
+///
+/// [Advent of Code]: https://adventofcode.com/
+#[cfg(feature = "http")]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    gratte::EnumDiscriminants,
+    gratte::EnumIs,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum_discriminants(
+    name(LeaderboardCredentialsKind),
+    derive(Serialize, Deserialize, gratte::EnumIs)
+)]
+pub enum LeaderboardCredentials {
+    /// View key allowing anonymous access to the leaderboard.
+    ///
+    /// Can be obtained by looking at the end of the leaderboard's
+    /// read-only like: `?view_key={view_key}`.
+    ViewKey(String),
+
+    /// `session` cookie allowing authenticated access to the leaderboard.
+    ///
+    /// Can be fetched from the browser's cookie store when logged into the
+    /// [Advent of Code] website.
+    ///
+    /// [Advent of Code]: https://adventofcode.com/
+    SessionCookie(String),
+}
+
+#[cfg(feature = "http")]
+impl LeaderboardCredentials {
+    /// URL suffix to use to specify the leaderboard's view key.
+    ///
+    /// Will return an empty string if the credentials do not specify a view key.
+    pub fn view_key_url_suffix(&self) -> String {
+        match self {
+            LeaderboardCredentials::ViewKey(key) => format!("?view_key={key}"),
+            LeaderboardCredentials::SessionCookie(_) => "".into(),
+        }
+    }
+
+    /// Value of the `cookie` header to pass when loading the leaderboard data.
+    ///
+    /// Will return `None` if the credentials do not specify a session cookie.
+    pub fn session_cookie_header_value(&self) -> Option<String> {
+        match self {
+            LeaderboardCredentials::SessionCookie(cookie) => Some(format!("session={cookie}")),
+            LeaderboardCredentials::ViewKey(_) => None,
+        }
+    }
+}
+
+#[cfg(feature = "http")]
+impl PartialEq<LeaderboardCredentialsKind> for LeaderboardCredentials {
+    fn eq(&self, other: &LeaderboardCredentialsKind) -> bool {
+        LeaderboardCredentialsKind::from(self) == *other
+    }
+}
+
+#[cfg(feature = "http")]
+impl PartialEq<LeaderboardCredentials> for LeaderboardCredentialsKind {
+    fn eq(&self, other: &LeaderboardCredentials) -> bool {
+        *self == Self::from(other)
     }
 }
 
@@ -168,6 +248,9 @@ pub struct LeaderboardMember {
     pub local_score: u64,
 
     /// Member's score in this year's event in the overall leaderboard.
+    ///
+    /// Note: in 2025, the global leaderboard was removed, so this value will always
+    /// be 0 for years 2025 or later.
     #[serde(default)]
     pub global_score: u64,
 
@@ -222,9 +305,9 @@ mod tests {
 
         use super::*;
         use crate::test_helpers::{
-            TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR,
-            mock_server_with_inaccessible_leaderboard, mock_server_with_leaderboard,
-            mock_server_with_leaderboard_with_invalid_json, test_leaderboard,
+            TEST_LEADERBOARD_ID, TEST_YEAR, mock_server_with_inaccessible_leaderboard,
+            mock_server_with_leaderboard, mock_server_with_leaderboard_with_invalid_json,
+            test_leaderboard, test_leaderboard_credentials,
         };
 
         mod deserialize {
@@ -251,13 +334,16 @@ mod tests {
 
             use super::*;
 
-            async fn get_mock_leaderboard(mock_server: &MockServer) -> crate::Result<Leaderboard> {
+            async fn get_mock_leaderboard(
+                credentials: &LeaderboardCredentials,
+                mock_server: &MockServer,
+            ) -> crate::Result<Leaderboard> {
                 Leaderboard::get_from(
                     Leaderboard::http_client()?,
                     mock_server.uri(),
                     TEST_YEAR,
                     TEST_LEADERBOARD_ID,
-                    TEST_AOC_SESSION,
+                    credentials,
                 )
                 .await
             }
@@ -267,12 +353,15 @@ mod tests {
             #[test_log::test(tokio::test)]
             async fn success(
                 #[from(test_leaderboard)] expected: Leaderboard,
+                #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
                 #[future]
                 #[from(mock_server_with_leaderboard)]
                 mock_server: MockServer,
             ) {
-                let actual = get_mock_leaderboard(&mock_server).await;
-                assert_matches!(actual, Ok(actual) if actual == expected);
+                let actual = get_mock_leaderboard(&credentials, &mock_server).await;
+                assert_matches!(actual, Ok(actual) => {
+                    assert_eq!(actual, expected);
+                });
             }
 
             mod errors {
@@ -282,19 +371,23 @@ mod tests {
                 #[awt]
                 #[test_log::test(tokio::test)]
                 async fn no_access(
+                    #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
                     #[future]
                     #[from(mock_server_with_inaccessible_leaderboard)]
                     mock_server: MockServer,
                 ) {
-                    let actual = get_mock_leaderboard(&mock_server).await;
+                    let actual = get_mock_leaderboard(&credentials, &mock_server).await;
                     assert_matches!(actual, Err(crate::Error::NoAccess));
                 }
 
+                #[rstest]
                 #[test_log::test(tokio::test)]
-                async fn not_found() {
+                async fn not_found(
+                    #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+                ) {
                     let mock_server = MockServer::start().await;
 
-                    let actual = get_mock_leaderboard(&mock_server).await;
+                    let actual = get_mock_leaderboard(&credentials, &mock_server).await;
                     assert_matches!(actual, Err(crate::Error::HttpGet(err)) => {
                         assert!(err.is_status());
                         assert_eq!(err.status(), Some(StatusCode::NOT_FOUND));
@@ -305,11 +398,12 @@ mod tests {
                 #[awt]
                 #[test_log::test(tokio::test)]
                 async fn invalid_json(
+                    #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
                     #[future]
                     #[from(mock_server_with_leaderboard_with_invalid_json)]
                     mock_server: MockServer,
                 ) {
-                    let actual = get_mock_leaderboard(&mock_server).await;
+                    let actual = get_mock_leaderboard(&credentials, &mock_server).await;
                     assert_matches!(actual, Err(crate::Error::HttpGet(err)) if err.is_decode());
                 }
             }

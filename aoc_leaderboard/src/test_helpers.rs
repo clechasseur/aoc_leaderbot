@@ -11,13 +11,14 @@ use std::sync::LazyLock;
 use chrono::{DateTime, Days, TimeZone, Utc};
 use reqwest::{Method, StatusCode, header};
 use rstest::fixture;
-use wiremock::matchers::{header, method, path};
+use wiremock::matchers::{header, method, path, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::aoc::Leaderboard;
+use crate::aoc::{Leaderboard, LeaderboardCredentials, LeaderboardCredentialsKind};
 
 pub const TEST_YEAR: i32 = 2024;
 pub const TEST_LEADERBOARD_ID: u64 = 12345;
+pub const TEST_AOC_VIEW_KEY: &str = "aoc_view_key";
 pub const TEST_AOC_SESSION: &str = "aoc_session";
 
 pub static TEST_DAY_1: LazyLock<DateTime<Utc>> =
@@ -38,14 +39,34 @@ pub fn test_leaderboard(#[default("sample_leaderboard.json")] file_name: &str) -
 }
 
 #[fixture]
+pub fn test_leaderboard_credentials(
+    #[default(LeaderboardCredentialsKind::SessionCookie)] kind: LeaderboardCredentialsKind,
+) -> LeaderboardCredentials {
+    match kind {
+        LeaderboardCredentialsKind::ViewKey => {
+            LeaderboardCredentials::ViewKey(TEST_AOC_VIEW_KEY.to_string())
+        },
+        LeaderboardCredentialsKind::SessionCookie => {
+            LeaderboardCredentials::SessionCookie(TEST_AOC_SESSION.to_string())
+        },
+    }
+}
+
+#[fixture]
 pub async fn mock_server_with_leaderboard(
     #[default(test_leaderboard::default())] leaderboard: Leaderboard,
+    #[default(test_leaderboard_credentials::default())] credentials: LeaderboardCredentials,
 ) -> MockServer {
     let mock_server = MockServer::start().await;
 
-    Mock::given(method(Method::GET))
-        .and(path(format!("/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json")))
-        .and(header(header::COOKIE, format!("session={TEST_AOC_SESSION}")))
+    let mut mock_builder = Mock::given(method("GET")).and(path(format!(
+        "/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json{}",
+        credentials.view_key_url_suffix()
+    )));
+    if let Some(cookie_header) = credentials.session_cookie_header_value() {
+        mock_builder = mock_builder.and(header(header::COOKIE, cookie_header));
+    }
+    mock_builder
         .respond_with(ResponseTemplate::new(StatusCode::OK).set_body_json(leaderboard))
         .mount(&mock_server)
         .await;
@@ -58,17 +79,13 @@ pub async fn mock_server_with_inaccessible_leaderboard() -> MockServer {
     let mock_server = MockServer::start().await;
 
     Mock::given(method(Method::GET))
-        .and(path(format!("/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json")))
-        .respond_with(ResponseTemplate::new(302).insert_header(header::LOCATION, "/"))
-        .mount(&mock_server)
-        .await;
-    Mock::given(method(Method::GET))
-        .and(path("/"))
-        .respond_with({
-            ResponseTemplate::new(200)
-                .insert_header(header::CONTENT_TYPE, "text/html")
-                .set_body_string("<html><body>Advent of Code</body></html>")
-        })
+        .and(path_regex(
+            format!(r"^/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}\.json(\?view_key={TEST_AOC_VIEW_KEY})?$"))
+        )
+        .respond_with(
+            ResponseTemplate::new(StatusCode::BAD_REQUEST)
+                .set_body_string("You don't have permission to view that private leaderboard.")
+        )
         .mount(&mock_server)
         .await;
 
@@ -76,12 +93,19 @@ pub async fn mock_server_with_inaccessible_leaderboard() -> MockServer {
 }
 
 #[fixture]
-pub async fn mock_server_with_leaderboard_with_invalid_json() -> MockServer {
+pub async fn mock_server_with_leaderboard_with_invalid_json(
+    #[default(test_leaderboard_credentials::default())] credentials: LeaderboardCredentials,
+) -> MockServer {
     let mock_server = MockServer::start().await;
 
-    Mock::given(method(Method::GET))
-        .and(path(format!("/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json")))
-        .and(header(header::COOKIE, format!("session={TEST_AOC_SESSION}")))
+    let mut mock_builder = Mock::given(method("GET")).and(path(format!(
+        "/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json{}",
+        credentials.view_key_url_suffix()
+    )));
+    if let Some(cookie_header) = credentials.session_cookie_header_value() {
+        mock_builder = mock_builder.and(header(header::COOKIE, cookie_header));
+    }
+    mock_builder
         .respond_with(
             ResponseTemplate::new(StatusCode::OK)
                 .set_body_string("{\"members\":")
