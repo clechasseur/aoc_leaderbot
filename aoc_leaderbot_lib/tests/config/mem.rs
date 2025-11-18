@@ -1,15 +1,20 @@
 mod memory_config {
-    use aoc_leaderboard::test_helpers::{TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR};
+    use aoc_leaderboard::aoc::LeaderboardCredentials;
+    use aoc_leaderboard::test_helpers::{
+        TEST_LEADERBOARD_ID, TEST_YEAR, test_leaderboard_credentials,
+    };
     use aoc_leaderbot_lib::leaderbot::Config;
     use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
+    use rstest::rstest;
 
+    #[rstest]
     #[test_log::test]
-    fn new() {
-        let actual = MemoryConfig::new(TEST_YEAR, TEST_LEADERBOARD_ID, TEST_AOC_SESSION);
+    fn new(#[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials) {
+        let actual = MemoryConfig::new(TEST_YEAR, TEST_LEADERBOARD_ID, credentials.clone());
 
         assert_eq!(actual.year(), TEST_YEAR);
         assert_eq!(actual.leaderboard_id(), TEST_LEADERBOARD_ID);
-        assert_eq!(actual.aoc_session(), TEST_AOC_SESSION);
+        assert_eq!(actual.credentials(), credentials);
     }
 
     mod builder {
@@ -21,38 +26,47 @@ mod memory_config {
 
         use super::*;
 
+        #[rstest]
         #[test_log::test]
-        fn with_all_fields() {
+        fn with_all_fields(
+            #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+        ) {
             let actual = MemoryConfig::builder()
                 .year(TEST_YEAR)
                 .leaderboard_id(TEST_LEADERBOARD_ID)
-                .aoc_session(TEST_AOC_SESSION)
+                .credentials(credentials.clone())
                 .build()
                 .unwrap();
 
             assert_eq!(actual.year(), TEST_YEAR);
             assert_eq!(actual.leaderboard_id(), TEST_LEADERBOARD_ID);
-            assert_eq!(actual.aoc_session(), TEST_AOC_SESSION);
+            assert_eq!(actual.credentials(), credentials);
         }
 
+        #[rstest]
         #[test_log::test]
-        fn with_default_year() {
+        fn with_default_year(
+            #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+        ) {
             let actual = MemoryConfig::builder()
                 .leaderboard_id(TEST_LEADERBOARD_ID)
-                .aoc_session(TEST_AOC_SESSION)
+                .credentials(credentials.clone())
                 .build()
                 .unwrap();
 
             assert_eq!(actual.year(), Local::now().year());
             assert_eq!(actual.leaderboard_id(), TEST_LEADERBOARD_ID);
-            assert_eq!(actual.aoc_session(), TEST_AOC_SESSION);
+            assert_eq!(actual.credentials(), credentials);
         }
 
+        #[rstest]
         #[test_log::test]
-        fn with_missing_leaderboard_id() {
+        fn with_missing_leaderboard_id(
+            #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+        ) {
             let actual = MemoryConfig::builder()
                 .year(TEST_YEAR)
-                .aoc_session(TEST_AOC_SESSION)
+                .credentials(credentials)
                 .build();
 
             assert_matches!(actual, Err(Error::MissingField { target, field }) => {
@@ -62,7 +76,7 @@ mod memory_config {
         }
 
         #[test_log::test]
-        fn with_missing_aoc_session() {
+        fn with_missing_credentials() {
             let actual = MemoryConfig::builder()
                 .year(TEST_YEAR)
                 .leaderboard_id(TEST_LEADERBOARD_ID)
@@ -70,7 +84,7 @@ mod memory_config {
 
             assert_matches!(actual, Err(Error::MissingField { target, field }) => {
                 assert_eq!(target, type_name::<MemoryConfig>());
-                assert_eq!(field, "aoc_session");
+                assert_eq!(field, "credentials");
             });
         }
     }

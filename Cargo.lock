@@ -94,6 +94,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "veil",
  "wiremock",
 ]
 
@@ -163,7 +164,6 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
- "veil",
 ]
 
 [[package]]

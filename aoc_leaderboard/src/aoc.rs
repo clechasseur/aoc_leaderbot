@@ -7,6 +7,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
 use serde_with::serde_as;
+use veil::Redact;
 
 /// Content of an [Advent of Code] private leaderboard.
 ///
@@ -149,7 +150,7 @@ impl Leaderboard {
 /// [Advent of Code]: https://adventofcode.com/
 #[cfg(feature = "http")]
 #[derive(
-    Debug,
+    Redact,
     Clone,
     PartialEq,
     Eq,
@@ -169,6 +170,7 @@ pub enum LeaderboardCredentials {
     ///
     /// Can be obtained by looking at the end of the leaderboard's
     /// read-only like: `?view_key={view_key}`.
+    #[redact(all)]
     ViewKey(String),
 
     /// `session` cookie allowing authenticated access to the leaderboard.
@@ -177,6 +179,7 @@ pub enum LeaderboardCredentials {
     /// [Advent of Code] website.
     ///
     /// [Advent of Code]: https://adventofcode.com/
+    #[redact(all)]
     SessionCookie(String),
 }
 

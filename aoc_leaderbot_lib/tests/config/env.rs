@@ -1,12 +1,13 @@
 mod get_env_config {
     use std::env;
 
+    use aoc_leaderboard::aoc::LeaderboardCredentials;
     use aoc_leaderboard::test_helpers::{TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR};
     use aoc_leaderbot_lib::Error;
     use aoc_leaderbot_lib::error::EnvVarError;
     use aoc_leaderbot_lib::leaderbot::Config;
     use aoc_leaderbot_lib::leaderbot::config::env::{
-        ENV_CONFIG_AOC_SESSION_SUFFIX, ENV_CONFIG_LEADERBOARD_ID_SUFFIX, ENV_CONFIG_YEAR_SUFFIX,
+        ENV_CONFIG_LEADERBOARD_ID_SUFFIX, ENV_CONFIG_SESSION_COOKIE_SUFFIX, ENV_CONFIG_YEAR_SUFFIX,
         get_env_config,
     };
     use assert_matches::assert_matches;
@@ -34,14 +35,16 @@ mod get_env_config {
                 var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX),
                 TEST_LEADERBOARD_ID.to_string(),
             );
-            env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), TEST_AOC_SESSION);
+            env::set_var(var_name(ENV_CONFIG_SESSION_COOKIE_SUFFIX), TEST_AOC_SESSION);
         }
 
         let actual = get_env_config(env_var_prefix).unwrap();
 
         assert_eq!(actual.year(), if set_year { TEST_YEAR } else { Local::now().year() });
         assert_eq!(actual.leaderboard_id(), TEST_LEADERBOARD_ID);
-        assert_eq!(actual.aoc_session(), TEST_AOC_SESSION);
+        assert_matches!(actual.credentials(), LeaderboardCredentials::SessionCookie(cookie) => {
+            assert_eq!(cookie, TEST_AOC_SESSION);
+        });
     }
 
     mod missing_vars {
@@ -54,7 +57,7 @@ mod get_env_config {
             let var_name = |name| format!("{env_var_prefix}{name}");
 
             unsafe {
-                env::set_var(var_name(ENV_CONFIG_AOC_SESSION_SUFFIX), TEST_AOC_SESSION);
+                env::set_var(var_name(ENV_CONFIG_SESSION_COOKIE_SUFFIX), TEST_AOC_SESSION);
             }
 
             let actual = get_env_config(&env_var_prefix);
@@ -75,7 +78,9 @@ mod get_env_config {
             }
 
             let actual = get_env_config(&env_var_prefix);
-            assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source: EnvVarError::NotPresent }) if actual_var_name == var_name(ENV_CONFIG_AOC_SESSION_SUFFIX));
+            assert_matches!(actual, Err(Error::Env { var_name: actual_var_name, source: EnvVarError::NotPresent }) => {
+                assert_eq!(actual_var_name, var_name(ENV_CONFIG_SESSION_COOKIE_SUFFIX));
+            });
         }
     }
 
@@ -90,6 +95,7 @@ mod get_env_config {
 
             unsafe {
                 env::set_var(var_name(ENV_CONFIG_YEAR_SUFFIX), "two-thousand-twenty-four");
+                env::set_var(var_name(ENV_CONFIG_SESSION_COOKIE_SUFFIX), TEST_AOC_SESSION);
             }
 
             let actual = get_env_config(&env_var_prefix);
@@ -107,6 +113,7 @@ mod get_env_config {
 
             unsafe {
                 env::set_var(var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX), "one two three four five");
+                env::set_var(var_name(ENV_CONFIG_SESSION_COOKIE_SUFFIX), TEST_AOC_SESSION);
             }
 
             let actual = get_env_config(&env_var_prefix);
