@@ -335,7 +335,7 @@ impl Reporter for SlackWebhookReporter {
         }
     }
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self, error)))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self, error)))]
     async fn report_error(
         &mut self,
         year: i32,

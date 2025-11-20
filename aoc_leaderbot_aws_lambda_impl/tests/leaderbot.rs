@@ -7,12 +7,13 @@ mod bot_lambda_handler {
     use std::future::Future;
 
     use aoc_leaderboard::aoc::{
-        CompletionDayLevel, Leaderboard, LeaderboardMember, PuzzleCompletionInfo,
+        CompletionDayLevel, Leaderboard, LeaderboardCredentials, LeaderboardMember,
+        PuzzleCompletionInfo,
     };
     use aoc_leaderboard::reqwest::Method;
     use aoc_leaderboard::test_helpers::{
         TEST_AOC_SESSION, TEST_DAY_1_TS, TEST_DAY_2_TS, TEST_LEADERBOARD_ID, TEST_YEAR,
-        mock_server_with_leaderboard,
+        mock_server_with_leaderboard, test_leaderboard_credentials,
     };
     use aoc_leaderboard::wiremock::matchers::{header, method, path};
     use aoc_leaderboard::wiremock::{Mock, MockServer, ResponseTemplate};
@@ -149,7 +150,9 @@ mod bot_lambda_handler {
         TFR: Future<Output = ()> + Send + 'static,
     {
         LocalTable::run_test(|table| async move {
-            let mock_server = mock_server_with_leaderboard(leaderboard).await;
+            let mock_server =
+                mock_server_with_leaderboard(leaderboard, test_leaderboard_credentials::default())
+                    .await;
             mount_slack_webhook_handler(&mock_server, expect_report).await;
 
             test_f(mock_server, table).await;
@@ -167,7 +170,7 @@ mod bot_lambda_handler {
             IncomingMessage {
                 year: Some(TEST_YEAR),
                 leaderboard_id: Some(TEST_LEADERBOARD_ID),
-                aoc_session: Some(TEST_AOC_SESSION.into()),
+                credentials: Some(LeaderboardCredentials::SessionCookie(TEST_AOC_SESSION.into())),
                 test_run,
                 aoc_base_url: Some(mock_server.uri()),
                 dynamodb_storage_input: IncomingDynamoDbStorageInput {
@@ -488,7 +491,8 @@ mod bot_lambda_handler {
         use aoc_leaderbot_aws_lambda_impl::leaderbot::CONFIG_ENV_VAR_PREFIX;
         use aoc_leaderbot_lib::error::EnvVarError;
         use aoc_leaderbot_lib::leaderbot::config::env::{
-            ENV_CONFIG_AOC_SESSION_SUFFIX, ENV_CONFIG_LEADERBOARD_ID_SUFFIX, ENV_CONFIG_YEAR_SUFFIX,
+            ENV_CONFIG_LEADERBOARD_ID_SUFFIX, ENV_CONFIG_SESSION_COOKIE_SUFFIX,
+            ENV_CONFIG_YEAR_SUFFIX,
         };
         use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
             CHANNEL_ENV_VAR, WEBHOOK_URL_ENV_VAR,
@@ -507,7 +511,7 @@ mod bot_lambda_handler {
                     ENV_CONFIG_LEADERBOARD_ID_SUFFIX,
                     &TEST_LEADERBOARD_ID.to_string(),
                 );
-                set_env_config_var(ENV_CONFIG_AOC_SESSION_SUFFIX, TEST_AOC_SESSION);
+                set_env_config_var(ENV_CONFIG_SESSION_COOKIE_SUFFIX, TEST_AOC_SESSION);
 
                 env::set_var(WEBHOOK_URL_ENV_VAR, format!("{}{WEBHOOK_PATH}", mock_server.uri()));
                 env::set_var(CHANNEL_ENV_VAR, CHANNEL);
@@ -518,7 +522,7 @@ mod bot_lambda_handler {
             IncomingMessage {
                 year: None,
                 leaderboard_id: None,
-                aoc_session: None,
+                credentials: None,
                 test_run: false,
                 aoc_base_url: Some(mock_server.uri()),
                 dynamodb_storage_input: IncomingDynamoDbStorageInput {
@@ -589,7 +593,7 @@ mod bot_lambda_handler {
                             TEST_LEADERBOARD_ID.to_string(),
                         );
                         env::set_var(
-                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_AOC_SESSION_SUFFIX}"),
+                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_SESSION_COOKIE_SUFFIX}"),
                             TEST_AOC_SESSION,
                         );
                     }
@@ -624,7 +628,7 @@ mod bot_lambda_handler {
                             TEST_LEADERBOARD_ID.to_string(),
                         );
                         env::set_var(
-                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_AOC_SESSION_SUFFIX}"),
+                            format!("{CONFIG_ENV_VAR_PREFIX}{ENV_CONFIG_SESSION_COOKIE_SUFFIX}"),
                             TEST_AOC_SESSION,
                         );
 

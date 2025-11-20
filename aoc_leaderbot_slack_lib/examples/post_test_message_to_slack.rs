@@ -12,14 +12,14 @@ use std::env::VarError;
 use std::str::FromStr;
 
 use anyhow::{Context, anyhow};
-use aoc_leaderboard::aoc::Leaderboard;
+use aoc_leaderboard::aoc::{Leaderboard, LeaderboardCredentials};
 use aoc_leaderbot_lib::leaderbot::{Changes, Reporter};
 use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::DEFAULT_USERNAME;
 use aoc_leaderbot_slack_lib::leaderbot::reporter::slack::webhook::{
     LeaderboardSortOrder, SlackWebhookReporter,
 };
 use chrono::{Datelike, Local};
-use clap::Parser;
+use clap::{Args, Parser};
 use clap_verbosity_flag::{InfoLevel, Verbosity};
 use dotenvy::dotenv;
 use tracing_subscriber::EnvFilter;
@@ -73,12 +73,8 @@ struct Cli {
     #[arg(short = 'i', long = "id")]
     pub leaderboard_id: Option<u64>,
 
-    /// Advent of Code session token
-    ///
-    /// If not specified, will be fetched from the `AOC_SESSION`
-    /// environment variable.
-    #[arg(short = 't', long = "token")]
-    pub aoc_session: Option<String>,
+    #[command(flatten)]
+    pub credentials: Credentials,
 
     /// URL of Slack webhook to post the test message to
     ///
@@ -109,6 +105,24 @@ struct Cli {
     pub sort_order: LeaderboardSortOrder,
 }
 
+#[derive(Debug, Args)]
+#[group(required = false, multiple = false)]
+struct Credentials {
+    /// Advent of Code leaderboard view key
+    ///
+    /// If not specified, will be fetched from the `AOC_VIEW_KEY`
+    /// environment variable.
+    #[arg(short = 'k', long = "key")]
+    view_key: Option<String>,
+
+    /// Advent of Code session token
+    ///
+    /// If not specified, will be fetched from the `AOC_SESSION`
+    /// environment variable (unless a `key` is found).
+    #[arg(short = 't', long = "token", value_name = "SESSION_TOKEN")]
+    session_cookie: Option<String>,
+}
+
 impl Cli {
     pub fn parse_or_defaults() -> anyhow::Result<Self> {
         let cli = Self::parse();
@@ -122,24 +136,16 @@ impl Cli {
             Some(leaderboard_id) => leaderboard_id,
             None => Self::int_env_var("AOC_LEADERBOARD_ID")?,
         };
-        let aoc_session = match cli.aoc_session {
-            Some(aoc_session) => aoc_session,
-            None => Self::env_var("AOC_SESSION")?,
-        };
+        let credentials = cli.credentials.or_defaults()?;
 
-        Ok(Self {
-            year: Some(year),
-            leaderboard_id: Some(leaderboard_id),
-            aoc_session: Some(aoc_session),
-            ..cli
-        })
+        Ok(Self { year: Some(year), leaderboard_id: Some(leaderboard_id), credentials, ..cli })
     }
 
     async fn get_leaderboard(&self) -> anyhow::Result<Leaderboard> {
         Ok(Leaderboard::get(
             self.year.unwrap(),
             self.leaderboard_id.unwrap(),
-            self.aoc_session.as_ref().unwrap(),
+            &self.credentials.as_leaderboard_credentials()?,
         )
         .await?)
     }
@@ -163,7 +169,7 @@ impl Cli {
         Ok(builder.build()?)
     }
 
-    fn optional_env_var(var_name: &str) -> anyhow::Result<Option<String>> {
+    pub(crate) fn optional_env_var(var_name: &str) -> anyhow::Result<Option<String>> {
         match env::var(var_name) {
             Ok(value) => Ok(Some(value)),
             Err(VarError::NotPresent) => Ok(None),
@@ -174,14 +180,14 @@ impl Cli {
         }
     }
 
-    fn env_var(var_name: &str) -> anyhow::Result<String> {
+    pub(crate) fn env_var(var_name: &str) -> anyhow::Result<String> {
         match Self::optional_env_var(var_name)? {
             Some(value) => Ok(value),
             None => Err(anyhow!("environment variable {var_name} is missing")),
         }
     }
 
-    fn optional_int_env_var<T>(var_name: &str) -> anyhow::Result<Option<T>>
+    pub(crate) fn optional_int_env_var<T>(var_name: &str) -> anyhow::Result<Option<T>>
     where
         T: FromStr,
         <T as FromStr>::Err: std::error::Error + Send + Sync + 'static,
@@ -192,7 +198,7 @@ impl Cli {
         }
     }
 
-    fn int_env_var<T>(var_name: &str) -> anyhow::Result<T>
+    pub(crate) fn int_env_var<T>(var_name: &str) -> anyhow::Result<T>
     where
         T: FromStr,
         <T as FromStr>::Err: std::error::Error + Send + Sync + 'static,
@@ -202,5 +208,30 @@ impl Cli {
                 .parse()
                 .with_context(|| anyhow!("failed to parse environment variable {var_name}"))
         })
+    }
+}
+
+impl Credentials {
+    pub fn or_defaults(self) -> anyhow::Result<Self> {
+        if self.view_key.is_none() && self.session_cookie.is_none() {
+            return match Cli::optional_env_var("AOC_VIEW_KEY")? {
+                Some(view_key) => Ok(Self { view_key: Some(view_key), session_cookie: None }),
+                None => {
+                    Ok(Self { view_key: None, session_cookie: Some(Cli::env_var("AOC_SESSION")?) })
+                },
+            };
+        }
+
+        Ok(self)
+    }
+
+    pub fn as_leaderboard_credentials(&self) -> anyhow::Result<LeaderboardCredentials> {
+        match (&self.view_key, &self.session_cookie) {
+            (Some(key), _) => Ok(LeaderboardCredentials::ViewKey(key.clone())),
+            (None, Some(cookie)) => Ok(LeaderboardCredentials::SessionCookie(cookie.clone())),
+            (None, None) => {
+                Err(anyhow!("either view_key or session_cookie should be set at this point"))
+            },
+        }
     }
 }

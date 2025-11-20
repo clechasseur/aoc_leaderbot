@@ -7,7 +7,6 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_with::DisplayFromStr;
 use serde_with::serde_as;
-use veil::Redact;
 
 /// Content of an [Advent of Code] private leaderboard.
 ///
@@ -150,7 +149,7 @@ impl Leaderboard {
 /// [Advent of Code]: https://adventofcode.com/
 #[cfg(feature = "http")]
 #[derive(
-    Redact,
+    veil::Redact,
     Clone,
     PartialEq,
     Eq,
