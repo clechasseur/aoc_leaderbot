@@ -1,7 +1,8 @@
 mod memory_config {
     use aoc_leaderboard::aoc::LeaderboardCredentials;
     use aoc_leaderboard::test_helpers::{
-        TEST_LEADERBOARD_ID, TEST_YEAR, test_leaderboard_credentials,
+        TEST_AOC_SESSION, TEST_AOC_VIEW_KEY, TEST_LEADERBOARD_ID, TEST_YEAR,
+        test_leaderboard_credentials,
     };
     use aoc_leaderbot_lib::leaderbot::Config;
     use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
@@ -41,6 +42,38 @@ mod memory_config {
             assert_eq!(actual.year(), TEST_YEAR);
             assert_eq!(actual.leaderboard_id(), TEST_LEADERBOARD_ID);
             assert_eq!(actual.credentials(), credentials);
+        }
+
+        #[test_log::test]
+        fn with_view_key() {
+            let actual = MemoryConfig::builder()
+                .year(TEST_YEAR)
+                .leaderboard_id(TEST_LEADERBOARD_ID)
+                .view_key(TEST_AOC_VIEW_KEY)
+                .build()
+                .unwrap();
+
+            assert_eq!(actual.year(), TEST_YEAR);
+            assert_eq!(actual.leaderboard_id(), TEST_LEADERBOARD_ID);
+            assert_matches!(actual.credentials(), LeaderboardCredentials::ViewKey(key) => {
+                assert_eq!(key, TEST_AOC_VIEW_KEY);
+            });
+        }
+
+        #[test_log::test]
+        fn with_session_cookie() {
+            let actual = MemoryConfig::builder()
+                .year(TEST_YEAR)
+                .leaderboard_id(TEST_LEADERBOARD_ID)
+                .session_cookie(TEST_AOC_SESSION)
+                .build()
+                .unwrap();
+
+            assert_eq!(actual.year(), TEST_YEAR);
+            assert_eq!(actual.leaderboard_id(), TEST_LEADERBOARD_ID);
+            assert_matches!(actual.credentials(), LeaderboardCredentials::SessionCookie(cookie) => {
+                assert_eq!(cookie, TEST_AOC_SESSION);
+            });
         }
 
         #[rstest]
