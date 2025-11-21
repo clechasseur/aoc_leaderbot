@@ -1,14 +1,16 @@
 mod get_env_config {
     use std::env;
 
-    use aoc_leaderboard::aoc::LeaderboardCredentials;
-    use aoc_leaderboard::test_helpers::{TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR};
+    use aoc_leaderboard::aoc::{LeaderboardCredentials, LeaderboardCredentialsKind};
+    use aoc_leaderboard::test_helpers::{
+        TEST_AOC_SESSION, TEST_AOC_VIEW_KEY, TEST_LEADERBOARD_ID, TEST_YEAR,
+    };
     use aoc_leaderbot_lib::Error;
     use aoc_leaderbot_lib::error::EnvVarError;
     use aoc_leaderbot_lib::leaderbot::Config;
     use aoc_leaderbot_lib::leaderbot::config::env::{
-        ENV_CONFIG_LEADERBOARD_ID_SUFFIX, ENV_CONFIG_SESSION_COOKIE_SUFFIX, ENV_CONFIG_YEAR_SUFFIX,
-        get_env_config,
+        ENV_CONFIG_LEADERBOARD_ID_SUFFIX, ENV_CONFIG_SESSION_COOKIE_SUFFIX,
+        ENV_CONFIG_VIEW_KEY_SUFFIX, ENV_CONFIG_YEAR_SUFFIX, get_env_config,
     };
     use assert_matches::assert_matches;
     use chrono::{Datelike, Local};
@@ -24,7 +26,12 @@ mod get_env_config {
     #[rstest]
     #[test_log::test]
     #[serial(env)]
-    fn valid(env_var_prefix: String, #[values(false, true)] set_year: bool) {
+    fn valid(
+        env_var_prefix: String,
+        #[values(false, true)] set_year: bool,
+        #[values(LeaderboardCredentialsKind::ViewKey, LeaderboardCredentialsKind::SessionCookie)]
+        credentials_kind: LeaderboardCredentialsKind,
+    ) {
         let var_name = |name| format!("{env_var_prefix}{name}");
 
         unsafe {
@@ -35,16 +42,35 @@ mod get_env_config {
                 var_name(ENV_CONFIG_LEADERBOARD_ID_SUFFIX),
                 TEST_LEADERBOARD_ID.to_string(),
             );
-            env::set_var(var_name(ENV_CONFIG_SESSION_COOKIE_SUFFIX), TEST_AOC_SESSION);
+            match credentials_kind {
+                LeaderboardCredentialsKind::ViewKey => {
+                    env::set_var(var_name(ENV_CONFIG_VIEW_KEY_SUFFIX), TEST_AOC_VIEW_KEY);
+                },
+                LeaderboardCredentialsKind::SessionCookie => {
+                    env::set_var(var_name(ENV_CONFIG_SESSION_COOKIE_SUFFIX), TEST_AOC_SESSION);
+                },
+            }
         }
 
         let actual = get_env_config(env_var_prefix).unwrap();
 
         assert_eq!(actual.year(), if set_year { TEST_YEAR } else { Local::now().year() });
         assert_eq!(actual.leaderboard_id(), TEST_LEADERBOARD_ID);
-        assert_matches!(actual.credentials(), LeaderboardCredentials::SessionCookie(cookie) => {
-            assert_eq!(cookie, TEST_AOC_SESSION);
-        });
+        match (actual.credentials(), credentials_kind) {
+            (LeaderboardCredentials::ViewKey(actual_key), LeaderboardCredentialsKind::ViewKey) => {
+                assert_eq!(actual_key, TEST_AOC_VIEW_KEY);
+            },
+            (
+                LeaderboardCredentials::SessionCookie(actual_cookie),
+                LeaderboardCredentialsKind::SessionCookie,
+            ) => {
+                assert_eq!(actual_cookie, TEST_AOC_SESSION);
+            },
+            (actual_credentials, credentials_kind) => {
+                let actual_credentials_kind: LeaderboardCredentialsKind = actual_credentials.into();
+                assert_eq!(actual_credentials_kind, credentials_kind);
+            },
+        }
     }
 
     mod missing_vars {
