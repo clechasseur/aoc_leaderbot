@@ -3,7 +3,7 @@ name = "aoc_leaderbot_lib"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+rust-version = "1.88.0"
 
 readme = "README.md"
 license.workspace = true
