@@ -3,12 +3,13 @@ name = "aoc_leaderbot_aws_lambda_impl"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-rust-version.workspace = true
+rust-version = "1.88.0"
 
 license.workspace = true
 
-homepage.workspace = true
+homepage = "https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot_aws_lambda_impl#readme"
 repository.workspace = true
+documentation = "https://docs.rs/aoc_leaderbot_aws_lambda_impl/"
 
 description = "Implementation of an Advent of Code leaderboard-watching bot running in AWS Lambda"
 
