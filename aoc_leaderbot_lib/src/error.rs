@@ -274,7 +274,7 @@ impl IntoDiscriminant for Error {
 
 /// A version of [`env::VarError`] with additional variants.
 #[derive(Debug, thiserror::Error, EnumDiscriminants, EnumIs)]
-#[strum_discriminants(name(EnvVarErrorKind), derive(Serialize, Deserialize))]
+#[strum_discriminants(name(EnvVarErrorKind), derive(Serialize, Deserialize, EnumIs))]
 pub enum EnvVarError {
     /// Environment variable is not present.
     ///
@@ -598,9 +598,13 @@ impl From<&StorageError> for ErrorKind {
 /// Error type used for errors related to [`Reporter`].
 ///
 /// [`Reporter`]: crate::leaderbot::Reporter
-#[derive(Debug, thiserror::Error, EnumDiscriminants)]
+#[derive(Debug, thiserror::Error, EnumDiscriminants, EnumIs)]
 #[non_exhaustive]
-#[strum_discriminants(name(ReporterErrorKind), derive(Serialize, Deserialize), non_exhaustive)]
+#[strum_discriminants(
+    name(ReporterErrorKind),
+    derive(Serialize, Deserialize, EnumIs),
+    non_exhaustive
+)]
 pub enum ReporterError {
     /// Error while trying to report changes detected in leaderboard data.
     #[error("failed to report changes to leaderboard: {0}")]

@@ -33,7 +33,7 @@ name = "http"
 required-features = ["http"]
 
 [features]
-http = ["dep:reqwest", "dep:serde_json", "dep:tracing"]
+http = ["dep:reqwest", "dep:serde_json", "dep:tracing", "dep:veil"]
 
 __test_helpers = ["http", "dep:chrono", "dep:rstest", "dep:wiremock"]
 
@@ -47,6 +47,7 @@ serde_json = { workspace = true, optional = true }
 serde_with = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true, optional = true }
+veil = { workspace = true, optional = true }
 wiremock = { workspace = true, optional = true }
 
 [dev-dependencies]

@@ -43,6 +43,7 @@ __prepare_dynamodb = ["dep:aws-config", "dep:clap"]
 
 [dependencies]
 anyhow = { workspace = true }
+aoc_leaderboard = { workspace = true }
 aoc_leaderbot_aws_lib = { workspace = true }
 aoc_leaderbot_lib = { workspace = true, default-features = true }
 aoc_leaderbot_slack_lib = { workspace = true }

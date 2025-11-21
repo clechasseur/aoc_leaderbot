@@ -6,6 +6,7 @@
 use std::borrow::Cow;
 use std::fmt::Debug;
 
+use aoc_leaderboard::aoc::LeaderboardCredentials;
 use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::DynamoDbStorage;
 use aoc_leaderbot_lib::leaderbot::config::env::get_env_config;
 use aoc_leaderbot_lib::leaderbot::config::mem::MemoryConfig;
@@ -25,7 +26,7 @@ use veil::Redact;
 /// other related parameters.
 ///
 /// [AWS Lambda]: https://aws.amazon.com/lambda/
-#[derive(Redact, Default, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize)]
 pub struct IncomingMessage {
     /// Year of leaderboard to monitor.
     ///
@@ -39,12 +40,11 @@ pub struct IncomingMessage {
     #[serde(default)]
     pub leaderboard_id: Option<u64>,
 
-    /// Advent of Code session token.
+    /// Advent of Code leaderboard credentials.
     ///
-    /// If set, overrides [`Config::aoc_session`].
-    #[redact]
+    /// If set, overrides [`Config::credentials`].
     #[serde(default)]
-    pub aoc_session: Option<String>,
+    pub credentials: Option<LeaderboardCredentials>,
 
     /// Set to `true` to do a test run.
     ///
@@ -158,7 +158,7 @@ pub const DEFAULT_DYNAMODB_TABLE_NAME: &str = "aoc_leaderbot";
 ///
 /// [AWS Lambda]: https://aws.amazon.com/lambda/
 /// [`run_bot`]: aoc_leaderbot_lib::leaderbot::run_bot
-#[cfg_attr(not(coverage_nightly), tracing::instrument(ret, err))]
+#[cfg_attr(not(coverage), tracing::instrument(ret, err))]
 pub async fn bot_lambda_handler(
     event: LambdaEvent<IncomingMessage>,
 ) -> Result<OutgoingMessage, Error> {
@@ -205,33 +205,33 @@ pub async fn bot_lambda_handler(
     Ok(OutgoingMessage { output })
 }
 
-#[cfg_attr(not(coverage_nightly), tracing::instrument(err))]
+#[cfg_attr(not(coverage), tracing::instrument(err))]
 fn get_config(input: &IncomingMessage) -> Result<MemoryConfig, Error> {
-    let (year, leaderboard_id, aoc_session) =
-        match (input.year, input.leaderboard_id, input.aoc_session.clone()) {
-            (Some(year), Some(leaderboard_id), Some(aoc_session)) => {
-                (year, leaderboard_id, aoc_session)
+    let (year, leaderboard_id, credentials) =
+        match (input.year, input.leaderboard_id, input.credentials.clone()) {
+            (Some(year), Some(leaderboard_id), Some(credentials)) => {
+                (year, leaderboard_id, credentials)
             },
-            (year, leaderboard_id, aoc_session) => {
+            (year, leaderboard_id, credentials) => {
                 let env_config = get_env_config(CONFIG_ENV_VAR_PREFIX)?;
                 (
                     year.unwrap_or_else(|| env_config.year()),
                     leaderboard_id.unwrap_or_else(|| env_config.leaderboard_id()),
-                    aoc_session.unwrap_or_else(|| env_config.aoc_session()),
+                    credentials.unwrap_or_else(|| env_config.credentials()),
                 )
             },
         };
-    debug!(year, leaderboard_id);
+    debug!(year, leaderboard_id, ?credentials);
 
     Ok(MemoryConfig::builder()
         .year(year)
         .leaderboard_id(leaderboard_id)
-        .aoc_session(&aoc_session)
+        .credentials(credentials)
         .build()
         .expect("all fields should have been specified"))
 }
 
-#[cfg_attr(not(coverage_nightly), tracing::instrument)]
+#[cfg_attr(not(coverage), tracing::instrument)]
 async fn get_storage(input: &IncomingMessage) -> DynamoDbStorage {
     #[cfg(feature = "__testing")]
     #[cfg_attr(coverage_nightly, coverage(off))]
@@ -270,7 +270,7 @@ async fn get_storage(input: &IncomingMessage) -> DynamoDbStorage {
     internal_get_storage(input, table_name).await
 }
 
-#[cfg_attr(not(coverage_nightly), tracing::instrument(err))]
+#[cfg_attr(not(coverage), tracing::instrument(err))]
 fn get_reporter(input: &IncomingMessage) -> Result<SlackWebhookReporter, Error> {
     let mut builder = SlackWebhookReporter::builder();
 

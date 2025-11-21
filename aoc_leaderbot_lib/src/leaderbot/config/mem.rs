@@ -2,17 +2,17 @@
 
 use std::any::type_name;
 
+use aoc_leaderboard::aoc::LeaderboardCredentials;
 use chrono::{Datelike, Local};
 use derive_builder::{Builder, UninitializedFieldError};
 use serde::{Deserialize, Serialize};
-use veil::Redact;
 
 use crate::leaderbot::Config;
 
 /// Bot config storing values in memory.
-#[derive(Redact, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Builder)]
 #[builder(
-    derive(Redact, PartialEq, Eq, Hash),
+    derive(Debug, PartialEq, Eq, Hash),
     build_fn(name = "build_internal", error = "UninitializedFieldError", private)
 )]
 pub struct MemoryConfig {
@@ -27,13 +27,11 @@ pub struct MemoryConfig {
     /// See [`Config::leaderboard_id`] for info on this value.
     pub leaderboard_id: u64,
 
-    /// AoC session token.
+    /// AoC leaderboard credentials.
     ///
-    /// See [`Config::aoc_session`] for info on this value.
-    #[redact]
+    /// See [`Config::credentials`] for info on this value.
     #[builder(setter(into))]
-    #[builder_field_attr(redact)]
-    pub aoc_session: String,
+    pub credentials: LeaderboardCredentials,
 }
 
 impl MemoryConfig {
@@ -43,15 +41,36 @@ impl MemoryConfig {
     }
 
     /// Creates a new instance with values for all fields.
-    pub fn new<S>(year: i32, leaderboard_id: u64, aoc_session: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self { year, leaderboard_id, aoc_session: aoc_session.into() }
+    pub fn new(year: i32, leaderboard_id: u64, credentials: LeaderboardCredentials) -> Self {
+        Self { year, leaderboard_id, credentials }
     }
 }
 
 impl MemoryConfigBuilder {
+    /// Sets the config's [`credentials`] to the given [view key].
+    ///
+    /// [`credentials`]: MemoryConfig::credentials
+    /// [view key]: LeaderboardCredentials::ViewKey
+    pub fn view_key<S>(&mut self, view_key: S) -> &mut Self
+    where
+        S: Into<String>,
+    {
+        self.credentials = Some(LeaderboardCredentials::ViewKey(view_key.into()));
+        self
+    }
+
+    /// Sets the config's [`credentials`] to the given [session cookie].
+    ///
+    /// [`credentials`]: MemoryConfig::credentials
+    /// [session cookie]: LeaderboardCredentials::SessionCookie
+    pub fn session_cookie<S>(&mut self, session_cookie: S) -> &mut Self
+    where
+        S: Into<String>,
+    {
+        self.credentials = Some(LeaderboardCredentials::SessionCookie(session_cookie.into()));
+        self
+    }
+
     /// Builds a new [`MemoryConfig`].
     ///
     /// # Errors
@@ -71,18 +90,18 @@ impl MemoryConfigBuilder {
 }
 
 impl Config for MemoryConfig {
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), level = "trace", ret))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self), level = "trace", ret))]
     fn year(&self) -> i32 {
         self.year
     }
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), level = "trace", ret))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self), level = "trace", ret))]
     fn leaderboard_id(&self) -> u64 {
         self.leaderboard_id
     }
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), level = "trace"))]
-    fn aoc_session(&self) -> String {
-        self.aoc_session.clone()
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self), level = "trace", ret))]
+    fn credentials(&self) -> LeaderboardCredentials {
+        self.credentials.clone()
     }
 }

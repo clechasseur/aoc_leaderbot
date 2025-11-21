@@ -4,7 +4,8 @@ mod config;
 mod storage;
 
 mod leaderbot_config {
-    use aoc_leaderboard::test_helpers::{TEST_AOC_SESSION, TEST_LEADERBOARD_ID};
+    use aoc_leaderboard::aoc::LeaderboardCredentials;
+    use aoc_leaderboard::test_helpers::{TEST_LEADERBOARD_ID, test_leaderboard_credentials};
     use aoc_leaderbot_lib::leaderbot::Config;
     use chrono::{Datelike, Local};
 
@@ -15,8 +16,8 @@ mod leaderbot_config {
             TEST_LEADERBOARD_ID
         }
 
-        fn aoc_session(&self) -> String {
-            TEST_AOC_SESSION.into()
+        fn credentials(&self) -> LeaderboardCredentials {
+            test_leaderboard_credentials::default()
         }
     }
 
@@ -26,7 +27,7 @@ mod leaderbot_config {
 
         assert_eq!(config.year(), Local::now().year());
         assert_eq!(config.leaderboard_id(), TEST_LEADERBOARD_ID);
-        assert_eq!(config.aoc_session(), TEST_AOC_SESSION);
+        assert_eq!(config.credentials(), test_leaderboard_credentials::default());
     }
 }
 

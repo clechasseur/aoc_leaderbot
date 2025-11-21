@@ -17,7 +17,7 @@
 //!
 //! This trait is used by the bot to fetch information about what AoC leaderboard to watch.
 //! It is a read-only trait providing three pieces of information: the [leaderboard ID], the
-//! [AoC session token] and the [year]. The latter defaults to the current year.
+//! [AoC credentials] and the [year]. The latter defaults to the current year.
 //!
 //! ### [`Storage`]
 //!
@@ -71,7 +71,7 @@
 //! [`run_bot`]: leaderbot::run_bot
 //! [`Config`]: leaderbot::Config
 //! [leaderboard ID]: leaderbot::Config::leaderboard_id
-//! [AoC session token]: leaderbot::Config::aoc_session
+//! [AoC credentials]: leaderbot::Config::credentials
 //! [year]: leaderbot::Config::year
 //! [`Storage`]: leaderbot::Storage
 //! [`Reporter`]: leaderbot::Reporter

@@ -107,7 +107,7 @@ impl DynamoDbStorage {
     ///
     /// The table name passed at construction time will be used. The function
     /// waits until the table is created before returning.
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self), ret, err))]
     pub async fn create_table(&self) -> crate::Result<()> {
         let output = self
             .client
@@ -191,7 +191,7 @@ impl DynamoDbStorage {
 impl Storage for DynamoDbStorage {
     type Err = crate::Error;
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self), ret, err))]
     async fn load_previous(
         &self,
         year: i32,
@@ -219,7 +219,7 @@ impl Storage for DynamoDbStorage {
             .map_err(|err| load_previous_error(err.into()))?)
     }
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self), ret, err))]
     async fn save_success(
         &mut self,
         year: i32,
@@ -243,7 +243,7 @@ impl Storage for DynamoDbStorage {
         Ok(())
     }
 
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), ret, err))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self), ret, err))]
     async fn save_error(
         &mut self,
         year: i32,

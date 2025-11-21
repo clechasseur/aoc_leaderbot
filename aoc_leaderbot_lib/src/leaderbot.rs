@@ -11,7 +11,7 @@ use std::fmt::Debug;
 use std::future::{Future, ready};
 
 use anyhow::anyhow;
-use aoc_leaderboard::aoc::Leaderboard;
+use aoc_leaderboard::aoc::{Leaderboard, LeaderboardCredentials};
 use chrono::{Datelike, Local};
 use gratte::IntoDiscriminant;
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,7 @@ pub trait Config {
     /// Year for which we want to monitor the leaderboard.
     ///
     /// Defaults to the current year.
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self), level = "trace", ret))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self), level = "trace", ret))]
     fn year(&self) -> i32 {
         Local::now().year()
     }
@@ -39,13 +39,15 @@ pub trait Config {
     /// It also corresponds to the leaderboard's [`owner_id`](Leaderboard::owner_id).
     fn leaderboard_id(&self) -> u64;
 
-    /// Advent of Code session token.
+    /// Advent of Code credentials.
     ///
-    /// This is required to fetch the data of a private leaderboard. A session
-    /// token can be obtained from the browser's cookies when visiting the AoC
-    /// website. According to the AoC leaderboard API documentation, a session
-    /// token lasts about a month.
-    fn aoc_session(&self) -> String;
+    /// This is required to fetch the data of a private leaderboard. Can either
+    /// be a [view key] if the leaderboard has a public read-only link, or a
+    /// [session cookie] otherwise.
+    ///
+    /// [view key]: LeaderboardCredentials::ViewKey
+    /// [session cookie]: LeaderboardCredentials::SessionCookie
+    fn credentials(&self) -> LeaderboardCredentials;
 }
 
 /// Trait that must be implemented to persist the data required by the bot
@@ -113,14 +115,14 @@ pub struct Changes {
 
 impl Changes {
     /// Returns a [`Changes`] with the given new/updated members.
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace"))]
+    #[cfg_attr(not(coverage), tracing::instrument(level = "trace"))]
     pub fn new(new_members: HashSet<u64>, members_with_new_stars: HashSet<u64>) -> Self {
         Self { new_members, members_with_new_stars }
     }
 
     /// Returns a [`Changes`] if there are new members and/or members
     /// with new stars, otherwise returns `None`.
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(level = "trace", ret))]
+    #[cfg_attr(not(coverage), tracing::instrument(level = "trace", ret))]
     pub fn if_needed(
         new_members: HashSet<u64>,
         members_with_new_stars: HashSet<u64>,
@@ -170,7 +172,7 @@ pub trait Reporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
-    #[cfg_attr(not(coverage_nightly), tracing::instrument(skip(self)))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self)))]
     fn report_error(
         &mut self,
         year: i32,
@@ -184,7 +186,7 @@ pub trait Reporter {
     }
 }
 
-/// Output returned by the [`run_bot`] function. Contains the bot's output.
+/// Output returned by the [`run_bot`] function.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BotOutput {
     /// Year for which the bot was run.
@@ -230,9 +232,9 @@ pub async fn run_bot<C, S, R>(
 where
     C: Config,
     S: Storage,
-    <S as Storage>::Err: Error + Sync + 'static,
+    <S as Storage>::Err: Sync + 'static,
     R: Reporter,
-    <R as Reporter>::Err: Error + Sync + 'static,
+    <R as Reporter>::Err: Sync + 'static,
 {
     run_bot_from(None::<String>, config, storage, reporter, dry_run).await
 }
@@ -242,7 +244,7 @@ where
 ///
 /// This function is mostly exposed for testing; you should use [`run_bot`] instead.
 #[cfg_attr(
-    not(coverage_nightly),
+    not(coverage),
     tracing::instrument(skip(config, storage, reporter), level = "debug", ret, err)
 )]
 pub async fn run_bot_from<B, C, S, R>(
@@ -256,15 +258,15 @@ where
     B: AsRef<str> + Debug,
     C: Config,
     S: Storage,
-    <S as Storage>::Err: Error + Sync + 'static,
+    <S as Storage>::Err: Sync + 'static,
     R: Reporter,
-    <R as Reporter>::Err: Error + Sync + 'static,
+    <R as Reporter>::Err: Sync + 'static,
 {
     async fn get_leaderboard_and_changes<B, R>(
         advent_of_code_base: Option<B>,
         year: i32,
         leaderboard_id: u64,
-        aoc_session: &str,
+        credentials: &LeaderboardCredentials,
         previous_leaderboard: Option<Leaderboard>,
         reporter: &mut R,
         dry_run: bool,
@@ -272,14 +274,14 @@ where
     where
         B: AsRef<str> + Debug,
         R: Reporter,
-        <R as Reporter>::Err: Error + Sync + 'static,
+        <R as Reporter>::Err: Sync + 'static,
     {
         #[cfg_attr(coverage_nightly, coverage(off))]
         async fn get_leaderboard<B>(
             advent_of_code_base: Option<B>,
             year: i32,
             leaderboard_id: u64,
-            aoc_session: &str,
+            credentials: &LeaderboardCredentials,
         ) -> crate::Result<Leaderboard>
         where
             B: AsRef<str> + Debug,
@@ -291,16 +293,16 @@ where
                         base,
                         year,
                         leaderboard_id,
-                        aoc_session,
+                        credentials,
                     )
                     .await?
                 },
-                None => Leaderboard::get(year, leaderboard_id, aoc_session).await?,
+                None => Leaderboard::get(year, leaderboard_id, credentials).await?,
             })
         }
 
         let leaderboard =
-            get_leaderboard(advent_of_code_base, year, leaderboard_id, aoc_session).await?;
+            get_leaderboard(advent_of_code_base, year, leaderboard_id, credentials).await?;
 
         let changes = detect_changes(previous_leaderboard.as_ref(), &leaderboard);
         let output = BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes };
@@ -324,8 +326,8 @@ where
         Ok(output)
     }
 
-    let (year, leaderboard_id, aoc_session) =
-        (config.year(), config.leaderboard_id(), config.aoc_session());
+    let (year, leaderboard_id, credentials) =
+        (config.year(), config.leaderboard_id(), config.credentials());
 
     let previous_result = storage.load_previous(year, leaderboard_id).await;
     let (mut output_result, previous_error) = match previous_result {
@@ -334,7 +336,7 @@ where
                 advent_of_code_base,
                 year,
                 leaderboard_id,
-                &aoc_session,
+                &credentials,
                 previous_leaderboard,
                 reporter,
                 dry_run,
@@ -385,7 +387,7 @@ where
     }
 }
 
-#[cfg_attr(not(coverage_nightly), tracing::instrument(ret))]
+#[cfg_attr(not(coverage), tracing::instrument(ret))]
 fn detect_changes(
     previous_leaderboard: Option<&Leaderboard>,
     leaderboard: &Leaderboard,
@@ -422,8 +424,8 @@ fn detect_changes(
 // noinspection DuplicatedCode
 mod tests {
     use aoc_leaderboard::test_helpers::{
-        TEST_AOC_SESSION, TEST_LEADERBOARD_ID, TEST_YEAR,
-        mock_server_with_inaccessible_leaderboard, mock_server_with_leaderboard, test_leaderboard,
+        TEST_LEADERBOARD_ID, TEST_YEAR, mock_server_with_inaccessible_leaderboard,
+        mock_server_with_leaderboard, test_leaderboard,
     };
     use rstest::{fixture, rstest};
 
@@ -493,7 +495,9 @@ mod tests {
         use std::future::ready;
 
         use aoc_leaderboard::aoc::{CompletionDayLevel, LeaderboardMember, PuzzleCompletionInfo};
-        use aoc_leaderboard::test_helpers::{TEST_DAY_1_TS, TEST_DAY_2_TS};
+        use aoc_leaderboard::test_helpers::{
+            TEST_DAY_1_TS, TEST_DAY_2_TS, test_leaderboard_credentials,
+        };
         use aoc_leaderboard::wiremock::MockServer;
         use assert_matches::assert_matches;
         use mockall::predicate::eq;
@@ -568,11 +572,13 @@ mod tests {
         }
 
         #[fixture]
-        fn config() -> MemoryConfig {
+        fn config(
+            #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+        ) -> MemoryConfig {
             MemoryConfig::builder()
                 .year(TEST_YEAR)
                 .leaderboard_id(TEST_LEADERBOARD_ID)
-                .aoc_session(TEST_AOC_SESSION)
+                .credentials(credentials)
                 .build()
                 .unwrap()
         }
@@ -767,9 +773,11 @@ mod tests {
             #[case::new_member(leaderboard_with_new_member::default(), vec![MEMBER_2], vec![])]
             #[case::member_with_new_stars(leaderboard_with_member_with_new_stars::default(), vec![], vec![MEMBER_1])]
             #[case::both_updates(leaderboard_with_both_updates::default(), vec![MEMBER_2], vec![MEMBER_1])]
+            #[awt]
             #[test_log::test(tokio::test)]
             async fn and(
-                config: MemoryConfig,
+                #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+                #[with(credentials.clone())] config: MemoryConfig,
                 mut storage: MemoryStorage,
                 mut reporter: SpyReporter,
                 #[from(base_leaderboard)] base: Leaderboard,
@@ -777,7 +785,13 @@ mod tests {
                 #[case] expected_new_members: Vec<u64>,
                 #[case] expected_members_with_new_stars: Vec<u64>,
                 #[values(false, true)] dry_run: bool,
+                #[future]
+                #[from(mock_server_with_leaderboard)]
+                #[with(leaderboard.clone(), credentials.clone())]
+                mock_server: MockServer,
             ) {
+                let _ = credentials;
+
                 storage
                     .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &base)
                     .await
@@ -791,8 +805,6 @@ mod tests {
                         expected_members_with_new_stars.into_iter().collect(),
                     ),
                 };
-
-                let mock_server = mock_server_with_leaderboard(leaderboard.clone()).await;
 
                 let result = run_bot_from(
                     Some(mock_server.uri()),

@@ -31,7 +31,7 @@ check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(
 [features]
 default = ["config-env"]
 
-config-mem = ["dep:derive_builder", "dep:veil"]
+config-mem = ["dep:derive_builder"]
 config-env = ["config-mem"]
 
 storage-mem = []
@@ -45,7 +45,6 @@ gratte = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-veil = { workspace = true, optional = true }
 
 [dev-dependencies]
 aoc_leaderboard = { workspace = true, features = ["__test_helpers"] }
