@@ -1,4 +1,31 @@
 #[cfg(feature = "http")]
+mod leaderboard_credentials_kind {
+    use aoc_leaderboard::aoc::{LeaderboardCredentials, LeaderboardCredentialsKind};
+
+    mod impl_partial_eq_leaderboard_credentials_kind_for_leaderboard_credentials {
+        use super::*;
+
+        #[test]
+        fn test_eq() {
+            let credentials = LeaderboardCredentials::ViewKey("aoc_view_key".into());
+            let credentials_kind = LeaderboardCredentialsKind::ViewKey;
+            assert_eq!(credentials, credentials_kind);
+        }
+    }
+
+    mod impl_partial_eq_leaderboard_credentials_for_leaderboard_credentials_kind {
+        use super::*;
+
+        #[test]
+        fn test_eq() {
+            let credentials = LeaderboardCredentials::ViewKey("aoc_view_key".into());
+            let credentials_kind = LeaderboardCredentialsKind::ViewKey;
+            assert_eq!(credentials_kind, credentials);
+        }
+    }
+}
+
+#[cfg(feature = "http")]
 mod real_endpoint {
     use std::env;
 

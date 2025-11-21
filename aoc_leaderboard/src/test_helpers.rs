@@ -11,8 +11,8 @@ use std::sync::LazyLock;
 use chrono::{DateTime, Days, TimeZone, Utc};
 use reqwest::{Method, StatusCode, header};
 use rstest::fixture;
-use wiremock::matchers::{header, method, path, path_regex};
-use wiremock::{Mock, MockServer, ResponseTemplate};
+use wiremock::matchers::{header, method, path, path_regex, query_param};
+use wiremock::{Mock, MockBuilder, MockServer, ResponseTemplate};
 
 use crate::aoc::{Leaderboard, LeaderboardCredentials, LeaderboardCredentialsKind};
 
@@ -52,6 +52,19 @@ pub fn test_leaderboard_credentials(
     }
 }
 
+pub fn add_credentials_matchers_to_mock_server(
+    mock_builder: MockBuilder,
+    credentials: LeaderboardCredentials,
+) -> MockBuilder {
+    match credentials {
+        LeaderboardCredentials::ViewKey(view_key) => {
+            mock_builder.and(query_param("view_key", view_key))
+        },
+        LeaderboardCredentials::SessionCookie(_) => mock_builder
+            .and(header(header::COOKIE, credentials.session_cookie_header_value().unwrap())),
+    }
+}
+
 #[fixture]
 pub async fn mock_server_with_leaderboard(
     #[default(test_leaderboard::default())] leaderboard: Leaderboard,
@@ -59,13 +72,9 @@ pub async fn mock_server_with_leaderboard(
 ) -> MockServer {
     let mock_server = MockServer::start().await;
 
-    let mut mock_builder = Mock::given(method("GET")).and(path(format!(
-        "/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json{}",
-        credentials.view_key_url_suffix()
-    )));
-    if let Some(cookie_header) = credentials.session_cookie_header_value() {
-        mock_builder = mock_builder.and(header(header::COOKIE, cookie_header));
-    }
+    let mut mock_builder = Mock::given(method("GET"))
+        .and(path(format!("/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json")));
+    mock_builder = add_credentials_matchers_to_mock_server(mock_builder, credentials);
     mock_builder
         .respond_with(ResponseTemplate::new(StatusCode::OK).set_body_json(leaderboard))
         .mount(&mock_server)
@@ -98,13 +107,9 @@ pub async fn mock_server_with_leaderboard_with_invalid_json(
 ) -> MockServer {
     let mock_server = MockServer::start().await;
 
-    let mut mock_builder = Mock::given(method("GET")).and(path(format!(
-        "/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json{}",
-        credentials.view_key_url_suffix()
-    )));
-    if let Some(cookie_header) = credentials.session_cookie_header_value() {
-        mock_builder = mock_builder.and(header(header::COOKIE, cookie_header));
-    }
+    let mut mock_builder = Mock::given(method("GET"))
+        .and(path(format!("/{TEST_YEAR}/leaderboard/private/view/{TEST_LEADERBOARD_ID}.json")));
+    mock_builder = add_credentials_matchers_to_mock_server(mock_builder, credentials);
     mock_builder
         .respond_with(
             ResponseTemplate::new(StatusCode::OK)

@@ -355,11 +355,21 @@ mod tests {
             #[test_log::test(tokio::test)]
             async fn success(
                 #[from(test_leaderboard)] expected: Leaderboard,
-                #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+                #[values(
+                    LeaderboardCredentialsKind::ViewKey,
+                    LeaderboardCredentialsKind::SessionCookie
+                )]
+                credentials_kind: LeaderboardCredentialsKind,
+                #[from(test_leaderboard_credentials)]
+                #[with(credentials_kind)]
+                credentials: LeaderboardCredentials,
                 #[future]
                 #[from(mock_server_with_leaderboard)]
+                #[with(expected.clone(), credentials.clone())]
                 mock_server: MockServer,
             ) {
+                let _ = credentials_kind;
+
                 let actual = get_mock_leaderboard(&credentials, &mock_server).await;
                 assert_matches!(actual, Ok(actual) => {
                     assert_eq!(actual, expected);
@@ -373,11 +383,17 @@ mod tests {
                 #[awt]
                 #[test_log::test(tokio::test)]
                 async fn no_access(
-                    #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+                    #[values(
+                        LeaderboardCredentialsKind::ViewKey,
+                        LeaderboardCredentialsKind::SessionCookie
+                    )]
+                    credentials_kind: LeaderboardCredentialsKind,
                     #[future]
                     #[from(mock_server_with_inaccessible_leaderboard)]
                     mock_server: MockServer,
                 ) {
+                    let credentials = test_leaderboard_credentials(credentials_kind);
+
                     let actual = get_mock_leaderboard(&credentials, &mock_server).await;
                     assert_matches!(actual, Err(crate::Error::NoAccess));
                 }
@@ -385,8 +401,13 @@ mod tests {
                 #[rstest]
                 #[test_log::test(tokio::test)]
                 async fn not_found(
-                    #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+                    #[values(
+                        LeaderboardCredentialsKind::ViewKey,
+                        LeaderboardCredentialsKind::SessionCookie
+                    )]
+                    credentials_kind: LeaderboardCredentialsKind,
                 ) {
+                    let credentials = test_leaderboard_credentials(credentials_kind);
                     let mock_server = MockServer::start().await;
 
                     let actual = get_mock_leaderboard(&credentials, &mock_server).await;
@@ -400,11 +421,21 @@ mod tests {
                 #[awt]
                 #[test_log::test(tokio::test)]
                 async fn invalid_json(
-                    #[from(test_leaderboard_credentials)] credentials: LeaderboardCredentials,
+                    #[values(
+                        LeaderboardCredentialsKind::ViewKey,
+                        LeaderboardCredentialsKind::SessionCookie
+                    )]
+                    credentials_kind: LeaderboardCredentialsKind,
+                    #[from(test_leaderboard_credentials)]
+                    #[with(credentials_kind)]
+                    credentials: LeaderboardCredentials,
                     #[future]
                     #[from(mock_server_with_leaderboard_with_invalid_json)]
+                    #[with(credentials.clone())]
                     mock_server: MockServer,
                 ) {
+                    let _ = credentials_kind;
+
                     let actual = get_mock_leaderboard(&credentials, &mock_server).await;
                     assert_matches!(actual, Err(crate::Error::HttpGet(err)) if err.is_decode());
                 }
