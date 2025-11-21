@@ -8,6 +8,10 @@ Implementation of [`aoc_leaderbot`](https://github.com/clechasseur/aoc_leaderbot
 
 For instructions on how to deploy the bot to AWS Lambda, see the [main project page](https://github.com/clechasseur/aoc_leaderbot).
 
+## Minimum Rust version
+
+`aoc_leaderbot_aws_lambda_impl` currently builds on Rust 1.81 or newer.
+
 ## Contributing / Local development
 
 For information about contributing to this project, see [CONTRIBUTING](../CONTRIBUTING.md).
