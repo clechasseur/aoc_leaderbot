@@ -158,6 +158,23 @@ pub trait Reporter {
         changes: &Changes,
     ) -> impl Future<Output = Result<(), Self::Err>> + Send;
 
+    /// Report the first run of the bot for this leaderboard.
+    /// No changes are included, simply the initial leaderboard state.
+    ///
+    /// This function does nothing by default so that implementing it
+    /// is optional for reporters.
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self)))]
+    fn report_first_run(
+        &mut self,
+        year: i32,
+        leaderboard_id: u64,
+        leaderboard: &Leaderboard,
+    ) -> impl Future<Output = Result<(), Self::Err>> + Send {
+        let (_, _, _) = (year, leaderboard_id, leaderboard);
+
+        ready(Ok(()))
+    }
+
     /// Report an error that occurred while the bot was running.
     ///
     /// This can be useful to report things to the same channel as
@@ -307,20 +324,28 @@ where
         let changes = detect_changes(previous_leaderboard.as_ref(), &leaderboard);
         let output = BotOutput { year, leaderboard_id, previous_leaderboard, leaderboard, changes };
 
-        match (&output.previous_leaderboard, &output.changes) {
-            (Some(previous_leaderboard), Some(changes)) if !dry_run => {
-                reporter
-                    .report_changes(
-                        year,
-                        leaderboard_id,
-                        previous_leaderboard,
-                        &output.leaderboard,
-                        changes,
-                    )
-                    .await
-                    .map_err(|err| ReporterError::ReportChanges(anyhow!(err)))?;
-            },
-            _ => (),
+        if !dry_run {
+            match (&output.previous_leaderboard, &output.changes) {
+                (Some(previous_leaderboard), Some(changes)) => {
+                    reporter
+                        .report_changes(
+                            year,
+                            leaderboard_id,
+                            previous_leaderboard,
+                            &output.leaderboard,
+                            changes,
+                        )
+                        .await
+                        .map_err(|err| ReporterError::ReportChanges(anyhow!(err)))?;
+                },
+                (None, None) => {
+                    reporter
+                        .report_first_run(year, leaderboard_id, &output.leaderboard)
+                        .await
+                        .map_err(|err| ReporterError::ReportFirstRun(anyhow!(err)))?;
+                },
+                _ => (),
+            }
         }
 
         Ok(output)
@@ -481,6 +506,11 @@ mod tests {
                 .unwrap();
 
             reporter
+                .report_first_run(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
+                .await
+                .unwrap();
+
+            reporter
                 .report_error(
                     TEST_YEAR,
                     TEST_LEADERBOARD_ID,
@@ -529,12 +559,13 @@ mod tests {
         #[derive(Debug, Default)]
         pub struct SpyReporter {
             pub changes: Vec<(i32, u64, SpiedChanges)>,
+            pub first_runs: Vec<(i32, u64, Leaderboard)>,
             pub errors: Vec<(i32, u64, String)>,
         }
 
         impl SpyReporter {
             pub fn calls(&self) -> usize {
-                self.changes.len() + self.errors.len()
+                self.changes.len() + self.first_runs.len() + self.errors.len()
             }
 
             pub fn called(&self) -> bool {
@@ -562,6 +593,18 @@ mod tests {
                         changes: Some(changes.clone()),
                     },
                 ));
+
+                Ok(())
+            }
+
+            async fn report_first_run(
+                &mut self,
+                year: i32,
+                leaderboard_id: u64,
+                leaderboard: &Leaderboard,
+            ) -> Result<(), Self::Err> {
+                self.first_runs
+                    .push((year, leaderboard_id, leaderboard.clone()));
 
                 Ok(())
             }
@@ -605,7 +648,7 @@ mod tests {
                     members.insert(
                         OWNER,
                         LeaderboardMember {
-                            name: Some("clechasseur".to_string()),
+                            name: Some("clechasseur".into()),
                             id: OWNER,
                             stars: 0,
                             local_score: 0,
@@ -722,8 +765,8 @@ mod tests {
             use super::*;
 
             #[rstest]
-            #[case::stores_current(false)]
-            #[case::dry_run_does_not_store_current(true)]
+            #[case::regular_run(false)]
+            #[case::dry_run(true)]
             #[awt]
             #[test_log::test(tokio::test)]
             async fn and(
@@ -752,15 +795,24 @@ mod tests {
                     assert_eq!(leaderboard, expected);
                     assert!(changes.is_none());
                 });
-                assert_eq!(storage.len(), if dry_run { 0 } else { 1 });
-                assert!(!reporter.called());
 
+                assert_eq!(storage.len(), if dry_run { 0 } else { 1 });
                 let (actual_leaderboard, actual_err) = storage
                     .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
                     .await
                     .unwrap();
                 assert!(actual_err.is_none());
-                assert_eq!(actual_leaderboard, if dry_run { None } else { Some(expected) });
+                assert_eq!(actual_leaderboard, if dry_run { None } else { Some(expected.clone()) });
+
+                assert_eq!(reporter.calls(), if dry_run { 0 } else { 1 });
+                assert!(reporter.changes.is_empty());
+                assert!(reporter.errors.is_empty());
+                if !dry_run {
+                    assert_eq!(
+                        reporter.first_runs[0],
+                        (TEST_YEAR, TEST_LEADERBOARD_ID, expected.clone())
+                    );
+                }
             }
         }
 
@@ -837,11 +889,12 @@ mod tests {
                     assert_eq!(*actual_leaderboard_id, TEST_LEADERBOARD_ID);
                     assert_eq!(*actual, expected);
                 } else {
-                    assert!(!reporter.called())
+                    assert!(!reporter.called());
                 }
             }
         }
 
+        // noinspection DuplicatedCode
         mod errors {
             use super::*;
 
@@ -1026,6 +1079,87 @@ mod tests {
             #[rstest]
             #[awt]
             #[test_log::test(tokio::test)]
+            async fn report_first_run_error(
+                config: MemoryConfig,
+                #[future]
+                #[from(mock_server_with_leaderboard)]
+                #[with(base_leaderboard::default())]
+                mock_server: MockServer,
+            ) {
+                let mut storage = MockStorage::new();
+                storage
+                    .expect_load_previous()
+                    .with(eq(TEST_YEAR), eq(TEST_LEADERBOARD_ID))
+                    .times(1)
+                    .returning(move |_, _| Box::pin(ready(Ok((None, None)))));
+                storage
+                    .expect_save_error()
+                    .with(
+                        eq(TEST_YEAR),
+                        eq(TEST_LEADERBOARD_ID),
+                        eq(crate::ErrorKind::Reporter(ReporterErrorKind::ReportFirstRun)),
+                    )
+                    .times(1)
+                    .returning(move |_, _, _| Box::pin(ready(Ok(()))));
+
+                #[derive(Debug, Default)]
+                struct MockReporter {
+                    pub errors: usize,
+                }
+
+                impl Reporter for MockReporter {
+                    type Err = crate::Error;
+
+                    async fn report_changes(
+                        &mut self,
+                        _year: i32,
+                        _leaderboard_id: u64,
+                        _previous_leaderboard: &Leaderboard,
+                        _leaderboard: &Leaderboard,
+                        _changes: &Changes,
+                    ) -> Result<(), Self::Err> {
+                        unreachable!("test without previous leaderboard should not report changes");
+                    }
+
+                    async fn report_first_run(
+                        &mut self,
+                        _year: i32,
+                        _leaderboard_id: u64,
+                        _leaderboard: &Leaderboard,
+                    ) -> Result<(), Self::Err> {
+                        Err(crate::Error::TestReportFirstRunError)
+                    }
+
+                    async fn report_error(
+                        &mut self,
+                        _year: i32,
+                        _leaderboard_id: u64,
+                        _error: &crate::Error,
+                    ) {
+                        self.errors += 1;
+                    }
+                }
+
+                let mut reporter = MockReporter::default();
+
+                let result = run_bot_from(
+                    Some(mock_server.uri()),
+                    &config,
+                    &mut storage,
+                    &mut reporter,
+                    false,
+                )
+                .await;
+                assert_matches!(
+                    result,
+                    Err(crate::Error::Reporter(ReporterError::ReportFirstRun(_)))
+                );
+                assert_eq!(reporter.errors, 1);
+            }
+
+            #[rstest]
+            #[awt]
+            #[test_log::test(tokio::test)]
             async fn save_updated_error(
                 config: MemoryConfig,
                 mut reporter: SpyReporter,
@@ -1073,7 +1207,7 @@ mod tests {
                     (
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
-                        "failed to save leaderboard data: test".to_string(),
+                        "failed to save leaderboard data: test".into(),
                     )
                 );
             }
@@ -1128,7 +1262,7 @@ mod tests {
                     (
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
-                        "failed to save leaderboard data: test".to_string(),
+                        "failed to save leaderboard data: test".into(),
                     )
                 );
             }
@@ -1179,16 +1313,12 @@ mod tests {
                     (
                         TEST_YEAR,
                         TEST_LEADERBOARD_ID,
-                        "failed to load previous leaderboard data: test".to_string(),
+                        "failed to load previous leaderboard data: test".into(),
                     )
                 );
                 assert_eq!(
                     reporter.errors[1],
-                    (
-                        TEST_YEAR,
-                        TEST_LEADERBOARD_ID,
-                        "failed to save previous error: test".to_string(),
-                    )
+                    (TEST_YEAR, TEST_LEADERBOARD_ID, "failed to save previous error: test".into(),)
                 )
             }
 

@@ -38,21 +38,27 @@ async fn main() -> anyhow::Result<()> {
     let leaderboard = cli.get_leaderboard().await?;
 
     let mut reporter = cli.build_reporter()?;
-    reporter
-        .report_changes(
-            leaderboard.year,
-            leaderboard.owner_id,
-            &leaderboard,
-            &leaderboard,
-            &Changes::default(),
-        )
-        .await?;
+    if cli.first_run {
+        reporter
+            .report_first_run(leaderboard.year, leaderboard.owner_id, &leaderboard)
+            .await?;
+    } else {
+        reporter
+            .report_changes(
+                leaderboard.year,
+                leaderboard.owner_id,
+                &leaderboard,
+                &leaderboard,
+                &Changes::default(),
+            )
+            .await?;
+    }
 
     Ok(())
 }
 
 #[derive(Debug, Parser)]
-#[command(version, about, long_about = None)]
+#[command(version, about = "Send test AoC leaderbot message to Slack", long_about = None)]
 struct Cli {
     /// Implements the `--verbose` and `--quiet` flags
     #[command(flatten)]
@@ -103,6 +109,10 @@ struct Cli {
     /// How to sort the leaderboard members in the message
     #[arg(long, value_enum, default_value_t = LeaderboardSortOrder::Stars)]
     pub sort_order: LeaderboardSortOrder,
+
+    /// Simulate the first bot run
+    #[arg(short, long)]
+    pub first_run: bool,
 }
 
 #[derive(Debug, Args)]

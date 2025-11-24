@@ -14,9 +14,7 @@ pub enum Error {
 
 /// Error type used for problems related to Slack webhooks.
 #[cfg(feature = "webhook-base")]
-#[cfg_attr(feature = "reporter-webhook", derive(veil::Redact))]
-#[cfg_attr(not(feature = "reporter-webhook"), derive(Debug))]
-#[derive(thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum WebhookError {
     /// Error returned when failing to build a [`SlackWebhookReporter`].
     ///
@@ -29,30 +27,43 @@ pub enum WebhookError {
 
     /// An error occurred while trying to report leaderboard changes to a Slack webhook.
     #[cfg(feature = "reporter-webhook")]
-    #[error("error reporting changes to leaderboard id {leaderboard_id} for year {year}: {source}")]
-    ReportChanges {
-        /// Year of leaderboard that changed.
-        year: i32,
+    #[error("error reporting changes to Slack: {0}")]
+    ReportChanges(WebhookMessageError),
 
-        /// ID of leaderboard that changed.
-        leaderboard_id: u64,
-
-        /// URL of Slack webhook where we tried to report changes.
-        #[redact(partial)]
-        webhook_url: String,
-
-        /// Slack channel where we tried to report changes.
-        channel: String,
-
-        /// HTTP error that occurred when trying to report changes.
-        source: reqwest::Error,
-    },
+    /// An error occurred while trying to
+    #[cfg(feature = "reporter-webhook")]
+    #[error("error reporting first bot run to Slack: {0}")]
+    ReportFirstRun(WebhookMessageError),
 
     /// Error returned when failing to build a [`WebhookMessage`].
     ///
     /// [`WebhookMessage`]: crate::slack::webhook::WebhookMessage
     #[error("error building Slack webhook message: {0}")]
     MessageBuilder(#[from] crate::slack::webhook::WebhookMessageBuilderError),
+}
+
+/// Content of an error that occurred while sending a message to a Slack webhook.
+#[cfg(feature = "reporter-webhook")]
+#[derive(veil::Redact, thiserror::Error)]
+#[error(
+    "error sending message to Slack about leaderboard id {leaderboard_id} for year {year} in channel {channel}: {source}"
+)]
+pub struct WebhookMessageError {
+    /// Year of leaderboard.
+    pub year: i32,
+
+    /// ID of leaderboard.
+    pub leaderboard_id: u64,
+
+    /// URL of Slack webhook where we tried to send the message.
+    #[redact(partial)]
+    pub webhook_url: String,
+
+    /// Slack channel where we tried to send the message.
+    pub channel: String,
+
+    /// HTTP error that occurred when trying to send the message.
+    pub source: reqwest::Error,
 }
 
 #[cfg(feature = "reporter-webhook")]

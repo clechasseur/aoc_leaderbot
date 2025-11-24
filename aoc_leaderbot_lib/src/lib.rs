@@ -5,11 +5,11 @@
 //! ## Usage
 //!
 //! The bot's body is implemented via the [`run_bot`] function. This function will fetch the
-//! current version of the AoC leaderboard, then check if we had a previous  version (from an
-//! earlier run).  If no previous version exists, the bot saves the current version and exists.
-//! Otherwise, the bot compare the current leaderboard data with the previous one.  If there are
-//! new members or if existing members got new stars, it reports changes and saves the current
-//! version as the last one seen.
+//! current version of the AoC leaderboard, then check if we had a previous version (from an
+//! earlier run). If no previous version exists, the bot reports the first run, saves the current
+//! version of the leaderboard and exists. Otherwise, the bot compare the current leaderboard data
+//! with the previous one. If there are new members or if existing members got new stars, it
+//! reports changes and saves the current version as the last one seen.
 //!
 //! In order to function, the bot needs three things, which are passed using traits.
 //!
@@ -32,7 +32,8 @@
 //! This could be via a Slack post, a Discord message, etc.
 //!
 //! The reporter can also be used to report any error occurring during bot execution (ex: expired
-//! AoC session token, etc.) via its [`report_error`] method.
+//! AoC session token, etc.) via its [`report_error`] method, as well as report the first bot run
+//! via its [`report_first_run`] method.
 //!
 //! ## Concrete implementations
 //!
@@ -77,6 +78,7 @@
 //! [`Reporter`]: leaderbot::Reporter
 //! [`report_changes`]: leaderbot::Reporter::report_changes
 //! [`report_error`]: leaderbot::Reporter::report_error
+//! [`report_first_run`]: leaderbot::Reporter::report_first_run
 //! [`aoc_leaderbot_slack_lib`]: https://crates.io/crates/aoc_leaderbot_slack_lib
 //! [`MemoryConfig`]: leaderbot::config::mem::MemoryConfig
 //! [`get_env_config`]: leaderbot::config::env::get_env_config
