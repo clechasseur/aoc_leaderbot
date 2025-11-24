@@ -60,8 +60,16 @@ fn report_changes_reporter_error() -> ReporterError {
     ReporterError::ReportChanges(anyhow!("error"))
 }
 
+fn report_first_run_reporter_error() -> ReporterError {
+    ReporterError::ReportFirstRun(anyhow!("error"))
+}
+
 fn report_changes_error() -> Error {
     Error::Reporter(report_changes_reporter_error())
+}
+
+fn report_first_run_error() -> Error {
+    Error::Reporter(report_first_run_reporter_error())
 }
 
 mod error {
@@ -169,7 +177,7 @@ mod error_kind {
         fn is_reporter_of_kind() {
             let error_kind = ErrorKind::Reporter(ReporterErrorKind::ReportChanges);
             assert!(error_kind.is_reporter_of_kind(ReporterErrorKind::ReportChanges));
-            // No other variant exists
+            assert!(!error_kind.is_reporter_of_kind(ReporterErrorKind::ReportFirstRun));
         }
     }
 
@@ -441,6 +449,10 @@ mod error_kind {
             ReporterErrorKind::ReportChanges,
             ErrorKind::Reporter(ReporterErrorKind::ReportChanges)
         )]
+        #[case::report_first_run(
+            ReporterErrorKind::ReportFirstRun,
+            ErrorKind::Reporter(ReporterErrorKind::ReportFirstRun)
+        )]
         fn for_variant(
             #[case] reporter_error_kind: ReporterErrorKind,
             #[case] error_kind: ErrorKind,
@@ -457,6 +469,10 @@ mod error_kind {
         #[case::report_changes(
             &ReporterErrorKind::ReportChanges,
             ErrorKind::Reporter(ReporterErrorKind::ReportChanges),
+        )]
+        #[case::report_first_run(
+            &ReporterErrorKind::ReportFirstRun,
+            ErrorKind::Reporter(ReporterErrorKind::ReportFirstRun),
         )]
         fn for_variant(
             #[case] reporter_error_kind: &ReporterErrorKind,
@@ -475,6 +491,10 @@ mod error_kind {
             report_changes_reporter_error(),
             ErrorKind::Reporter(ReporterErrorKind::ReportChanges)
         )]
+        #[case::report_first_run(
+            report_first_run_reporter_error(),
+            ErrorKind::Reporter(ReporterErrorKind::ReportFirstRun)
+        )]
         fn for_variant(#[case] reporter_error: ReporterError, #[case] error_kind: ErrorKind) {
             let error_kind_from: ErrorKind = reporter_error.into();
             assert_eq!(error_kind, error_kind_from);
@@ -488,6 +508,10 @@ mod error_kind {
         #[case::report_changes(
             &report_changes_reporter_error(),
             ErrorKind::Reporter(ReporterErrorKind::ReportChanges),
+        )]
+        #[case::report_first_run(
+            &report_first_run_reporter_error(),
+            ErrorKind::Reporter(ReporterErrorKind::ReportFirstRun),
         )]
         fn for_variant(#[case] reporter_error: &ReporterError, #[case] error_kind: ErrorKind) {
             let error_kind_from: ErrorKind = reporter_error.into();
@@ -738,7 +762,19 @@ mod reporter_error {
             let error = ReporterError::ReportChanges(anyhow!("error"));
             assert!(error.is_report_changes_and(predicate));
 
-            // No other variant exists
+            let error = ReporterError::ReportFirstRun(anyhow!("error"));
+            assert!(!error.is_report_changes_and(predicate));
+        }
+
+        #[test]
+        fn is_report_first_run_and() {
+            let predicate = |anyhow_err: &anyhow::Error| !format!("{anyhow_err:?}").is_empty();
+
+            let error = ReporterError::ReportFirstRun(anyhow!("error"));
+            assert!(error.is_report_first_run_and(predicate));
+
+            let error = ReporterError::ReportChanges(anyhow!("error"));
+            assert!(!error.is_report_first_run_and(predicate));
         }
     }
 
@@ -747,6 +783,7 @@ mod reporter_error {
 
         #[rstest]
         #[case::report_changes(report_changes_reporter_error(), report_changes_error())]
+        #[case::report_first_run(report_first_run_reporter_error(), report_first_run_error())]
         fn for_variant(#[case] reporter_error: ReporterError, #[case] error: Error) {
             let reporter_error_kind = reporter_error.discriminant();
             let error_kind = error.discriminant();

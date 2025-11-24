@@ -60,11 +60,6 @@ pub enum Error {
     #[cfg(test)]
     #[doc(hidden)]
     #[error("test")]
-    TestReportChangesError,
-
-    #[cfg(test)]
-    #[doc(hidden)]
-    #[error("test")]
     TestSaveUpdatedError,
 
     #[cfg(test)]
@@ -76,6 +71,16 @@ pub enum Error {
     #[doc(hidden)]
     #[error("test")]
     TestSaveErrorError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    #[error("test")]
+    TestReportChangesError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    #[error("test")]
+    TestReportFirstRunError,
 
     #[cfg(test)]
     #[doc(hidden)]
@@ -177,10 +182,6 @@ pub enum ErrorKind {
 
     #[cfg(test)]
     #[doc(hidden)]
-    TestReportChangesError,
-
-    #[cfg(test)]
-    #[doc(hidden)]
     TestSaveUpdatedError,
 
     #[cfg(test)]
@@ -190,6 +191,14 @@ pub enum ErrorKind {
     #[cfg(test)]
     #[doc(hidden)]
     TestSaveErrorError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    TestReportChangesError,
+
+    #[cfg(test)]
+    #[doc(hidden)]
+    TestReportFirstRunError,
 
     #[cfg(test)]
     #[doc(hidden)]
@@ -251,13 +260,15 @@ impl From<&Error> for ErrorKind {
             #[cfg(test)]
             Error::TestLoadPreviousError => ErrorKind::TestLoadPreviousError,
             #[cfg(test)]
-            Error::TestReportChangesError => ErrorKind::TestReportChangesError,
-            #[cfg(test)]
             Error::TestSaveUpdatedError => ErrorKind::TestSaveUpdatedError,
             #[cfg(test)]
             Error::TestSaveBaseError => ErrorKind::TestSaveBaseError,
             #[cfg(test)]
             Error::TestSaveErrorError => ErrorKind::TestSaveErrorError,
+            #[cfg(test)]
+            Error::TestReportChangesError => ErrorKind::TestReportChangesError,
+            #[cfg(test)]
+            Error::TestReportFirstRunError => ErrorKind::TestReportFirstRunError,
             #[cfg(test)]
             Error::TestErrorWithMessage(_) => ErrorKind::TestErrorWithMessage,
         }
@@ -609,6 +620,10 @@ pub enum ReporterError {
     /// Error while trying to report changes detected in leaderboard data.
     #[error("failed to report changes to leaderboard: {0}")]
     ReportChanges(anyhow::Error),
+
+    /// Error while trying to report the first bot run.
+    #[error("failed to report first run: {0}")]
+    ReportFirstRun(anyhow::Error),
 }
 
 impl ReporterError {
@@ -620,6 +635,19 @@ impl ReporterError {
     {
         match self {
             Self::ReportChanges(source) => predicate(source),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the enum is [`ReporterError::ReportFirstRun`] and the internal
+    /// [`anyhow::Error`] matches the given predicate.
+    pub fn is_report_first_run_and<P>(&self, predicate: P) -> bool
+    where
+        P: FnOnce(&anyhow::Error) -> bool,
+    {
+        match self {
+            Self::ReportFirstRun(source) => predicate(source),
+            _ => false,
         }
     }
 }
@@ -729,13 +757,17 @@ mod tests {
         #[case::storage(storage_error(), ErrorKind::Storage(StorageErrorKind::LoadPrevious))]
         #[case::reporter(reporter_error(), ErrorKind::Reporter(ReporterErrorKind::ReportChanges))]
         #[case::test_load_previous(Error::TestLoadPreviousError, ErrorKind::TestLoadPreviousError)]
+        #[case::test_save_updated(Error::TestSaveUpdatedError, ErrorKind::TestSaveUpdatedError)]
+        #[case::test_save_base(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
+        #[case::test_save_error(Error::TestSaveErrorError, ErrorKind::TestSaveErrorError)]
         #[case::test_report_changes(
             Error::TestReportChangesError,
             ErrorKind::TestReportChangesError
         )]
-        #[case::test_save_updated(Error::TestSaveUpdatedError, ErrorKind::TestSaveUpdatedError)]
-        #[case::test_save_base(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
-        #[case::test_save_error(Error::TestSaveErrorError, ErrorKind::TestSaveErrorError)]
+        #[case::test_report_first_run(
+            Error::TestReportFirstRunError,
+            ErrorKind::TestReportFirstRunError
+        )]
         #[case::test_error_with_message(test_error_with_message(), ErrorKind::TestErrorWithMessage)]
         fn for_variant(#[case] error: Error, #[case] error_kind: ErrorKind) {
             // This tests `PartialEq<ErrorKind> for Error`
@@ -768,13 +800,17 @@ mod tests {
                 Error::TestLoadPreviousError,
                 ErrorKind::TestLoadPreviousError
             )]
+            #[case::test_save_updated(Error::TestSaveUpdatedError, ErrorKind::TestSaveUpdatedError)]
+            #[case::test_save_base(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
+            #[case::test_save_error(Error::TestSaveErrorError, ErrorKind::TestSaveErrorError)]
             #[case::test_report_changes(
                 Error::TestReportChangesError,
                 ErrorKind::TestReportChangesError
             )]
-            #[case::test_save_updated(Error::TestSaveUpdatedError, ErrorKind::TestSaveUpdatedError)]
-            #[case::test_save_base(Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
-            #[case::test_save_error(Error::TestSaveErrorError, ErrorKind::TestSaveErrorError)]
+            #[case::test_report_first_run(
+                Error::TestReportFirstRunError,
+                ErrorKind::TestReportFirstRunError
+            )]
             #[case::test_error_with_message(
                 test_error_with_message(),
                 ErrorKind::TestErrorWithMessage
@@ -804,16 +840,20 @@ mod tests {
                 &Error::TestLoadPreviousError,
                 ErrorKind::TestLoadPreviousError
             )]
-            #[case::test_report_changes(
-                &Error::TestReportChangesError,
-                ErrorKind::TestReportChangesError
-            )]
             #[case::test_save_updated(
                 &Error::TestSaveUpdatedError,
                 ErrorKind::TestSaveUpdatedError
             )]
             #[case::test_save_base(&Error::TestSaveBaseError, ErrorKind::TestSaveBaseError)]
             #[case::test_save_error(&Error::TestSaveErrorError, ErrorKind::TestSaveErrorError)]
+            #[case::test_report_changes(
+                &Error::TestReportChangesError,
+                ErrorKind::TestReportChangesError
+            )]
+            #[case::test_report_first_run(
+                &Error::TestReportFirstRunError,
+                ErrorKind::TestReportFirstRunError
+            )]
             #[case::test_error_with_message(&test_error_with_message(), ErrorKind::TestErrorWithMessage)]
             fn for_variant(#[case] error: &Error, #[case] expected_error_kind: ErrorKind) {
                 let actual_error_kind: ErrorKind = error.into();
