@@ -194,7 +194,7 @@ mod bot_lambda_handler {
             #[rstest]
             #[test_log::test]
             fn stores_current(#[from(base_leaderboard)] current_leaderboard: Leaderboard) {
-                run_bot_test(current_leaderboard.clone(), false, |mock_server, table| async move {
+                run_bot_test(current_leaderboard.clone(), true, |mock_server, table| async move {
                     let incoming_message = incoming_message(false, &mock_server, &table);
                     let event = LambdaEvent::new(incoming_message, Context::default());
                     let result = bot_lambda_handler(event).await;
@@ -412,7 +412,7 @@ mod bot_lambda_handler {
             #[rstest]
             #[test_log::test]
             fn overwrites_last_error(#[from(base_leaderboard)] current_leaderboard: Leaderboard) {
-                run_bot_test(current_leaderboard.clone(), false, |mock_server, table| async move {
+                run_bot_test(current_leaderboard.clone(), true, |mock_server, table| async move {
                     table
                         .save_last_error(ErrorKind::Leaderboard(
                             aoc_leaderboard::ErrorKind::NoAccess,

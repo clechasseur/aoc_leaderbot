@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, trace};
 use veil::Redact;
 
-use crate::error::WebhookError;
+use crate::error::{WebhookError, WebhookMessageError};
 use crate::leaderbot::reporter::slack::USER_AGENT;
 use crate::leaderbot::reporter::slack::webhook::detail::SlackWebhookReporterStringExt;
 use crate::slack::webhook::WebhookMessage;
@@ -186,7 +186,7 @@ impl SlackWebhookReporter {
         &self,
         leaderboard_id: u64,
         leaderboard: &Leaderboard,
-        changes: &Changes,
+        changes: Option<&Changes>,
     ) -> String {
         let mut member_rows = leaderboard
             .members
@@ -194,10 +194,24 @@ impl SlackWebhookReporter {
             .sorted_by(|lhs, rhs| self.sort_order.cmp_members(lhs, rhs))
             .map(|member| self.member_row_text(member, changes));
 
-        format!("{}\n{}", self.header_row_text(leaderboard_id, leaderboard), member_rows.join("\n"))
+        let first_run_prefix = match changes {
+            None => format!(
+                "{} is now watching this {} and will report changes to this channel.\n\n",
+                self.username,
+                self.leaderboard_link(leaderboard.year, leaderboard_id, "leaderboard")
+            ),
+            _ => "".into(),
+        };
+
+        format!(
+            "{}{}\n{}",
+            first_run_prefix,
+            self.header_row_text(leaderboard.year, leaderboard_id),
+            member_rows.join("\n")
+        )
     }
 
-    fn member_row_text(&self, member: &LeaderboardMember, changes: &Changes) -> String {
+    fn member_row_text(&self, member: &LeaderboardMember, changes: Option<&Changes>) -> String {
         let row_text = format!(
             "{}{}",
             self.sort_order.member_value_text(member),
@@ -213,30 +227,82 @@ impl SlackWebhookReporter {
         &self,
         row_text: String,
         member: &LeaderboardMember,
-        changes: &Changes,
+        changes: Option<&Changes>,
     ) -> String {
-        if changes.new_members.contains(&member.id) {
+        if changes.is_some_and(|c| c.new_members.contains(&member.id)) {
             format!("*{row_text} 👋*")
-        } else if changes.members_with_new_stars.contains(&member.id) {
+        } else if changes.is_some_and(|c| c.members_with_new_stars.contains(&member.id)) {
             format!("*{row_text} 🎉*")
         } else {
             row_text
         }
     }
 
-    fn header_row_text(&self, leaderboard_id: u64, leaderboard: &Leaderboard) -> String {
+    fn header_row_text(&self, year: i32, leaderboard_id: u64) -> String {
         format!(
             "*{}{}*",
             self.sort_order.header_text(),
-            self.leaderboard_link(leaderboard_id, leaderboard)
+            self.leaderboard_link(year, leaderboard_id, "*Leaderboard*")
         )
     }
 
-    fn leaderboard_link(&self, leaderboard_id: u64, leaderboard: &Leaderboard) -> String {
+    fn leaderboard_link(&self, year: i32, leaderboard_id: u64, link_text: &str) -> String {
         format!(
-            "<https://adventofcode.com/{}/leaderboard/private/view/{}?order={}|*Leaderboard*>",
-            leaderboard.year, leaderboard_id, self.sort_order
+            "<https://adventofcode.com/{year}/leaderboard/private/view/{leaderboard_id}?order={}|{link_text}>",
+            self.sort_order
         )
+    }
+
+    fn error_message_text(
+        &self,
+        year: i32,
+        leaderboard_id: u64,
+        error: &aoc_leaderbot_lib::Error,
+    ) -> String {
+        format!(
+            "An error occurred while trying to look for changes to {}: {error}",
+            self.leaderboard_link(year, leaderboard_id, "leaderboard")
+        )
+    }
+
+    #[cfg_attr(not(coverage), tracing::instrument(skip_all, err))]
+    async fn send_message<M>(
+        &self,
+        year: i32,
+        leaderboard_id: u64,
+        message_text: M,
+    ) -> Result<(), WebhookMessageError>
+    where
+        M: AsRef<str>,
+    {
+        let message = WebhookMessage::builder()
+            .channel(self.channel.clone())
+            .username(self.username.clone())
+            .icon_url(self.icon_url.clone())
+            .text(message_text.as_ref())
+            .build()
+            .expect("webhook message should have valid fields");
+        trace!(?message);
+
+        let response = self
+            .http_client
+            .post(&self.webhook_url)
+            .json(&message)
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status);
+        trace!(?response);
+
+        match response {
+            Ok(_) => Ok(()),
+            Err(source) => Err(WebhookMessageError {
+                year,
+                leaderboard_id,
+                webhook_url: self.webhook_url.clone(),
+                channel: self.channel.clone(),
+                source,
+            }),
+        }
     }
 }
 
@@ -294,7 +360,7 @@ impl Reporter for SlackWebhookReporter {
     type Err = crate::Error;
 
     #[cfg_attr(
-        not(coverage_nightly),
+        not(coverage),
         tracing::instrument(skip(self, _previous_leaderboard, leaderboard, changes), err)
     )]
     async fn report_changes(
@@ -305,34 +371,29 @@ impl Reporter for SlackWebhookReporter {
         leaderboard: &Leaderboard,
         changes: &Changes,
     ) -> Result<(), Self::Err> {
-        let message = WebhookMessage::builder()
-            .channel(self.channel.clone())
-            .username(self.username.clone())
-            .icon_url(self.icon_url.clone())
-            .text(self.message_text(leaderboard_id, leaderboard, changes))
-            .build()
-            .expect("webhook message should have valid fields");
-        trace!(?message);
+        self.send_message(
+            year,
+            leaderboard_id,
+            self.message_text(leaderboard_id, leaderboard, Some(changes)),
+        )
+        .await
+        .map_err(|err| WebhookError::ReportChanges(err).into())
+    }
 
-        let response = self
-            .http_client
-            .post(&self.webhook_url)
-            .json(&message)
-            .send()
-            .await
-            .and_then(reqwest::Response::error_for_status);
-        trace!(?response);
-        match response {
-            Ok(_) => Ok(()),
-            Err(source) => Err(WebhookError::ReportChanges {
-                year,
-                leaderboard_id,
-                webhook_url: self.webhook_url.clone(),
-                channel: self.channel.clone(),
-                source,
-            }
-            .into()),
-        }
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self, leaderboard), err))]
+    async fn report_first_run(
+        &mut self,
+        year: i32,
+        leaderboard_id: u64,
+        leaderboard: &Leaderboard,
+    ) -> Result<(), Self::Err> {
+        self.send_message(
+            year,
+            leaderboard_id,
+            self.message_text(leaderboard_id, leaderboard, None),
+        )
+        .await
+        .map_err(|err| WebhookError::ReportFirstRun(err).into())
     }
 
     #[cfg_attr(not(coverage), tracing::instrument(skip(self, error)))]
@@ -344,25 +405,13 @@ impl Reporter for SlackWebhookReporter {
     ) {
         error!("aoc_leaderbot error for leaderboard {leaderboard_id} and year {year}: {error}");
 
-        let message = WebhookMessage::builder()
-            .channel(self.channel.clone())
-            .username(self.username.clone())
-            .icon_url(self.icon_url.clone())
-            .text(format!(
-                "An error occurred while trying to look for leaderboard changes: {error}"
-            ))
-            .build()
-            .expect("webhook message should have valid fields");
-        trace!(?message);
-
         let response = self
-            .http_client
-            .post(&self.webhook_url)
-            .json(&message)
-            .send()
-            .await
-            .and_then(reqwest::Response::error_for_status);
-        trace!(?response);
+            .send_message(
+                year,
+                leaderboard_id,
+                self.error_message_text(year, leaderboard_id, error),
+            )
+            .await;
         if let Err(err) = response {
             error!(
                 "error trying to report previous error to Slack webhook for leaderboard {leaderboard_id} and year {year}: {err}"
