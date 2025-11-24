@@ -2,11 +2,37 @@
 
 [![CI](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/ci.yml) [![codecov](https://codecov.io/gh/clechasseur/aoc_leaderbot/branch/main/graph/badge.svg?token=qSFdAkbb8U)](https://codecov.io/gh/clechasseur/aoc_leaderbot) [![Security audit](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/audit-check.yml/badge.svg?branch=main)](https://github.com/clechasseur/aoc_leaderbot/actions/workflows/audit-check.yml) [![crates.io](https://img.shields.io/crates/v/aoc_leaderbot_aws_lambda_impl.svg)](https://crates.io/crates/aoc_leaderbot_aws_lambda_impl) [![MSRV](https://img.shields.io/crates/msrv/aoc_leaderbot_aws_lambda_impl)](https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot_aws_lambda_impl) [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](../CODE_OF_CONDUCT.md)
 
-Implementation of [`aoc_leaderbot`](https://github.com/clechasseur/aoc_leaderbot) that runs as an [AWS Lambda](https://aws.amazon.com/lambda/) function. `aoc_leaderbot` is a bot that can watch an [Advent of Code](https://adventofcode.com/) private leaderboard for changes and report them to various channels.
+Implementation of [`aoc_leaderbot`](https://github.com/clechasseur/aoc_leaderbot) that runs as an [AWS Lambda](https://aws.amazon.com/lambda/) function.
+`aoc_leaderbot` is a bot that can watch an [Advent of Code](https://adventofcode.com/) private leaderboard for changes and report them to various channels.
 
 ## Installing
 
-For instructions on how to deploy the bot to AWS Lambda, see the [main project page](https://github.com/clechasseur/aoc_leaderbot).
+Installing `aoc_leaderbot_aws_lambda_impl` requires building the project, deploying it to your AWS account and setting up permissions and (optionally) scheduling its execution.
+Before deploying, make sure your environment contains credentials to access your AWS account; for more information, see [this page](https://docs.aws.amazon.com/sdkref/latest/guide/access-login.html).
+
+### Prerequisites
+
+- A clone of [this project](https://github.com/clechasseur/aoc_leaderbot)
+- Rust (see [DEVELOPMENT](../DEVELOPMENT.md))
+- [Cargo Lambda](https://www.cargo-lambda.info/guide/installation.html)
+
+### Bot Configuration
+
+Create a file named [`.env`](../.env) at the project root and populate it with environment variables to configure the bot.
+
+| Variable name                      | Content                                                                                                                                                                                                               | Required?      | Default value |
+|------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------|---------------|
+| `AOC_LEADERBOT_AWS_YEAR`           | Year to monitor                                                                                                                                                                                                       | ✓              | Current year  |
+| `AOC_LEADERBOT_AWS_LEADERBOARD_ID` | ID of leaderboard to monitor <sup>1</sup>                                                                                                                                                                             | ✓              | -             |
+| `AOC_LEADERBOT_AWS_VIEW_KEY`       | View key to access leaderboard's read-only link <sup>2</sup>                                                                                                                                                          | ✓ <sup>3</sup> | -             |
+| `AOC_LEADERBOT_AWS_SESSION_COOKIE` | Cookie of Advent of Code session to access the leaderboard                                                                                                                                                            | ✓ <sup>3</sup> | -             |
+| `SLACK_WEBHOOK_URL`                | URL of [Slack webhook](https://api.slack.com/messaging/webhooks) where to report changes                                                                                                                              | ✓              | -             |
+| `SLACK_CHANNEL`                    | Slack channel where to report changes (without the `#`)                                                                                                                                                               | ✓              | -             |
+| `SLACK_LEADERBOARD_SORT_ORDER`     | How to sort leaderboard members when reporting (see [`LeaderboardSortOrder`](https://docs.rs/aoc_leaderbot_slack_lib/latest/aoc_leaderbot_slack_lib/leaderbot/reporter/slack/webhook/enum.LeaderboardSortOrder.html)) |                | Stars         |
+
+<sup>1</sup> : The leaderboard ID is the last part of the leaderboard's URL: `https://adventofcode.com/{year}/leaderboard/private/view/{leaderboard_id}`.
+<sup>2</sup> : If the leaderboard is accessible anonymously through a read-only link, the view key is passed as a query parameter: `https://adventofcode.com/{year}/leaderboard/private/view/{leaderboard_id}?view_key={view_key}`
+<sup>3</sup> : Either the `VIEW_KEY` or the `SESSION_COOKIE` must be set. If both are set, the `VIEW_KEY` is used.
 
 ## Minimum Rust version
 

@@ -32,6 +32,10 @@ An implementation of the [`Storage`](https://docs.rs/aoc_leaderbot_lib/latest/ao
 The only thing that the storage needs is the name of the table where to store data.
 If that table does not yet exist, it's possible to create it via the [`create_table`](https://docs.rs/aoc_leaderbot_aws_lib/latest/aoc_leaderbot_aws_lib/leaderbot/storage/aws/dynamodb/struct.DynamoDbStorage.html#tymethod.create_table).
 
+## Minimum Rust version
+
+`aoc_leaderbot_aws_lib` currently builds on Rust 1.88 or newer.
+
 ## Contributing / Local development
 
 For information about contributing to this project, see [CONTRIBUTING](../CONTRIBUTING.md).
