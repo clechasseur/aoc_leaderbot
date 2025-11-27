@@ -9,7 +9,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.0.0"
+version = "2.0.0"
 authors = [ "Charles Lechasseur <shiftingbeard@outlook.com>" ]
 edition = "2024"
 
@@ -20,10 +20,10 @@ repository = "https://github.com/clechasseur/aoc_leaderbot"
 
 [workspace.dependencies]
 anyhow = "1.0.100"
-aoc_leaderboard = { version = "1.0.0", path = "aoc_leaderboard" }
-aoc_leaderbot_aws_lib = { version = "1.0.0", path = "aoc_leaderbot_aws_lib" }
-aoc_leaderbot_lib = { version = "1.0.0", path = "aoc_leaderbot_lib", default-features = false }
-aoc_leaderbot_slack_lib = { version = "1.0.0", path = "aoc_leaderbot_slack_lib" }
+aoc_leaderboard = { version = "2.0.0", path = "aoc_leaderboard" }
+aoc_leaderbot_aws_lib = { version = "2.0.0", path = "aoc_leaderbot_aws_lib" }
+aoc_leaderbot_lib = { version = "2.0.0", path = "aoc_leaderbot_lib", default-features = false }
+aoc_leaderbot_slack_lib = { version = "2.0.0", path = "aoc_leaderbot_slack_lib" }
 aws-config = "1.8.11"
 aws-sdk-dynamodb = "1.100.0"
 chrono = "0.4.42"
