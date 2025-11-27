@@ -372,7 +372,10 @@ impl Reporter for SlackWebhookReporter {
 
     #[cfg_attr(
         not(coverage),
-        tracing::instrument(skip(self, _previous_leaderboard, leaderboard, changes), err)
+        tracing::instrument(
+            skip(self, view_key, _previous_leaderboard, leaderboard, changes),
+            err
+        )
     )]
     async fn report_changes(
         &mut self,

@@ -164,7 +164,7 @@ pub trait Reporter {
     ///
     /// This function does nothing by default so that implementing it
     /// is optional for reporters.
-    #[cfg_attr(not(coverage), tracing::instrument(skip(self)))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self, view_key)))]
     fn report_first_run(
         &mut self,
         year: i32,
@@ -172,7 +172,7 @@ pub trait Reporter {
         view_key: Option<&str>,
         leaderboard: &Leaderboard,
     ) -> impl Future<Output = Result<(), Self::Err>> + Send {
-        let (_, _, _) = (year, leaderboard_id, leaderboard);
+        let (_, _, _, _) = (year, leaderboard_id, view_key, leaderboard);
 
         ready(Ok(()))
     }
@@ -191,7 +191,7 @@ pub trait Reporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
-    #[cfg_attr(not(coverage), tracing::instrument(skip(self)))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self, view_key)))]
     fn report_error(
         &mut self,
         year: i32,
@@ -199,6 +199,8 @@ pub trait Reporter {
         view_key: Option<&str>,
         error: &crate::Error,
     ) -> impl Future<Output = ()> + Send {
+        let _ = view_key;
+
         eprintln!(
             "Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}"
         );
