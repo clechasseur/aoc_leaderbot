@@ -195,6 +195,7 @@ pub async fn bot_lambda_handler(
             .report_changes(
                 output.year,
                 output.leaderboard_id,
+                config.credentials().view_key(),
                 previous_leaderboard,
                 &output.leaderboard,
                 &changes,

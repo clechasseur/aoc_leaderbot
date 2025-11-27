@@ -40,13 +40,14 @@ async fn main() -> anyhow::Result<()> {
     let mut reporter = cli.build_reporter()?;
     if cli.first_run {
         reporter
-            .report_first_run(leaderboard.year, leaderboard.owner_id, &leaderboard)
+            .report_first_run(leaderboard.year, leaderboard.owner_id, cli.view_key(), &leaderboard)
             .await?;
     } else {
         reporter
             .report_changes(
                 leaderboard.year,
                 leaderboard.owner_id,
+                cli.view_key(),
                 &leaderboard,
                 &leaderboard,
                 &Changes::default(),
@@ -149,6 +150,10 @@ impl Cli {
         let credentials = cli.credentials.or_defaults()?;
 
         Ok(Self { year: Some(year), leaderboard_id: Some(leaderboard_id), credentials, ..cli })
+    }
+
+    fn view_key(&self) -> Option<&str> {
+        self.credentials.view_key.as_deref()
     }
 
     async fn get_leaderboard(&self) -> anyhow::Result<Leaderboard> {

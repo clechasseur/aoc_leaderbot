@@ -552,6 +552,7 @@ mod slack_webhook_reporter {
                         .report_changes(
                             TEST_YEAR,
                             TEST_LEADERBOARD_ID,
+                            None,
                             &previous_leaderboard,
                             &leaderboard,
                             &changes,
@@ -601,6 +602,7 @@ mod slack_webhook_reporter {
                         .report_changes(
                             TEST_YEAR,
                             TEST_LEADERBOARD_ID,
+                            None,
                             &previous_leaderboard,
                             &leaderboard,
                             &changes,
@@ -661,7 +663,7 @@ mod slack_webhook_reporter {
                     };
 
                     let result = reporter
-                        .report_first_run(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
+                        .report_first_run(TEST_YEAR, TEST_LEADERBOARD_ID, None, &leaderboard)
                         .await;
                     assert!(result.is_ok());
                 }
@@ -694,7 +696,7 @@ mod slack_webhook_reporter {
                     };
 
                     let result = reporter
-                        .report_first_run(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
+                        .report_first_run(TEST_YEAR, TEST_LEADERBOARD_ID, None, &leaderboard)
                         .await;
                     assert_matches!(
                         result,
@@ -740,7 +742,7 @@ mod slack_webhook_reporter {
                     "something is wrong"
                 )));
                 reporter
-                    .report_error(TEST_YEAR, TEST_LEADERBOARD_ID, &error)
+                    .report_error(TEST_YEAR, TEST_LEADERBOARD_ID, None, &error)
                     .await;
 
                 assert!(logs_contain(&format!(
@@ -771,7 +773,7 @@ mod slack_webhook_reporter {
                     "something is wrong"
                 )));
                 reporter
-                    .report_error(TEST_YEAR, TEST_LEADERBOARD_ID, &error)
+                    .report_error(TEST_YEAR, TEST_LEADERBOARD_ID, None, &error)
                     .await;
 
                 assert!(logs_contain(&format!(
