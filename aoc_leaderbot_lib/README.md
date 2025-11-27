@@ -15,7 +15,7 @@ aoc_leaderbot_lib = "0.3.0"
 
 or by running:
 
-```bash
+```shell
 cargo add aoc_leaderbot_lib
 ```
 

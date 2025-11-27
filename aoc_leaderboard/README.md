@@ -16,7 +16,7 @@ aoc_leaderboard = { version = "0.3.0", features = ["http"] }
 
 or by running:
 
-```bash
+```shell
 cargo add aoc_leaderboard --features http
 ```
 

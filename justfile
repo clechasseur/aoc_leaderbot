@@ -223,3 +223,6 @@ deploy-lambda *extra_args:
 
 # Run tool to post test message to Slack
 slack *extra_args: (teach "post_test_message_to_slack" extra_args)
+
+# Run tool to create DynamoDB table for the AWS Lambda bot impl
+prepare-dynamo *extra_args: (run "prepare_dynamodb" extra_args)

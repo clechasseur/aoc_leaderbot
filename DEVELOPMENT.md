@@ -9,7 +9,7 @@ You need a Rust toolchain to build this project's code and run the tests.
 You can install Rust from the [official website](https://www.rust-lang.org/tools/install).
 If you already have a version of Rust installed via `rustup` but it's too old, you can update by running
 
-```bash
+```shell
 rustup update
 ```
 
@@ -18,7 +18,7 @@ rustup update
 Certain tools require a Nightly Rust toolset.
 If you do not have one installed, you can install one via `rustup` by running
 
-```bash
+```shell
 rustup toolchain install nightly
 ```
 
@@ -32,13 +32,13 @@ It's written in Rust.
 This project includes a [justfile](justfile) that makes it easier to run the various tools used for development.
 To install `just` via `cargo`, simply run
 
-```bash
+```shell
 cargo install just --locked
 ```
 
 If you have [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), it'll probably be faster to use it instead:
 
-```bash
+```shell
 cargo binstall just
 ```
 
@@ -49,13 +49,13 @@ You can also install it via various [methods](https://github.com/casey/just#pack
 If you want to run tests with coverage locally, you'll need to install [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov), a code coverage tool for Rust.
 You can install it via `cargo`:
 
-```bash
+```shell
 cargo install cargo-llvm-cov --locked
 ```
 
 You can also install it via [cargo-binstall](https://github.com/cargo-bins/cargo-binstall):
 
-```bash
+```shell
 cargo binstall cargo-llvm-cov
 ```
 
@@ -65,7 +65,7 @@ cargo binstall cargo-llvm-cov
 
 In order to run all tests, you can use
 
-```bash
+```shell
 just test
 ```
 
@@ -77,7 +77,7 @@ Make sure all tests pass before submitting a PR.
 Before submitting a PR, make sure `rustfmt` and `clippy` are happy.
 To tidy up your code before committing, simply run
 
-```bash
+```shell
 just tidy
 ```
 
@@ -88,7 +88,7 @@ Required checks will not pass if either of those report issues.
 This project's [code coverage settings](codecov.yml) are pretty stringent.
 To validate this locally, you can run
 
-```bash
+```shell
 just llvm-cov
 ```
 
@@ -99,7 +99,7 @@ Make sure coverage is at the required level before submitting a PR.
 All public symbols in the project need to be documented, otherwise checks won't pass.
 To validate this, you can generate docs locally by running
 
-```bash
+```shell
 just doc
 ```
 
