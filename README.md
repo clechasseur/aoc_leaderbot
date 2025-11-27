@@ -5,6 +5,12 @@
 A bot that can monitor an [Advent of Code](https://adventofcode.com/) private leaderboard and report changes to services like Slack.
 Written in Rust 🦀
 
-## TODO
+## AWS Lambda-based implementation
 
-_TODO_
+Currently, the only implementation of the bot is designed to run as an [AWS Lambda](https://aws.amazon.com/lambda/) function.
+For information on this implementation and how to deploy it, see the appropriate [README](./aoc_leaderbot_aws_lambda_impl/README.md).
+
+## Contributing / Local development
+
+For information about contributing to this project, see [CONTRIBUTING](./CONTRIBUTING.md).
+For information regarding local development, see [DEVELOPMENT](./DEVELOPMENT.md).

@@ -15,7 +15,7 @@ aoc_leaderbot_slack_lib = "0.3.0"
 
 or by running:
 
-```bash
+```shell
 cargo add aoc_leaderbot_slack_lib
 ```
 
@@ -38,6 +38,10 @@ Although most have default values, at least two must be specified explicitly:
 There are other optional properties that can be specified.
 The easiest way to create a reporter instance would be via the [`builder`](https://docs.rs/aoc_leaderbot_slack_lib/latest/aoc_leaderbot_slack_lib/leaderbot/reporter/slack/webhook/struct.SlackWebhookReporter.html#method.builder).
 Many properties will also default to reading their values from environment variables (see each property's documentation for details).
+
+## Minimum Rust version
+
+`aoc_leaderbot_slack_lib` currently builds on Rust 1.88 or newer.
 
 ## Contributing / Local development
 

@@ -46,7 +46,7 @@ pub enum WebhookError {
 #[cfg(feature = "reporter-webhook")]
 #[derive(veil::Redact, thiserror::Error)]
 #[error(
-    "error sending message to Slack about leaderboard id {leaderboard_id} for year {year} in channel {channel}: {source}"
+    "error sending message to Slack about leaderboard id {leaderboard_id} for year {year} in channel #{channel}: {source}"
 )]
 pub struct WebhookMessageError {
     /// Year of leaderboard.
