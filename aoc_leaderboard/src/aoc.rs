@@ -184,24 +184,41 @@ pub enum LeaderboardCredentials {
 
 #[cfg(feature = "http")]
 impl LeaderboardCredentials {
+    /// Leaderboard view key.
+    ///
+    /// Will return `None` if the credentials do not specify a view key.
+    pub fn view_key(&self) -> Option<&str> {
+        match self {
+            LeaderboardCredentials::ViewKey(key) => Some(key.as_ref()),
+            LeaderboardCredentials::SessionCookie(_) => None,
+        }
+    }
+
+    /// Session cookie allowing access to the leaderboard.
+    ///
+    /// Will return `None` if the credentials do not specify a session cookie.
+    pub fn session_cookie(&self) -> Option<&str> {
+        match self {
+            LeaderboardCredentials::SessionCookie(cookie) => Some(cookie.as_ref()),
+            LeaderboardCredentials::ViewKey(_) => None,
+        }
+    }
+
     /// URL suffix to use to specify the leaderboard's view key.
     ///
     /// Will return an empty string if the credentials do not specify a view key.
     pub fn view_key_url_suffix(&self) -> String {
-        match self {
-            LeaderboardCredentials::ViewKey(key) => format!("?view_key={key}"),
-            LeaderboardCredentials::SessionCookie(_) => "".into(),
-        }
+        self.view_key()
+            .map(|key| format!("?view_key={key}"))
+            .unwrap_or_default()
     }
 
     /// Value of the `cookie` header to pass when loading the leaderboard data.
     ///
     /// Will return `None` if the credentials do not specify a session cookie.
     pub fn session_cookie_header_value(&self) -> Option<String> {
-        match self {
-            LeaderboardCredentials::SessionCookie(cookie) => Some(format!("session={cookie}")),
-            LeaderboardCredentials::ViewKey(_) => None,
-        }
+        self.session_cookie()
+            .map(|cookie| format!("session={cookie}"))
     }
 }
 

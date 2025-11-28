@@ -185,6 +185,7 @@ impl SlackWebhookReporter {
     fn message_text(
         &self,
         leaderboard_id: u64,
+        view_key: Option<&str>,
         leaderboard: &Leaderboard,
         changes: Option<&Changes>,
     ) -> String {
@@ -198,7 +199,7 @@ impl SlackWebhookReporter {
             None => format!(
                 "{} is now watching this {} and will report changes to this channel.\n\n",
                 self.username,
-                self.leaderboard_link(leaderboard.year, leaderboard_id, "leaderboard")
+                self.leaderboard_link(leaderboard.year, leaderboard_id, view_key, "leaderboard")
             ),
             _ => "".into(),
         };
@@ -206,7 +207,7 @@ impl SlackWebhookReporter {
         format!(
             "{}{}\n{}",
             first_run_prefix,
-            self.header_row_text(leaderboard.year, leaderboard_id),
+            self.header_row_text(leaderboard.year, leaderboard_id, view_key),
             member_rows.join("\n")
         )
     }
@@ -238,17 +239,26 @@ impl SlackWebhookReporter {
         }
     }
 
-    fn header_row_text(&self, year: i32, leaderboard_id: u64) -> String {
+    fn header_row_text(&self, year: i32, leaderboard_id: u64, view_key: Option<&str>) -> String {
         format!(
             "*{}{}*",
             self.sort_order.header_text(),
-            self.leaderboard_link(year, leaderboard_id, "*Leaderboard*")
+            self.leaderboard_link(year, leaderboard_id, view_key, "*Leaderboard*")
         )
     }
 
-    fn leaderboard_link(&self, year: i32, leaderboard_id: u64, link_text: &str) -> String {
+    fn leaderboard_link(
+        &self,
+        year: i32,
+        leaderboard_id: u64,
+        view_key: Option<&str>,
+        link_text: &str,
+    ) -> String {
+        let view_key = view_key
+            .map(|key| format!("&view_key={key}"))
+            .unwrap_or_default();
         format!(
-            "<https://adventofcode.com/{year}/leaderboard/private/view/{leaderboard_id}?order={}|{link_text}>",
+            "<https://adventofcode.com/{year}/leaderboard/private/view/{leaderboard_id}?order={}{view_key}|{link_text}>",
             self.sort_order
         )
     }
@@ -257,11 +267,12 @@ impl SlackWebhookReporter {
         &self,
         year: i32,
         leaderboard_id: u64,
+        view_key: Option<&str>,
         error: &aoc_leaderbot_lib::Error,
     ) -> String {
         format!(
             "An error occurred while trying to look for changes to {}: {error}",
-            self.leaderboard_link(year, leaderboard_id, "leaderboard")
+            self.leaderboard_link(year, leaderboard_id, view_key, "leaderboard")
         )
     }
 
@@ -361,12 +372,16 @@ impl Reporter for SlackWebhookReporter {
 
     #[cfg_attr(
         not(coverage),
-        tracing::instrument(skip(self, _previous_leaderboard, leaderboard, changes), err)
+        tracing::instrument(
+            skip(self, view_key, _previous_leaderboard, leaderboard, changes),
+            err
+        )
     )]
     async fn report_changes(
         &mut self,
         year: i32,
         leaderboard_id: u64,
+        view_key: Option<&str>,
         _previous_leaderboard: &Leaderboard,
         leaderboard: &Leaderboard,
         changes: &Changes,
@@ -374,7 +389,7 @@ impl Reporter for SlackWebhookReporter {
         self.send_message(
             year,
             leaderboard_id,
-            self.message_text(leaderboard_id, leaderboard, Some(changes)),
+            self.message_text(leaderboard_id, view_key, leaderboard, Some(changes)),
         )
         .await
         .map_err(|err| WebhookError::ReportChanges(err).into())
@@ -385,12 +400,13 @@ impl Reporter for SlackWebhookReporter {
         &mut self,
         year: i32,
         leaderboard_id: u64,
+        view_key: Option<&str>,
         leaderboard: &Leaderboard,
     ) -> Result<(), Self::Err> {
         self.send_message(
             year,
             leaderboard_id,
-            self.message_text(leaderboard_id, leaderboard, None),
+            self.message_text(leaderboard_id, view_key, leaderboard, None),
         )
         .await
         .map_err(|err| WebhookError::ReportFirstRun(err).into())
@@ -401,6 +417,7 @@ impl Reporter for SlackWebhookReporter {
         &mut self,
         year: i32,
         leaderboard_id: u64,
+        view_key: Option<&str>,
         error: &aoc_leaderbot_lib::Error,
     ) {
         error!("aoc_leaderbot error for leaderboard {leaderboard_id} and year {year}: {error}");
@@ -409,7 +426,7 @@ impl Reporter for SlackWebhookReporter {
             .send_message(
                 year,
                 leaderboard_id,
-                self.error_message_text(year, leaderboard_id, error),
+                self.error_message_text(year, leaderboard_id, view_key, error),
             )
             .await;
         if let Err(err) = response {

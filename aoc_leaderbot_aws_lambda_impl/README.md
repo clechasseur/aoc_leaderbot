@@ -10,6 +10,11 @@ Implementation of [`aoc_leaderbot`](https://github.com/clechasseur/aoc_leaderbot
 Installing `aoc_leaderbot_aws_lambda_impl` requires building the project, deploying it to your AWS account and setting up permissions and (optionally) scheduling its execution.
 Before deploying, make sure your environment contains credentials to access your AWS account; for more information, see [this page](https://docs.aws.amazon.com/sdkref/latest/guide/access-login.html).
 
+### A note about costs
+
+This implementation of `aoc_leaderbot` uses serverless AWS services like [Lambda](https://aws.amazon.com/lambda/) and [DynamoDB](https://aws.amazon.com/dynamodb/) because at the time of this writing, those services were included in the [AWS Free Tier](https://aws.amazon.com/free/).
+In theory, running the bot every 15 minutes continuously should be well below service limits of the Free Tier. Please note however that **this is not guaranteed** as AWS costs can be affected by many things and change change over time. Before deploying the bot, make sure you are aware of possible hosting costs.
+
 ### Prerequisites
 
 - A clone of [this project](https://github.com/clechasseur/aoc_leaderbot)

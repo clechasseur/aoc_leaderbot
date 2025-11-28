@@ -153,6 +153,7 @@ pub trait Reporter {
         &mut self,
         year: i32,
         leaderboard_id: u64,
+        view_key: Option<&str>,
         previous_leaderboard: &Leaderboard,
         leaderboard: &Leaderboard,
         changes: &Changes,
@@ -163,14 +164,15 @@ pub trait Reporter {
     ///
     /// This function does nothing by default so that implementing it
     /// is optional for reporters.
-    #[cfg_attr(not(coverage), tracing::instrument(skip(self)))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self, view_key)))]
     fn report_first_run(
         &mut self,
         year: i32,
         leaderboard_id: u64,
+        view_key: Option<&str>,
         leaderboard: &Leaderboard,
     ) -> impl Future<Output = Result<(), Self::Err>> + Send {
-        let (_, _, _) = (year, leaderboard_id, leaderboard);
+        let (_, _, _, _) = (year, leaderboard_id, view_key, leaderboard);
 
         ready(Ok(()))
     }
@@ -189,13 +191,16 @@ pub trait Reporter {
     /// will only be called while processing another error.
     /// If an error occurs while sending the error report,
     /// it should simply be ignored internally.
-    #[cfg_attr(not(coverage), tracing::instrument(skip(self)))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self, view_key)))]
     fn report_error(
         &mut self,
         year: i32,
         leaderboard_id: u64,
+        view_key: Option<&str>,
         error: &crate::Error,
     ) -> impl Future<Output = ()> + Send {
+        let _ = view_key;
+
         eprintln!(
             "Error while looking for changes to leaderboard {leaderboard_id} for year {year}: {error}"
         );
@@ -331,6 +336,7 @@ where
                         .report_changes(
                             year,
                             leaderboard_id,
+                            credentials.view_key(),
                             previous_leaderboard,
                             &output.leaderboard,
                             changes,
@@ -340,7 +346,12 @@ where
                 },
                 (None, None) => {
                     reporter
-                        .report_first_run(year, leaderboard_id, &output.leaderboard)
+                        .report_first_run(
+                            year,
+                            leaderboard_id,
+                            credentials.view_key(),
+                            &output.leaderboard,
+                        )
                         .await
                         .map_err(|err| ReporterError::ReportFirstRun(anyhow!(err)))?;
                 },
@@ -392,7 +403,9 @@ where
             Err(err)
         },
         Err(err) if !dry_run => {
-            reporter.report_error(year, leaderboard_id, &err).await;
+            reporter
+                .report_error(year, leaderboard_id, credentials.view_key(), &err)
+                .await;
 
             if let Err(storage_err) = storage
                 .save_error(year, leaderboard_id, (&err).into())
@@ -402,7 +415,7 @@ where
                 // while trying to persist information about the last error. ¯\_(ツ)_/¯
                 let storage_err = StorageError::SaveError(anyhow!(storage_err)).into();
                 reporter
-                    .report_error(year, leaderboard_id, &storage_err)
+                    .report_error(year, leaderboard_id, credentials.view_key(), &storage_err)
                     .await;
             }
 
@@ -470,6 +483,7 @@ mod tests {
                     &mut self,
                     year: i32,
                     leaderboard_id: u64,
+                    _view_key: Option<&str>,
                     _previous_leaderboard: &Leaderboard,
                     _leaderboard: &Leaderboard,
                     changes: &Changes,
@@ -498,6 +512,7 @@ mod tests {
                 .report_changes(
                     TEST_YEAR,
                     TEST_LEADERBOARD_ID,
+                    None,
                     &leaderboard,
                     &leaderboard,
                     &changes,
@@ -506,7 +521,7 @@ mod tests {
                 .unwrap();
 
             reporter
-                .report_first_run(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
+                .report_first_run(TEST_YEAR, TEST_LEADERBOARD_ID, None, &leaderboard)
                 .await
                 .unwrap();
 
@@ -514,6 +529,7 @@ mod tests {
                 .report_error(
                     TEST_YEAR,
                     TEST_LEADERBOARD_ID,
+                    None,
                     &crate::Error::TestErrorWithMessage("broken pipe".into()),
                 )
                 .await;
@@ -580,6 +596,7 @@ mod tests {
                 &mut self,
                 year: i32,
                 leaderboard_id: u64,
+                _view_key: Option<&str>,
                 previous_leaderboard: &Leaderboard,
                 leaderboard: &Leaderboard,
                 changes: &Changes,
@@ -601,6 +618,7 @@ mod tests {
                 &mut self,
                 year: i32,
                 leaderboard_id: u64,
+                _view_key: Option<&str>,
                 leaderboard: &Leaderboard,
             ) -> Result<(), Self::Err> {
                 self.first_runs
@@ -609,7 +627,13 @@ mod tests {
                 Ok(())
             }
 
-            async fn report_error(&mut self, year: i32, leaderboard_id: u64, error: &crate::Error) {
+            async fn report_error(
+                &mut self,
+                year: i32,
+                leaderboard_id: u64,
+                _view_key: Option<&str>,
+                error: &crate::Error,
+            ) {
                 self.errors.push((year, leaderboard_id, error.to_string()));
             }
         }
@@ -1042,6 +1066,7 @@ mod tests {
                         &mut self,
                         _year: i32,
                         _leaderboard_id: u64,
+                        _view_key: Option<&str>,
                         _previous_leaderboard: &Leaderboard,
                         _leaderboard: &Leaderboard,
                         _changes: &Changes,
@@ -1053,6 +1078,7 @@ mod tests {
                         &mut self,
                         _year: i32,
                         _leaderboard_id: u64,
+                        _view_key: Option<&str>,
                         _error: &crate::Error,
                     ) {
                         self.errors += 1;
@@ -1114,6 +1140,7 @@ mod tests {
                         &mut self,
                         _year: i32,
                         _leaderboard_id: u64,
+                        _view_key: Option<&str>,
                         _previous_leaderboard: &Leaderboard,
                         _leaderboard: &Leaderboard,
                         _changes: &Changes,
@@ -1125,6 +1152,7 @@ mod tests {
                         &mut self,
                         _year: i32,
                         _leaderboard_id: u64,
+                        _view_key: Option<&str>,
                         _leaderboard: &Leaderboard,
                     ) -> Result<(), Self::Err> {
                         Err(crate::Error::TestReportFirstRunError)
@@ -1134,6 +1162,7 @@ mod tests {
                         &mut self,
                         _year: i32,
                         _leaderboard_id: u64,
+                        _view_key: Option<&str>,
                         _error: &crate::Error,
                     ) {
                         self.errors += 1;
