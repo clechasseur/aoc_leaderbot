@@ -53,6 +53,6 @@ assert_matches = "1.5.0"
 clap-verbosity-flag = "3.0.4"
 mockall = "0.14.0"
 serial_test = "3.2.0"
-test-log = { version = "0.2.18", default-features = false }
+test-log = { version = "0.2.19", default-features = false }
 testcontainers-modules = "0.13.0"
 tracing-test = "0.2.5"
