@@ -1,0 +1,30 @@
+[package]
+name = "aoc_leaderbot"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version = "1.88.0"
+
+readme = "README.md"
+license.workspace = true
+
+homepage = "https://github.com/clechasseur/aoc_leaderbot/tree/main/aoc_leaderbot#readme"
+repository.workspace = true
+documentation = "https://docs.rs/aoc_leaderbot/"
+
+description = "An Advent of Code leaderboard-watching bot"
+
+keywords = [ "aoc", "advent-of-code" ]
+
+include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
+
+[package.metadata.docs.rs]
+all-features = true
+targets = [ "x86_64-unknown-linux-gnu" ]
+rustc-args = [ "--cfg", "docsrs" ]
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [ "cfg(tarpaulin)", "cfg(tarpaulin_include)", "cfg(coverage)", "cfg(coverage_nightly)" ]
+
+[dependencies]

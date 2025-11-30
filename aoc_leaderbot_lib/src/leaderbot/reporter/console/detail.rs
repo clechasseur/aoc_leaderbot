@@ -1,10 +1,12 @@
 use itertools::repeat_n;
 
-pub trait SlackWebhookReporterStringExt {
+pub const STARS_HEADER: &str = "Stars ⭐";
+
+pub trait ConsoleReporterStringExt {
     fn right_pad(self, width: usize, with: char) -> String;
 }
 
-impl<S> SlackWebhookReporterStringExt for S
+impl<S> ConsoleReporterStringExt for S
 where
     S: Into<String>,
 {

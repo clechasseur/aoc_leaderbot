@@ -3,6 +3,7 @@
 //! [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 
 pub mod config;
+pub mod reporter;
 pub mod storage;
 
 use std::collections::HashSet;
