@@ -63,7 +63,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [ "aoc_leaderboard", "aoc_leaderbot_lib", "aoc_leaderbot_aws_lib", "aoc_leaderbot_slack_lib", "aoc_leaderbot_aws_lambda_impl" ]
+        package:
+          - aoc_leaderboard
+          - aoc_leaderbot_lib
+          - aoc_leaderbot_aws_lib
+          - aoc_leaderbot_slack_lib
+          - aoc_leaderbot_aws_lambda_impl
+          - aoc_leaderbot
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         include:
           - toolchain: 1.88.0
