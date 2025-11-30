@@ -3,10 +3,12 @@
 mod detail;
 
 use std::cmp::Ordering;
-use itertools::Itertools;
+
 use aoc_leaderboard::aoc::{Leaderboard, LeaderboardMember};
-use crate::leaderbot::{Changes, Reporter};
+use itertools::Itertools;
+
 use crate::leaderbot::reporter::console::detail::{ConsoleReporterStringExt, STARS_HEADER};
+use crate::leaderbot::{Changes, Reporter};
 
 /// Bot reporter that outputs to the console.
 ///
@@ -42,8 +44,7 @@ impl ConsoleReporter {
     fn compare_members(&self, lhs: &LeaderboardMember, rhs: &LeaderboardMember) -> Ordering {
         // Comparing by `last_star_ts` will prioritize those that got their latest star first.
         // I think AoC does this, but I'm not 100% sure.
-        lhs
-            .stars
+        lhs.stars
             .cmp(&rhs.stars)
             .then_with(|| lhs.local_score.cmp(&rhs.local_score))
             .then_with(|| lhs.last_star_ts.cmp(&rhs.last_star_ts))
