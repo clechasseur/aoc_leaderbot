@@ -17,7 +17,7 @@ description = "Strongly-typed wrapper for Advent of Code leaderboard data"
 keywords = [ "aoc", "advent-of-code", "api", "http" ]
 categories = [ "api-bindings", "asynchronous", "data-structures" ]
 
-include = [ "src/**/*", "tests/**/*", "resources/tests/**/*", "examples/**/*", "build.rs", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "resources/tests/**/*", "examples/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
