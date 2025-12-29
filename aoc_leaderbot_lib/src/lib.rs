@@ -39,8 +39,7 @@
 //!
 //! Although this library includes the bot's core function, it does not provide all possible
 //! implementations of the traits it needs for operations. This library includes two implementations
-//! of [`Config`], one implementation of [`Storage`] and no implementation of [`Reporter`]. Users
-//! will thus need to implement a [`Reporter`] at a minimum.
+//! of [`Config`], one implementation of [`Storage`] and one implementation of [`Reporter`].
 //!
 //! For other trait implementations, you can look at related crates like [`aoc_leaderbot_slack_lib`].
 //!
@@ -67,6 +66,13 @@
 //! it would technically lose its data upon program exit, the whole storage can be persisted using
 //! [`serde`], which means it's a possibly-decent implementation.
 //!
+//! ### [`ConsoleReporter`]
+//!
+//! Required feature: `reporter-console`
+//!
+//! This implementation of [`Reporter`] simply outputs changes and errors to the console. It is
+//! mostly aimed at testing and debugging.
+//!
 //! [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 //! [Advent of Code]: https://adventofcode.com/
 //! [`run_bot`]: leaderbot::run_bot
@@ -84,6 +90,7 @@
 //! [`get_env_config`]: leaderbot::config::env::get_env_config
 //! [`MemoryStorage`]: leaderbot::storage::mem::MemoryStorage
 //! [`serde`]: https://serde.rs/
+//! [`ConsoleReporter`]: leaderbot::reporter::console::ConsoleReporter
 
 #![deny(missing_docs)]
 #![deny(rustdoc::missing_crate_level_docs)]
