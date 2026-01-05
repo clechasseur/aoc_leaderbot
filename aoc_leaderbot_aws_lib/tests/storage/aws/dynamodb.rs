@@ -498,7 +498,7 @@ mod dynamo_storage {
                 #[test_log::test]
                 fn create_table() {
                     LocalTable::run_test(|mut table| async move {
-                        let create_result = table.storage().create_table().await;
+                        let create_result = table.storage().create_table(None).await;
                         assert_matches!(
                             create_result,
                             Err(aoc_leaderbot_aws_lib::Error::Dynamo(

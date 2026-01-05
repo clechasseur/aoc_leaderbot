@@ -114,6 +114,7 @@ dependencies = [
  "chrono",
  "clap",
  "dotenvy",
+ "gratte",
  "lambda_runtime",
  "rstest",
  "serde",

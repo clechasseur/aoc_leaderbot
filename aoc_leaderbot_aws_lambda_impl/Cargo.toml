@@ -39,7 +39,7 @@ required-features = ["__prepare_dynamodb"]
 [features]
 __testing = ["dep:aws-config"]
 
-__prepare_dynamodb = ["dep:aws-config", "dep:clap"]
+__prepare_dynamodb = ["dep:aws-config", "dep:clap", "dep:gratte"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -50,6 +50,7 @@ aoc_leaderbot_slack_lib = { workspace = true }
 aws-config = { workspace = true, optional = true, features = ["behavior-version-latest"] }
 clap = { workspace = true, optional = true, features = ["derive"] }
 dotenvy = { workspace = true }
+gratte = { workspace = true, optional = true }
 lambda_runtime = { workspace = true }
 serde = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
