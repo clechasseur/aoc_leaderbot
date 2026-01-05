@@ -74,7 +74,7 @@ impl LocalTable {
     /// [`without_table`]: Self::without_table
     pub async fn create(&self) {
         self.storage
-            .create_table()
+            .create_table(None)
             .await
             .expect("test table should be creatable");
     }

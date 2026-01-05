@@ -2,6 +2,7 @@
 //!
 //! [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 
+pub mod config;
 #[cfg(feature = "__test_helpers")]
 #[doc(hidden)]
 pub mod test_helpers;
@@ -14,13 +15,14 @@ use aoc_leaderbot_lib::leaderbot::Storage;
 use aws_config::SdkConfig;
 use aws_sdk_dynamodb::operation::create_table::CreateTableOutput;
 use aws_sdk_dynamodb::types::{
-    AttributeDefinition, AttributeValue, BillingMode, KeySchemaElement, KeyType,
-    ScalarAttributeType, TableDescription, TableStatus,
+    AttributeDefinition, AttributeValue, KeySchemaElement, KeyType, ScalarAttributeType,
+    TableDescription, TableStatus,
 };
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
 use crate::error::DynamoDbError;
+use crate::leaderbot::storage::aws::dynamodb::config::table::{CreateTableBuilderExt, TableConfig};
 
 /// The hash key (aka partition key) used by [`DynamoDbStorage`].
 ///
@@ -97,10 +99,14 @@ impl DynamoDbStorage {
 
     /// Creates a DynamoDB table suitable for storing leaderboard data.
     ///
-    /// The table name passed at construction time will be used. The function
-    /// waits until the table is created before returning.
+    /// The table name passed at construction time will be used and the optional
+    /// [`table_config`] parameter will be used to configure things like billing mode.
+    ///
+    /// The function waits until the table is created before returning.
+    ///
+    /// [`table_config`]: TableConfig
     #[cfg_attr(not(coverage), tracing::instrument(skip(self), ret, err))]
-    pub async fn create_table(&self) -> crate::Result<()> {
+    pub async fn create_table(&self, table_config: Option<TableConfig>) -> crate::Result<()> {
         let output = self
             .client
             .create_table()
@@ -113,7 +119,7 @@ impl DynamoDbStorage {
                 Self::key_schema_element(HASH_KEY, KeyType::Hash),
                 Self::key_schema_element(RANGE_KEY, KeyType::Range),
             ]))
-            .billing_mode(BillingMode::PayPerRequest)
+            .table_config(table_config)
             .send()
             .await
             .map_err(|source| DynamoDbError::CreateTable {
