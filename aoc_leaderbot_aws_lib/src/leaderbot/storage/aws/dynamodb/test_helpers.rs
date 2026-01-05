@@ -13,8 +13,7 @@ use rstest::fixture;
 use uuid::Uuid;
 
 use crate::leaderbot::storage::aws::dynamodb::{
-    DynamoDbLastErrorInformation, DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, LAST_ERROR,
-    RANGE_KEY,
+    DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, LAST_ERROR, RANGE_KEY,
 };
 
 /// Endpoint URL for a locally-running DynamoDB.
@@ -156,8 +155,7 @@ impl LocalTable {
     ///
     /// Any existing leaderboard data will be kept.
     pub async fn save_last_error(&self, error_kind: ErrorKind) {
-        let last_error = DynamoDbLastErrorInformation(error_kind);
-        let attribute_value = serde_dynamo::to_attribute_value(last_error)
+        let attribute_value = serde_dynamo::to_attribute_value(error_kind)
             .expect("last error should be serializable");
 
         self.client()
@@ -194,7 +192,7 @@ impl LocalTable {
             .map(|item| {
                 let data: DynamoDbLeaderboardData = serde_dynamo::from_item(item)
                     .expect("leaderboard data should be deserializable");
-                (data.leaderboard_data, data.last_error.map(|le| le.0))
+                (data.leaderboard_data, data.last_error)
             })
             .unwrap_or_default()
     }
