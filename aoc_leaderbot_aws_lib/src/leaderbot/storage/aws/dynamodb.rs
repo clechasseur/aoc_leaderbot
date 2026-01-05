@@ -38,14 +38,6 @@ pub const LEADERBOARD_DATA: &str = "leaderboard_data";
 /// The column storing last error information in the [`DynamoDbStorage`].
 pub const LAST_ERROR: &str = "last_error";
 
-/// Newtype struct used to persist last error information into
-/// a DynamoDB table. Used by [`DynamoDbStorage`].
-///
-/// Serializes transparently into an [`ErrorKind`].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct DynamoDbLastErrorInformation(ErrorKind);
-
 /// Struct used to persist [`Leaderboard`] data into a DynamoDB
 /// table. Used by [`DynamoDbStorage`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,7 +54,7 @@ pub struct DynamoDbLeaderboardData {
 
     /// Information about last execution error, if any. Stored in the [`LAST_ERROR`] column.
     #[serde(default)]
-    pub last_error: Option<DynamoDbLastErrorInformation>,
+    pub last_error: Option<ErrorKind>,
 }
 
 impl DynamoDbLeaderboardData {
@@ -212,7 +204,7 @@ impl Storage for DynamoDbStorage {
             .item
             .map(|item| {
                 let data: Result<DynamoDbLeaderboardData, _> = serde_dynamo::from_item(item);
-                data.map(|data| (data.leaderboard_data, data.last_error.map(|le| le.0)))
+                data.map(|data| (data.leaderboard_data, data.last_error))
             })
             .transpose()
             .map(Option::unwrap_or_default)
@@ -252,9 +244,8 @@ impl Storage for DynamoDbStorage {
     ) -> Result<(), Self::Err> {
         let save_error = |source| DynamoDbError::SaveLastError { leaderboard_id, year, source };
 
-        let last_error = DynamoDbLastErrorInformation(error_kind);
         let attribute_value =
-            serde_dynamo::to_attribute_value(last_error).map_err(|err| save_error(err.into()))?;
+            serde_dynamo::to_attribute_value(error_kind).map_err(|err| save_error(err.into()))?;
 
         self.client
             .update_item()
