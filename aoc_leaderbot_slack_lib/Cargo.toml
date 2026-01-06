@@ -56,7 +56,7 @@ clap = { workspace = true, optional = true, features = ["derive"] }
 derive_builder = { workspace = true, optional = true }
 gratte = { workspace = true, optional = true }
 itertools = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true, default-features = false }
+reqwest = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true, optional = true }

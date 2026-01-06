@@ -15,8 +15,41 @@ mod dynamo_storage {
     use aoc_leaderbot_lib::ErrorKind;
     use aoc_leaderbot_lib::leaderbot::Storage;
     use assert_matches::assert_matches;
+    use aws_sdk_dynamodb::error::SdkError;
+    use aws_sdk_dynamodb::operation::create_table::CreateTableError;
     use aws_sdk_dynamodb::types::AttributeValue;
     use rstest::rstest;
+
+    pub mod create_table {
+        use super::*;
+
+        pub mod errors {
+            use std::ops::Deref;
+
+            use super::*;
+
+            #[test_log::test]
+            fn resource_in_use() {
+                LocalTable::run_test(|mut table| async move {
+                    let create_result = table.storage().create_table(None).await;
+                    assert_matches!(
+                        create_result,
+                        Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                            DynamoDbError::CreateTable {
+                                table_name: actual_table_name,
+                                source: CreateDynamoDbTableError::CreateTable(create_err),
+                            }
+                        )) => {
+                            assert_eq!(table.name(), actual_table_name);
+                            assert_matches!(create_err.deref(), SdkError::ServiceError(service_err) => {
+                                assert_matches!(service_err.err(), CreateTableError::ResourceInUseException(_));
+                            });
+                        }
+                    );
+                });
+            }
+        }
+    }
 
     mod storage_impl {
         use super::*;
@@ -485,30 +518,6 @@ mod dynamo_storage {
                             assert_eq!(TEST_YEAR, year);
                         }
                     );
-                }
-            }
-        }
-
-        pub mod create_table {
-            use super::*;
-
-            pub mod errors {
-                use super::*;
-
-                #[test_log::test]
-                fn create_table() {
-                    LocalTable::run_test(|mut table| async move {
-                        let create_result = table.storage().create_table().await;
-                        assert_matches!(
-                            create_result,
-                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                                DynamoDbError::CreateTable {
-                                    table_name: actual_table_name,
-                                    source: CreateDynamoDbTableError::CreateTable(_),
-                                }
-                            )) if actual_table_name == table.name()
-                        );
-                    });
                 }
             }
         }
