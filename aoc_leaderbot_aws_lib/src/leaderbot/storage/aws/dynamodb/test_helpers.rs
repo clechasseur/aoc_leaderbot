@@ -8,6 +8,8 @@ use aoc_leaderboard::aoc::Leaderboard;
 use aoc_leaderboard::test_helpers::{TEST_LEADERBOARD_ID, TEST_YEAR};
 use aoc_leaderbot_lib::ErrorKind;
 use aws_config::BehaviorVersion;
+use aws_sdk_dynamodb::error::SdkError;
+use aws_sdk_dynamodb::operation::describe_table::DescribeTableOutput;
 use aws_sdk_dynamodb::types::AttributeValue;
 use rstest::fixture;
 use uuid::Uuid;
@@ -19,13 +21,13 @@ use crate::leaderbot::storage::aws::dynamodb::{
 /// Endpoint URL for a locally-running DynamoDB.
 pub const LOCAL_ENDPOINT_URL: &str = "http://localhost:8000";
 
-/// Wrapper for a test DynamoDB table stored in a local DynamoDB,
-/// suitable for testing [`DynamoDbStorage`].
+/// Wrapper for a test DynamoDB table stored in a local DynamoDB, suitable for testing
+/// [`DynamoDbStorage`].
 ///
 /// # Notes
 ///
-/// Because this is meant to be used for testing, most methods to
-/// not return `Result`s and simply panic if something fails.
+/// Because this is meant to be used for testing, most methods to not return `Result` and simply
+/// panic if something fails.
 #[derive(Debug, Clone)]
 pub struct LocalTable {
     name: String,
@@ -36,9 +38,8 @@ pub struct LocalTable {
 impl LocalTable {
     /// Creates a [`LocalTable`] wrapping a [`DynamoDbStorage`].
     ///
-    /// Does not create the test table itself; to create it later,
-    /// call [`create`]. If the table is required right away,
-    /// you can call [`with_table`] instead.
+    /// Does not create the test table itself; to create it later, call [`create`]. If the table
+    /// is required right away, you can call [`with_table`] instead.
     ///
     /// [`create`]: Self::create
     /// [`with_table`]: Self::with_table
@@ -58,8 +59,7 @@ impl LocalTable {
         Self { name, client, storage }
     }
 
-    /// Creates a [`LocalTable`] wrapping a [`DynamoDbStorage`],
-    /// creating the test table right away.
+    /// Creates a [`LocalTable`] wrapping a [`DynamoDbStorage`], creating the test table right away.
     pub async fn with_table() -> Self {
         let table = Self::without_table().await;
         table.create().await;
@@ -68,8 +68,8 @@ impl LocalTable {
 
     /// Creates the test DynamoDB table.
     ///
-    /// Call this only if the table hasn't been created yet,
-    /// i.e. if [`without_table`] was called, and only once.
+    /// Call this only if the table hasn't been created yet, i.e. if [`without_table`] was called,
+    /// and only once.
     ///
     /// [`without_table`]: Self::without_table
     pub async fn create(&self) {
@@ -79,29 +79,55 @@ impl LocalTable {
             .expect("test table should be creatable");
     }
 
+    /// Checks if the test table exists.
+    pub async fn exists(&self) -> bool {
+        let describe_res = self
+            .client
+            .describe_table()
+            .table_name(self.name())
+            .send()
+            .await;
+
+        match describe_res {
+            Ok(DescribeTableOutput { table: Some(_), .. }) => true,
+            Ok(_) => false,
+            Err(SdkError::ServiceError(service_err))
+                if service_err.err().is_resource_not_found_exception() =>
+            {
+                false
+            },
+            Err(err) => panic!("failed to check if test table exists: {err}"),
+        }
+    }
+
     /// Drops the test table.
     ///
-    /// Call this after testing is done to ensure the test table
-    /// is removed from DynamoDB. Do not call this unless the
-    /// table has been created, either because [`with_table`]
+    /// Call this after testing is done to ensure the test table is removed from DynamoDB.
+    /// Do not call this unless the table has been created, either because [`with_table`]
     /// has been used or because [`create`] has been called.
     ///
     /// # Notes
     ///
-    /// This is not done by implementing `Drop` because it needs
-    /// to be asynchronous. For an easier way to use this method
-    /// in a testing context, see [`run_test`].
+    /// This is not done by implementing `Drop` because it needs to be asynchronous. For an easier
+    /// way to use this method in a testing context, see [`run_test`].
     ///
     /// [`with_table`]: Self::with_table
     /// [`create`]: Self::create
     /// [`run_test`]: Self::run_test
     pub async fn drop(&self) {
-        self.client
+        let delete_res = self
+            .client
             .delete_table()
             .table_name(self.name())
             .send()
-            .await
-            .expect("test table should be deletable");
+            .await;
+
+        match delete_res {
+            Ok(_) => (),
+            Err(SdkError::ServiceError(service_err))
+                if service_err.err().is_resource_not_found_exception() => {},
+            Err(err) => panic!("failed to delete test table: {err}"),
+        }
     }
 
     /// Returns the name of the test table.
@@ -111,8 +137,8 @@ impl LocalTable {
         &self.name
     }
 
-    /// Returns a reference to the [DynamoDB client]
-    /// used by this wrapper for direct DynamoDB operations.
+    /// Returns a reference to the [DynamoDB client] used by this wrapper for direct DynamoDB
+    /// operations.
     ///
     /// [DynamoDB client]: aws_sdk_dynamodb::Client
     pub fn client(&self) -> &aws_sdk_dynamodb::Client {
@@ -126,8 +152,8 @@ impl LocalTable {
 
     /// Saves the given [`Leaderboard`] to the test table.
     ///
-    /// The leaderboard will be associated with the test values
-    /// [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
+    /// The leaderboard will be associated with the test values [`TEST_LEADERBOARD_ID`] and
+    /// [`TEST_YEAR`].
     ///
     /// Any existing data (including last error) will be overwritten.
     pub async fn save_leaderboard(&self, leaderboard: &Leaderboard) {
@@ -150,8 +176,8 @@ impl LocalTable {
 
     /// Saves the given [last error](ErrorKind) to the test table.
     ///
-    /// The last error will be associated with the test values
-    /// [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
+    /// The last error will be associated with the test values [`TEST_LEADERBOARD_ID`] and
+    /// [`TEST_YEAR`].
     ///
     /// Any existing leaderboard data will be kept.
     pub async fn save_last_error(&self, error_kind: ErrorKind) {
@@ -171,9 +197,8 @@ impl LocalTable {
             .expect("last error should be storable in the test table");
     }
 
-    /// Loads a [`Leaderboard`] and any associated [last error](ErrorKind) from
-    /// the test table directly, using the test values [`TEST_LEADERBOARD_ID`]
-    /// and [`TEST_YEAR`].
+    /// Loads a [`Leaderboard`] and any associated [last error](ErrorKind) from the test table
+    /// directly, using the test values [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
     ///
     /// Loads the data from the table through the DynamoDB client, not via the
     /// [`DynamoDbStorage`] wrapper.
@@ -197,30 +222,68 @@ impl LocalTable {
             .unwrap_or_default()
     }
 
-    /// Creates a test table wrapper, calls the provided
-    /// test function with it and ensures it is dropped
-    /// before returning.
+    /// Creates a test table wrapper, calls the provided test function with it and ensures it is
+    /// dropped before returning.
     ///
     /// # Notes
     ///
-    /// This function is not `async`, so it must be called
-    /// from within a regular test, not a `tokio` test.
-    /// The function passed to this method, however, must
-    /// return a `Future`. The easiest way is to use an
-    /// `async` block; example:
+    /// This function is not `async`, so it must be called from within a regular test, not a
+    /// `tokio` test. The function passed to this method, however, must return a `Future`.
+    /// The easiest way is to use an `async` block; example:
     ///
     /// ```
     /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
-    /// #[test]
+    ///
     /// # #[cfg(feature = "__testing")]
+    /// #[test]
     /// fn some_test() {
     ///     LocalTable::run_test(|table| async move {
+    ///         assert!(table.exists().await);
     ///         // Run some tests with table here...
-    ///         assert!(!table.name().is_empty());
     ///     });
     /// }
     /// ```
     pub fn run_test<TF, TFR>(test_f: TF)
+    where
+        TF: FnOnce(Self) -> TFR,
+        TFR: Future<Output = ()> + Send + 'static,
+    {
+        Self::internal_run_test(test_f, true);
+    }
+
+    /// Creates a test table wrapper without creating the table itself (using [`without_table`]),
+    /// calls the provided test function with it and ensures it is dropped before returning if
+    /// the table had been created by the test.
+    ///
+    /// # Notes
+    ///
+    /// This function is not `async`, so it must be called from within a regular test, not a
+    /// `tokio` test. The function passed to this method, however, must return a `Future`.
+    /// The easiest way is to use an `async` block; example:
+    ///
+    /// ```
+    /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
+    ///
+    /// # #[cfg(feature = "__testing")]
+    /// #[test]
+    /// fn some_test() {
+    ///     LocalTable::run_test_without_table(|table| async move {
+    ///         assert!(!table.exists().await);
+    ///         // Run some tests with table here, maybe creating it...
+    ///     });
+    /// }
+    /// ```
+    ///
+    /// [`without_table`]: Self::without_table
+    pub fn run_test_without_table<TF, TFR>(test_f: TF)
+    where
+        TF: FnOnce(Self) -> TFR,
+        TFR: Future<Output = ()> + Send + 'static,
+    {
+        Self::internal_run_test(test_f, false);
+    }
+
+    fn internal_run_test<TF, TFR>(test_f: TF, with_table: bool)
     where
         TF: FnOnce(Self) -> TFR,
         TFR: Future<Output = ()> + Send + 'static,
@@ -230,7 +293,11 @@ impl LocalTable {
             .build()
             .expect("should be able to create a Tokio runtime for testing");
 
-        let table = runtime.block_on(Self::with_table());
+        let table = if with_table {
+            runtime.block_on(Self::with_table())
+        } else {
+            runtime.block_on(Self::without_table())
+        };
 
         let test_table = table.clone();
         let result = runtime.block_on(runtime.spawn(test_f(test_table)));
