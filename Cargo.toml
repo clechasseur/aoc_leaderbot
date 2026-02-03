@@ -48,7 +48,7 @@ veil = "0.3.0"
 wiremock = "0.6.5"
 
 # Dev dependencies:
-assert_cmd = "2.1.1"
+assert_cmd = "2.1.2"
 assert_matches = "1.5.0"
 clap-verbosity-flag = "3.0.4"
 mockall = "0.14.0"
