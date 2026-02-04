@@ -211,7 +211,7 @@ impl LocalTable {
     /// return a `Future`. The easiest way is to use an
     /// `async` block; example:
     ///
-    /// ```
+    /// ```no_run
     /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
     /// #[test]
     /// # #[cfg(feature = "__testing")]
