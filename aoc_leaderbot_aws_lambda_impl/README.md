@@ -107,6 +107,10 @@ If ever a new version of the bot is released and you want to update your bot's L
 This will deploy a new version of the Lambda function.
 (If the new version has breaking changes, be sure to read the instructions on how to upgrade before deployment.)
 
+## Minimum Rust version
+
+`aoc_leaderbot_aws_lambda_impl` currently builds on Rust 1.81 or newer.
+
 ## Contributing / Local development
 
 For information about contributing to this project, see [CONTRIBUTING](../CONTRIBUTING.md).
