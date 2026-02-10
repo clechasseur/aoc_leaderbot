@@ -224,6 +224,7 @@ impl SlackWebhookReporter {
         self.add_member_row_emoji(row_text, member, changes)
     }
 
+    // noinspection DuplicatedCode
     fn add_member_row_emoji(
         &self,
         row_text: String,
@@ -395,7 +396,7 @@ impl Reporter for SlackWebhookReporter {
         .map_err(|err| WebhookError::ReportChanges(err).into())
     }
 
-    #[cfg_attr(not(coverage), tracing::instrument(skip(self, leaderboard), err))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self, view_key, leaderboard), err))]
     async fn report_first_run(
         &mut self,
         year: i32,
@@ -412,7 +413,7 @@ impl Reporter for SlackWebhookReporter {
         .map_err(|err| WebhookError::ReportFirstRun(err).into())
     }
 
-    #[cfg_attr(not(coverage), tracing::instrument(skip(self, error)))]
+    #[cfg_attr(not(coverage), tracing::instrument(skip(self, view_key, error)))]
     async fn report_error(
         &mut self,
         year: i32,

@@ -17,7 +17,7 @@ description = "Support library for aoc_leaderbot, an Advent of Code leaderboard-
 keywords = [ "aoc", "advent-of-code" ]
 categories = [ "asynchronous" ]
 
-include = [ "src/**/*", "tests/**/*", "build.rs", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
@@ -36,12 +36,15 @@ config-env = ["config-mem"]
 
 storage-mem = []
 
+reporter-console = ["dep:itertools"]
+
 [dependencies]
 anyhow = { workspace = true }
 aoc_leaderboard = { workspace = true, features = ["http"] }
 chrono = { workspace = true }
 derive_builder = { workspace = true, optional = true }
 gratte = { workspace = true }
+itertools = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
