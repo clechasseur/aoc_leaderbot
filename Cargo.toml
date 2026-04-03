@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
     "aoc_leaderboard",
+    "aoc_leaderbot",
     "aoc_leaderbot_aws_lambda_impl",
     "aoc_leaderbot_aws_lib",
     "aoc_leaderbot_lib",
