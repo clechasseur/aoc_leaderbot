@@ -17,7 +17,7 @@ description = "Support library for aoc_leaderbot, an Advent of Code leaderboard-
 keywords = [ "aoc", "advent-of-code" ]
 categories = [ "asynchronous" ]
 
-include = [ "src/**/*", "tests/**/*", "build.rs", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
