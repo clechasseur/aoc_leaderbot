@@ -4,7 +4,6 @@
 //! [`aoc_leaderbot`]: https://github.com/clechasseur/aoc_leaderbot
 
 #![recursion_limit = "256"]
-
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(rustdoc::private_intra_doc_links)]
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
