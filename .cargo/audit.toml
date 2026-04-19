@@ -1,0 +1,10 @@
+[advisories]
+ignore = [
+    # "Name constraints for URI names were incorrectly accepted" in rustls-webpki
+    # This is only used in the AWS SDK's old hyper-0.x support, which we don't use.
+    "RUSTSEC-2026-0098",
+
+    # "Name constraints were accepted for certificates asserting a wildcard name" in rustls-webpki
+    # Same as above, we're not using it.
+    "RUSTSEC-2026-0099",
+]

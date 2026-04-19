@@ -3,7 +3,7 @@ name = "aoc_leaderbot_aws_lambda_impl"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
-rust-version = "1.88.0"
+rust-version = "1.91.1"
 
 license.workspace = true
 

@@ -67,6 +67,10 @@ jobs:
         os: [ ubuntu-24.04, macos-14, windows-2022 ]
         include:
           - toolchain: 1.88.0
+          - package: aoc_leaderbot_aws_lib
+            toolchain: 1.91.1
+          - package: aoc_leaderbot_aws_lambda_impl
+            toolchain: 1.91.1
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
