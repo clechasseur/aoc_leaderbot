@@ -24,7 +24,7 @@ pub struct TableConfig {
     ///
     /// If not specified, the [default configuration] will be used.
     ///
-    /// [billing mode]: aws_sdk_dynamodb::operation::create_table::builders::CreateTableFluentBuilder::billing_mode
+    /// [billing mode]: CreateTableFluentBuilder::billing_mode
     /// [default configuration]: BillingModeConfig
     pub billing_mode: Option<BillingModeConfig>,
 }

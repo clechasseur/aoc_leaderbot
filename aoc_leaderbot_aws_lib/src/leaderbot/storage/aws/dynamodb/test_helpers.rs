@@ -261,7 +261,7 @@ impl LocalTable {
     /// `tokio` test. The function passed to this method, however, must return a `Future`.
     /// The easiest way is to use an `async` block; example:
     ///
-    /// ```
+    /// ```no_run
     /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
     ///
     /// # #[cfg(feature = "__testing")]
