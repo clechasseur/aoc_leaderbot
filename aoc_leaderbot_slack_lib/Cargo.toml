@@ -17,7 +17,7 @@ description = "Slack-specific support library for aoc_leaderbot, an Advent of Co
 keywords = [ "aoc", "advent-of-code", "slack" ]
 categories = [ "asynchronous" ]
 
-include = [ "src/**/*", "tests/**/*", "examples/**/*", "build.rs", "LICENSE", "README.md" ]
+include = [ "src/**/*", "tests/**/*", "examples/**/*", "LICENSE", "README.md" ]
 
 [package.metadata.docs.rs]
 all-features = true
