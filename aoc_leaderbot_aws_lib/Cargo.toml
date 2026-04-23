@@ -47,8 +47,11 @@ storage-dynamodb = [
 ]
 
 __test_helpers = [
+    "storage-dynamodb",
     "aoc_leaderboard/__test_helpers",
+    "dep:derive_builder",
     "dep:rstest",
+    "dep:testcontainers-modules",
     "dep:tokio",
     "dep:uuid",
 ]
@@ -58,9 +61,11 @@ aoc_leaderboard = { workspace = true, optional = true }
 aoc_leaderbot_lib = { workspace = true, optional = true, default-features = false }
 aws-config = { workspace = true, optional = true, features = ["behavior-version-latest"] }
 aws-sdk-dynamodb = { workspace = true, optional = true }
+derive_builder = { workspace = true, optional = true }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive"] }
 serde_dynamo = { workspace = true, optional = true, features = ["aws-sdk-dynamodb+1"] }
+testcontainers-modules = { workspace = true, optional = true, features = ["dynamodb"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true, features = ["time"] }
 tracing = { workspace = true, optional = true }
