@@ -28,7 +28,7 @@ mod dynamo_storage {
 
             #[test_log::test]
             fn resource_in_use() {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     let create_result = table.storage().create_table(None).await;
                     assert_matches!(
                         create_result,
@@ -57,7 +57,7 @@ mod dynamo_storage {
 
             #[test_log::test]
             fn without_existing() {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     let previous_leaderboard = table
                         .storage()
                         .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
@@ -71,7 +71,7 @@ mod dynamo_storage {
             fn with_existing_leaderboard(
                 #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
             ) {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table.save_leaderboard(&expected_leaderboard).await;
 
                     let previous = table
@@ -86,7 +86,7 @@ mod dynamo_storage {
 
             #[test_log::test]
             fn with_existing_last_error() {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table
                         .save_last_error(ErrorKind::Leaderboard(
                             aoc_leaderboard::ErrorKind::NoAccess,
@@ -111,7 +111,7 @@ mod dynamo_storage {
             fn with_existing_leaderboard_and_last_error(
                 #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
             ) {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table.save_leaderboard(&expected_leaderboard).await;
                     table
                         .save_last_error(ErrorKind::Leaderboard(
@@ -138,30 +138,32 @@ mod dynamo_storage {
 
                 #[test_log::test]
                 fn get_item() {
-                    LocalTable::run_test_without_table(|mut table| async move {
-                        let previous_leaderboard = table
-                            .storage()
-                            .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
-                            .await;
-                        assert_matches!(
-                            previous_leaderboard,
-                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                                DynamoDbError::LoadPreviousLeaderboard {
-                                    leaderboard_id,
-                                    year,
-                                    source: LoadPreviousDynamoDbError::GetItem(_),
+                    LocalTable::builder()
+                        .pre_create(false)
+                        .run_test(|mut table| async move {
+                            let previous_leaderboard = table
+                                .storage()
+                                .load_previous(TEST_YEAR, TEST_LEADERBOARD_ID)
+                                .await;
+                            assert_matches!(
+                                previous_leaderboard,
+                                Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                                    DynamoDbError::LoadPreviousLeaderboard {
+                                        leaderboard_id,
+                                        year,
+                                        source: LoadPreviousDynamoDbError::GetItem(_),
+                                    }
+                                )) => {
+                                    assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
+                                    assert_eq!(TEST_YEAR, year);
                                 }
-                            )) => {
-                                assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
-                                assert_eq!(TEST_YEAR, year);
-                            }
-                        );
-                    });
+                            );
+                        });
                 }
 
                 #[test_log::test]
                 fn invalid_leaderboard_data_type() {
-                    LocalTable::run_test(|mut table| async move {
+                    LocalTable::run_test(None, |mut table| async move {
                         table
                             .client()
                             .put_item()
@@ -195,7 +197,7 @@ mod dynamo_storage {
 
                 #[test_log::test]
                 fn parse_error() {
-                    LocalTable::run_test(|mut table| async move {
+                    LocalTable::run_test(None, |mut table| async move {
                         table
                             .client()
                             .put_item()
@@ -238,7 +240,7 @@ mod dynamo_storage {
             #[rstest]
             #[test_log::test]
             fn without_existing(#[from(test_leaderboard)] expected_leaderboard: Leaderboard) {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table
                         .storage()
                         .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &expected_leaderboard)
@@ -259,7 +261,7 @@ mod dynamo_storage {
             fn with_existing_leaderboard(
                 #[from(test_leaderboard)] previous_leaderboard: Leaderboard,
             ) {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table.save_leaderboard(&previous_leaderboard).await;
 
                     let expected_leaderboard = Leaderboard {
@@ -284,7 +286,7 @@ mod dynamo_storage {
             fn with_existing_last_error(
                 #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
             ) {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table
                         .save_last_error(ErrorKind::Leaderboard(
                             aoc_leaderboard::ErrorKind::NoAccess,
@@ -309,7 +311,7 @@ mod dynamo_storage {
             fn with_existing_leaderboard_and_last_error(
                 #[from(test_leaderboard)] previous_leaderboard: Leaderboard,
             ) {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table.save_leaderboard(&previous_leaderboard).await;
                     table
                         .save_last_error(ErrorKind::Leaderboard(
@@ -340,25 +342,27 @@ mod dynamo_storage {
                 #[rstest]
                 #[test_log::test]
                 fn put_item(#[from(test_leaderboard)] leaderboard: Leaderboard) {
-                    LocalTable::run_test_without_table(|mut table| async move {
-                        let save_result = table
-                            .storage()
-                            .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
-                            .await;
-                        assert_matches!(
-                            save_result,
-                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                                DynamoDbError::SaveLeaderboard {
-                                    leaderboard_id,
-                                    year,
-                                    source: SaveDynamoDbError::PutItem(_),
+                    LocalTable::builder()
+                        .pre_create(false)
+                        .run_test(|mut table| async move {
+                            let save_result = table
+                                .storage()
+                                .save_success(TEST_YEAR, TEST_LEADERBOARD_ID, &leaderboard)
+                                .await;
+                            assert_matches!(
+                                save_result,
+                                Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                                    DynamoDbError::SaveLeaderboard {
+                                        leaderboard_id,
+                                        year,
+                                        source: SaveDynamoDbError::PutItem(_),
+                                    }
+                                )) => {
+                                    assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
+                                    assert_eq!(TEST_YEAR, year);
                                 }
-                            )) => {
-                                assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
-                                assert_eq!(TEST_YEAR, year);
-                            }
-                        );
-                    });
+                            );
+                        });
                 }
             }
         }
@@ -368,7 +372,7 @@ mod dynamo_storage {
 
             #[test_log::test]
             fn without_existing() {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table
                         .storage()
                         .save_error(
@@ -394,7 +398,7 @@ mod dynamo_storage {
             fn with_existing_leaderboard(
                 #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
             ) {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table.save_leaderboard(&expected_leaderboard).await;
 
                     table
@@ -420,7 +424,7 @@ mod dynamo_storage {
 
             #[test_log::test]
             fn with_existing_last_error() {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table.save_last_error(ErrorKind::MissingField).await;
 
                     table
@@ -448,7 +452,7 @@ mod dynamo_storage {
             fn with_existing_leaderboard_and_last_error(
                 #[from(test_leaderboard)] expected_leaderboard: Leaderboard,
             ) {
-                LocalTable::run_test(|mut table| async move {
+                LocalTable::run_test(None, |mut table| async move {
                     table.save_leaderboard(&expected_leaderboard).await;
                     table.save_last_error(ErrorKind::MissingField).await;
 
@@ -478,29 +482,31 @@ mod dynamo_storage {
 
                 #[test_log::test]
                 fn update_item() {
-                    LocalTable::run_test_without_table(|mut table| async move {
-                        let save_result = table
-                            .storage()
-                            .save_error(
-                                TEST_YEAR,
-                                TEST_LEADERBOARD_ID,
-                                ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
-                            )
-                            .await;
-                        assert_matches!(
-                            save_result,
-                            Err(aoc_leaderbot_aws_lib::Error::Dynamo(
-                                DynamoDbError::SaveLastError {
-                                    leaderboard_id,
-                                    year,
-                                    source: SaveDynamoDbError::UpdateItem(_),
+                    LocalTable::builder()
+                        .pre_create(false)
+                        .run_test(|mut table| async move {
+                            let save_result = table
+                                .storage()
+                                .save_error(
+                                    TEST_YEAR,
+                                    TEST_LEADERBOARD_ID,
+                                    ErrorKind::Leaderboard(aoc_leaderboard::ErrorKind::NoAccess),
+                                )
+                                .await;
+                            assert_matches!(
+                                save_result,
+                                Err(aoc_leaderbot_aws_lib::Error::Dynamo(
+                                    DynamoDbError::SaveLastError {
+                                        leaderboard_id,
+                                        year,
+                                        source: SaveDynamoDbError::UpdateItem(_),
+                                    }
+                                )) => {
+                                    assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
+                                    assert_eq!(TEST_YEAR, year);
                                 }
-                            )) => {
-                                assert_eq!(TEST_LEADERBOARD_ID, leaderboard_id);
-                                assert_eq!(TEST_YEAR, year);
-                            }
-                        );
-                    });
+                            );
+                        });
                 }
             }
         }

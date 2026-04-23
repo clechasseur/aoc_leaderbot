@@ -151,7 +151,7 @@ mod bot_lambda_handler {
         TF: FnOnce(MockServer, LocalTable) -> TFR + Send + 'static,
         TFR: Future<Output = ()> + Send + 'static,
     {
-        LocalTable::run_test(|table| async move {
+        LocalTable::run_test(None, move |table| async move {
             let mock_server =
                 mock_server_with_leaderboard(leaderboard, test_leaderboard_credentials::default())
                     .await;
