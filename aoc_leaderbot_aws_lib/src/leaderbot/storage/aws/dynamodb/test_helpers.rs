@@ -3,117 +3,249 @@
 //! Not meant to be used outside the project; no guarantee on API stability.
 
 use std::future::Future;
-
+use std::sync::Arc;
 use aoc_leaderboard::aoc::Leaderboard;
 use aoc_leaderboard::test_helpers::{TEST_LEADERBOARD_ID, TEST_YEAR};
 use aoc_leaderbot_lib::ErrorKind;
 use aws_config::BehaviorVersion;
+use aws_sdk_dynamodb::error::SdkError;
+use aws_sdk_dynamodb::operation::describe_table::DescribeTableOutput;
 use aws_sdk_dynamodb::types::AttributeValue;
+use derive_builder::Builder;
 use rstest::fixture;
+use testcontainers_modules::dynamodb_local::DynamoDb;
+use testcontainers_modules::testcontainers::runners::AsyncRunner;
+use testcontainers_modules::testcontainers::{ContainerAsync, ImageExt};
 use uuid::Uuid;
 
 use crate::leaderbot::storage::aws::dynamodb::{
-    DynamoDbLastErrorInformation, DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, LAST_ERROR,
-    RANGE_KEY,
+    DynamoDbLeaderboardData, DynamoDbStorage, HASH_KEY, LAST_ERROR, RANGE_KEY,
 };
 
 /// Endpoint URL for a locally-running DynamoDB.
 pub const LOCAL_ENDPOINT_URL: &str = "http://localhost:8000";
 
-/// Wrapper for a test DynamoDB table stored in a local DynamoDB,
-/// suitable for testing [`DynamoDbStorage`].
+/// Tag of the DynamoDB Docker image used by [`LocalTable`] when [`containerized`].
+///
+/// [`containerized`]: LocalTableBuilder::containerized
+pub const DYNAMODB_LOCAL_TAG: &str = "3.3.0";
+
+/// Configuration used to create a [`LocalTable`].
+///
+/// # Examples
+///
+/// ```
+/// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::{LocalTable, LocalTableConfig};
+///
+/// let config = LocalTableConfig {
+///     pre_create: false,
+///     containerized: true,
+///     name: Some("some_table".into()),
+/// };
+///
+/// let table = LocalTable::new(config).await;
+/// assert!(!table.exists().await);
+///
+/// table.create().await;
+/// assert!(table.exists().await);
+/// ```
+///
+/// It's also possible to use a [builder] to build a config.
+///
+/// ```
+/// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
+///
+/// let config = LocalTable::builder()
+///     .pre_create(false)
+///     .containerized(true)
+///     .name("some_table")
+///     .build_config();
+///
+/// let table = LocalTable::new(config).await;
+/// assert!(!table.exists().await);
+///
+/// table.create().await;
+/// assert!(table.exists().await);
+/// ```
+///
+/// [builder]: LocalTableBuilder
+#[derive(Debug, Clone, Builder)]
+#[builder(name = "LocalTableBuilder", derive(Debug), build_fn(private, name = "build_internal"))]
+#[builder_struct_attr(
+    doc = r"
+        Builder that can be used to create a [`LocalTable`].
+
+        # Example
+    "
+)]
+pub struct LocalTableConfig {
+    #[builder(default = "true")]
+    pre_create: bool,
+
+    #[builder(default)]
+    containerized: bool,
+
+    #[builder(default, setter(into, strip_option))]
+    name: Option<String>,
+}
+
+impl Default for LocalTableConfig {
+    fn default() -> Self {
+        Self {
+            pre_create: true,
+            containerized: false,
+            name: None,
+        }
+    }
+}
+
+impl LocalTableBuilder {
+    pub fn build_config(&self) -> LocalTableConfig {
+        self.build_internal().expect("all local table fields should have default values")
+    }
+
+    pub async fn build(&self) -> LocalTable {
+        LocalTable::new(self.build_config()).await
+    }
+}
+
+/// Wrapper for a test DynamoDB table stored in a local DynamoDB, suitable for testing
+/// [`DynamoDbStorage`].
 ///
 /// # Notes
 ///
-/// Because this is meant to be used for testing, most methods to
-/// not return `Result`s and simply panic if something fails.
+/// Because this is meant to be used for testing, most methods to not return `Result` and simply
+/// panic if something fails.
 #[derive(Debug, Clone)]
 pub struct LocalTable {
     name: String,
+    endpoint_url: String,
+    _container: Option<Arc<ContainerAsync<DynamoDb>>>,
     client: aws_sdk_dynamodb::Client,
     storage: DynamoDbStorage,
 }
 
 impl LocalTable {
-    /// Creates a [`LocalTable`] wrapping a [`DynamoDbStorage`].
-    ///
-    /// Does not create the test table itself; to create it later,
-    /// call [`create`]. If the table is required right away,
-    /// you can call [`with_table`] instead.
-    ///
-    /// [`create`]: Self::create
-    /// [`with_table`]: Self::with_table
-    pub async fn without_table() -> Self {
-        let name = Self::random_table_name();
+    /// Returns a [builder](LocalTableBuilder) to construct a new [`LocalTable`].
+    pub fn builder() -> LocalTableBuilder {
+        <_>::default()
+    }
 
-        let config = aws_config::defaults(BehaviorVersion::latest())
+    pub async fn new(config: LocalTableConfig) -> Self {
+        let name = config.name.unwrap_or_else(|| Self::random_table_name());
+
+        let (container, endpoint_url) = match config.containerized {
+            false => (None, LOCAL_ENDPOINT_URL.into()),
+            true => {
+                let (container, endpoint_url) = Self::create_container().await;
+                (Some(container), endpoint_url)
+            },
+        };
+
+        let sdk_config = aws_config::defaults(BehaviorVersion::latest())
             .region("ca-central-1")
             .test_credentials()
-            .endpoint_url(LOCAL_ENDPOINT_URL)
+            .endpoint_url(endpoint_url.as_str())
             .load()
             .await;
 
-        let client = aws_sdk_dynamodb::Client::new(&config);
-        let storage = DynamoDbStorage::with_config(&config, name.clone()).await;
+        let table = LocalTable {
+            name: name.clone(),
+            endpoint_url,
+            _container: container,
+            client: aws_sdk_dynamodb::Client::new(&sdk_config),
+            storage: DynamoDbStorage::with_config(&sdk_config, name.as_str()).await,
+        };
 
-        Self { name, client, storage }
+        if config.pre_create {
+            table.create().await;
+        }
+
+        table
     }
 
-    /// Creates a [`LocalTable`] wrapping a [`DynamoDbStorage`],
-    /// creating the test table right away.
-    pub async fn with_table() -> Self {
-        let table = Self::without_table().await;
-        table.create().await;
-        table
+    pub async fn default() -> Self {
+        Self::new(<_>::default()).await
     }
 
     /// Creates the test DynamoDB table.
     ///
-    /// Call this only if the table hasn't been created yet,
-    /// i.e. if [`without_table`] was called, and only once.
+    /// Call this only if the table hasn't been created yet, i.e. if [`pre_create`] was set to
+    /// `false` when [`new`] was called.
     ///
-    /// [`without_table`]: Self::without_table
+    /// [`pre_create`]: LocalTableConfig::pre_create
+    /// [`new`]: Self::new
     pub async fn create(&self) {
         self.storage
-            .create_table()
+            .create_table(None)
             .await
             .expect("test table should be creatable");
     }
 
+    /// Checks if the test table exists.
+    pub async fn exists(&self) -> bool {
+        let describe_res = self
+            .client
+            .describe_table()
+            .table_name(self.name())
+            .send()
+            .await;
+
+        match describe_res {
+            Ok(DescribeTableOutput { table: Some(_), .. }) => true,
+            Ok(_) => false,
+            Err(SdkError::ServiceError(service_err))
+                if service_err.err().is_resource_not_found_exception() =>
+            {
+                false
+            },
+            Err(err) => panic!("failed to check if test table exists: {err}"),
+        }
+    }
+
     /// Drops the test table.
     ///
-    /// Call this after testing is done to ensure the test table
-    /// is removed from DynamoDB. Do not call this unless the
-    /// table has been created, either because [`with_table`]
-    /// has been used or because [`create`] has been called.
+    /// Call this after testing is done to ensure the test table is removed from DynamoDB.
+    /// Do not call this unless the table has been created, either because [`pre_create`]
+    /// was set to `true` when [`new`] was called, or because [`create`] has been called.
     ///
     /// # Notes
     ///
-    /// This is not done by implementing `Drop` because it needs
-    /// to be asynchronous. For an easier way to use this method
-    /// in a testing context, see [`run_test`].
+    /// This is not done by implementing `Drop` because it needs to be asynchronous. For an easier
+    /// way to use this method in a testing context, see [`run_test`].
     ///
-    /// [`with_table`]: Self::with_table
+    /// [`pre_create`]: LocalTableConfig::pre_create
+    /// [`new`]: Self::new
     /// [`create`]: Self::create
     /// [`run_test`]: Self::run_test
     pub async fn drop(&self) {
-        self.client
+        let delete_res = self
+            .client
             .delete_table()
             .table_name(self.name())
             .send()
-            .await
-            .expect("test table should be deletable");
+            .await;
+
+        match delete_res {
+            Ok(_) => (),
+            Err(SdkError::ServiceError(service_err))
+                if service_err.err().is_resource_not_found_exception() => {},
+            Err(err) => panic!("failed to delete test table: {err}"),
+        }
     }
 
     /// Returns the name of the test table.
-    ///
-    /// Test table names are generated randomly.
     pub fn name(&self) -> &str {
         &self.name
     }
 
-    /// Returns a reference to the [DynamoDB client]
-    /// used by this wrapper for direct DynamoDB operations.
+    /// Returns the URL of the DynamoDB endpoint that this local table is connected to.
+    pub fn dynamodb_endpoint_url(&self) -> &str {
+        &self.endpoint_url
+    }
+
+    /// Returns a reference to the [DynamoDB client] used by this wrapper for direct DynamoDB
+    /// operations.
     ///
     /// [DynamoDB client]: aws_sdk_dynamodb::Client
     pub fn client(&self) -> &aws_sdk_dynamodb::Client {
@@ -125,12 +257,14 @@ impl LocalTable {
         &mut self.storage
     }
 
-    /// Saves the given [`Leaderboard`] to the test table.
+    /// Saves the given [`Leaderboard`] to the test table without going through the [`storage`].
     ///
-    /// The leaderboard will be associated with the test values
-    /// [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
+    /// The leaderboard will be associated with the test values [`TEST_LEADERBOARD_ID`] and
+    /// [`TEST_YEAR`].
     ///
     /// Any existing data (including last error) will be overwritten.
+    ///
+    /// [`storage`]: Self::storage
     pub async fn save_leaderboard(&self, leaderboard: &Leaderboard) {
         let leaderboard_data = DynamoDbLeaderboardData::for_success(
             TEST_YEAR,
@@ -149,15 +283,17 @@ impl LocalTable {
             .expect("leaderboard data should be storable in the test table");
     }
 
-    /// Saves the given [last error](ErrorKind) to the test table.
+    /// Saves the given [last error] to the test table without going through the [`storage`].
     ///
-    /// The last error will be associated with the test values
-    /// [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
+    /// The last error will be associated with the test values [`TEST_LEADERBOARD_ID`] and
+    /// [`TEST_YEAR`].
     ///
     /// Any existing leaderboard data will be kept.
+    ///
+    /// [last error]: ErrorKind
+    /// [`storage`]: Self::storage
     pub async fn save_last_error(&self, error_kind: ErrorKind) {
-        let last_error = DynamoDbLastErrorInformation(error_kind);
-        let attribute_value = serde_dynamo::to_attribute_value(last_error)
+        let attribute_value = serde_dynamo::to_attribute_value(error_kind)
             .expect("last error should be serializable");
 
         self.client()
@@ -173,12 +309,11 @@ impl LocalTable {
             .expect("last error should be storable in the test table");
     }
 
-    /// Loads a [`Leaderboard`] and any associated [last error](ErrorKind) from
-    /// the test table directly, using the test values [`TEST_LEADERBOARD_ID`]
-    /// and [`TEST_YEAR`].
+    /// Loads a [`Leaderboard`] and any associated [last error] from the test table without going
+    /// through the [`storage`], using the test values [`TEST_LEADERBOARD_ID`] and [`TEST_YEAR`].
     ///
-    /// Loads the data from the table through the DynamoDB client, not via the
-    /// [`DynamoDbStorage`] wrapper.
+    /// [last error]: ErrorKind
+    /// [`storage`]: Self::storage
     pub async fn load_leaderboard_and_last_error(
         &self,
     ) -> (Option<Leaderboard>, Option<ErrorKind>) {
@@ -194,35 +329,55 @@ impl LocalTable {
             .map(|item| {
                 let data: DynamoDbLeaderboardData = serde_dynamo::from_item(item)
                     .expect("leaderboard data should be deserializable");
-                (data.leaderboard_data, data.last_error.map(|le| le.0))
+                (data.leaderboard_data, data.last_error)
             })
             .unwrap_or_default()
     }
 
-    /// Creates a test table wrapper, calls the provided
-    /// test function with it and ensures it is dropped
-    /// before returning.
+    /// Creates a test table wrapper, calls the provided test function with it and ensures it is
+    /// dropped before returning.
     ///
     /// # Notes
     ///
-    /// This function is not `async`, so it must be called
-    /// from within a regular test, not a `tokio` test.
-    /// The function passed to this method, however, must
-    /// return a `Future`. The easiest way is to use an
-    /// `async` block; example:
+    /// This function is not `async`, so it must be called from within a regular test, not a
+    /// `tokio` test. The function passed to this method, however, must return a [`Future`].
+    /// The easiest way is to use an `async` block (see next section for examples).
     ///
-    /// ```no_run
-    /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
-    /// #[test]
-    /// # #[cfg(feature = "__testing")]
-    /// fn some_test() {
-    ///     LocalTable::run_test(|table| async move {
-    ///         // Run some tests with table here...
-    ///         assert!(!table.name().is_empty());
-    ///     });
-    /// }
+    /// # Examples
+    ///
+    /// If no [config] is provided, the default will be used, which means that the table will be
+    /// stored in a locally-running DynamoDB and the table will have been created when the test
+    /// function is called.
+    ///
     /// ```
-    pub fn run_test<TF, TFR>(test_f: TF)
+    /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
+    ///
+    /// LocalTable::run_test(None, |table| async move {
+    ///     assert!(table.exists().await);
+    /// });
+    /// ```
+    ///
+    /// If the default does not work, it's possible to pass a [config] to configure the table.
+    ///
+    /// ```
+    /// # use aoc_leaderbot_aws_lib::leaderbot::storage::aws::dynamodb::test_helpers::LocalTable;
+    ///
+    /// let config = LocalTable::builder()
+    ///     .pre_create(false)
+    ///     .containerized(true)
+    ///     .name("test-containerized-table")
+    ///     .build_config();
+    ///
+    /// LocalTable::run_test(Some(config), |table| async move {
+    ///     assert!(!table.exists().await);
+    ///
+    ///     table.create().await;
+    ///     assert!(table.exists().await);
+    /// });
+    /// ```
+    ///
+    /// [config]: LocalTableConfig
+    pub fn run_test<TF, TFR>(config: Option<LocalTableConfig>, test_f: TF)
     where
         TF: FnOnce(Self) -> TFR,
         TFR: Future<Output = ()> + Send + 'static,
@@ -232,7 +387,8 @@ impl LocalTable {
             .build()
             .expect("should be able to create a Tokio runtime for testing");
 
-        let table = runtime.block_on(Self::with_table());
+        let config = config.unwrap_or_default();
+        let table = runtime.block_on(Self::new(config));
 
         let test_table = table.clone();
         let result = runtime.block_on(runtime.spawn(test_f(test_table)));
@@ -244,6 +400,18 @@ impl LocalTable {
     fn random_table_name() -> String {
         format!("aoc_leaderbot_aws_test_table_{}", Uuid::new_v4())
     }
+
+    async fn create_container() -> (Arc<ContainerAsync<DynamoDb>>, String) {
+        let container = Arc::new(DynamoDb::default()
+            .with_tag(DYNAMODB_LOCAL_TAG)
+            .start()
+            .await
+            .unwrap());
+
+        let host = container.get_host().await.unwrap();
+        let port = container.get_host_port_ipv4(8000).await.unwrap();
+        (container, format!("http://{host}:{port}"))
+    }
 }
 
 /// [`rstest`] fixture providing a [`LocalTable`] wrapper, but without any backing table.
@@ -251,7 +419,7 @@ impl LocalTable {
 /// Equivalent to [`LocalTable::without_table`].
 #[fixture]
 pub async fn local_non_existent_table() -> LocalTable {
-    LocalTable::without_table().await
+    LocalTable::builder().pre_create(false).build().await
 }
 
 /// [`rstest`] fixture providing a [`LocalTable`] with a backing table.
@@ -259,5 +427,27 @@ pub async fn local_non_existent_table() -> LocalTable {
 /// Equivalent to [`LocalTable::with_table`].
 #[fixture]
 pub async fn local_table() -> LocalTable {
-    LocalTable::with_table().await
+    LocalTable::default().await
+}
+
+#[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
+mod tests {
+    use super::*;
+
+    mod local_table {
+        use super::*;
+
+        #[test_log::test]
+        fn lifecycle() {
+            let config = LocalTable::builder().pre_create(false).build_config();
+
+            LocalTable::run_test(Some(config), |table| async move {
+                assert!(!table.exists().await);
+
+                table.create().await;
+                assert!(table.exists().await);
+            });
+        }
+    }
 }

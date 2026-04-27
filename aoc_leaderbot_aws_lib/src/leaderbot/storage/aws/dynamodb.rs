@@ -2,6 +2,7 @@
 //!
 //! [AWS DynamoDB]: https://aws.amazon.com/dynamodb/
 
+pub mod config;
 #[cfg(feature = "__test_helpers")]
 #[doc(hidden)]
 pub mod test_helpers;
@@ -14,13 +15,14 @@ use aoc_leaderbot_lib::leaderbot::Storage;
 use aws_config::SdkConfig;
 use aws_sdk_dynamodb::operation::create_table::CreateTableOutput;
 use aws_sdk_dynamodb::types::{
-    AttributeDefinition, AttributeValue, BillingMode, KeySchemaElement, KeyType,
-    ScalarAttributeType, TableDescription, TableStatus,
+    AttributeDefinition, AttributeValue, KeySchemaElement, KeyType, ScalarAttributeType,
+    TableDescription, TableStatus,
 };
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
 use crate::error::DynamoDbError;
+use crate::leaderbot::storage::aws::dynamodb::config::table::{CreateTableBuilderExt, TableConfig};
 
 /// The hash key (aka partition key) used by [`DynamoDbStorage`].
 ///
@@ -38,14 +40,6 @@ pub const LEADERBOARD_DATA: &str = "leaderboard_data";
 /// The column storing last error information in the [`DynamoDbStorage`].
 pub const LAST_ERROR: &str = "last_error";
 
-/// Newtype struct used to persist last error information into
-/// a DynamoDB table. Used by [`DynamoDbStorage`].
-///
-/// Serializes transparently into an [`ErrorKind`].
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct DynamoDbLastErrorInformation(ErrorKind);
-
 /// Struct used to persist [`Leaderboard`] data into a DynamoDB
 /// table. Used by [`DynamoDbStorage`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,7 +56,7 @@ pub struct DynamoDbLeaderboardData {
 
     /// Information about last execution error, if any. Stored in the [`LAST_ERROR`] column.
     #[serde(default)]
-    pub last_error: Option<DynamoDbLastErrorInformation>,
+    pub last_error: Option<ErrorKind>,
 }
 
 impl DynamoDbLeaderboardData {
@@ -105,10 +99,14 @@ impl DynamoDbStorage {
 
     /// Creates a DynamoDB table suitable for storing leaderboard data.
     ///
-    /// The table name passed at construction time will be used. The function
-    /// waits until the table is created before returning.
+    /// The table name passed at construction time will be used and the optional
+    /// [`table_config`] parameter will be used to configure things like billing mode.
+    ///
+    /// The function waits until the table is created before returning.
+    ///
+    /// [`table_config`]: TableConfig
     #[cfg_attr(not(coverage), tracing::instrument(skip(self), ret, err))]
-    pub async fn create_table(&self) -> crate::Result<()> {
+    pub async fn create_table(&self, table_config: Option<TableConfig>) -> crate::Result<()> {
         let output = self
             .client
             .create_table()
@@ -121,7 +119,7 @@ impl DynamoDbStorage {
                 Self::key_schema_element(HASH_KEY, KeyType::Hash),
                 Self::key_schema_element(RANGE_KEY, KeyType::Range),
             ]))
-            .billing_mode(BillingMode::PayPerRequest)
+            .table_config(table_config)
             .send()
             .await
             .map_err(|source| DynamoDbError::CreateTable {
@@ -212,7 +210,7 @@ impl Storage for DynamoDbStorage {
             .item
             .map(|item| {
                 let data: Result<DynamoDbLeaderboardData, _> = serde_dynamo::from_item(item);
-                data.map(|data| (data.leaderboard_data, data.last_error.map(|le| le.0)))
+                data.map(|data| (data.leaderboard_data, data.last_error))
             })
             .transpose()
             .map(Option::unwrap_or_default)
@@ -252,9 +250,8 @@ impl Storage for DynamoDbStorage {
     ) -> Result<(), Self::Err> {
         let save_error = |source| DynamoDbError::SaveLastError { leaderboard_id, year, source };
 
-        let last_error = DynamoDbLastErrorInformation(error_kind);
         let attribute_value =
-            serde_dynamo::to_attribute_value(last_error).map_err(|err| save_error(err.into()))?;
+            serde_dynamo::to_attribute_value(error_kind).map_err(|err| save_error(err.into()))?;
 
         self.client
             .update_item()

@@ -113,6 +113,26 @@ async fn with_custom_table_name(#[future] local_dynamodb: (ContainerAsync<Dynamo
     check_table_exists(table_name, &endpoint_url).await;
 }
 
+#[rstest]
+#[awt]
+#[test_log::test(tokio::test)]
+#[file_serial(testcontainers_dynamodb)]
+async fn with_unconstrained_pay_per_request_billing_mode(
+    #[future] local_dynamodb: (ContainerAsync<DynamoDb>, String),
+) {
+    let (_dynamodb, endpoint_url) = local_dynamodb;
+
+    Command::new(cargo_bin!("prepare_dynamodb"))
+        .arg("--billing-mode")
+        .arg("pay-per-request")
+        .arg("--test-endpoint-url")
+        .arg(&endpoint_url)
+        .assert()
+        .success();
+
+    check_table_exists(DEFAULT_DYNAMODB_TABLE_NAME, &endpoint_url).await;
+}
+
 #[test_log::test]
 #[file_serial(aws_env)]
 fn without_connection() {
