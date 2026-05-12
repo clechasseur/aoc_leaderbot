@@ -16,20 +16,22 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@150fca883cd4034361b621bd4e6a9d34e5143606 # v1.15.4
+        uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
         with:
           toolchain: stable
           cache: false
 
-      - name: Rust Cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-        with:
-          cache-on-failure: true
 
-      - name: Install just
-        uses: taiki-e/install-action@d858f8113943481093e02986a7586a4819a3bfd6 # v2.71.2
+      - name: Setup cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.17.9
         with:
-          tool: just@1.40.0
+          version: v1.17.9
+
+      - name: Install required tools
+        uses: clechasseur/rs-cargo@v5.0.5
+        with:
+          command: binstall
+          args: -y just@1.48.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
