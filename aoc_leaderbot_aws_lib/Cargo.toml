@@ -59,7 +59,7 @@ __test_helpers = [
 aoc_leaderboard = { workspace = true, optional = true }
 aoc_leaderbot_lib = { workspace = true, optional = true, default-features = false }
 aws-config = { workspace = true, optional = true, features = ["behavior-version-latest"] }
-aws-sdk-dynamodb = { workspace = true, optional = true }
+aws-sdk-dynamodb = { workspace = true, optional = true, default-features = false, features = ["default-https-client", "rt-tokio"] }
 derive_builder = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive"] }
 serde_dynamo = { workspace = true, optional = true, features = ["aws-sdk-dynamodb+1"] }
