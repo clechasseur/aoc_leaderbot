@@ -47,8 +47,10 @@ storage-dynamodb = [
 ]
 
 __test_helpers = [
+    "storage-dynamodb",
     "aoc_leaderboard/__test_helpers",
-    "dep:rstest",
+    "dep:derive_builder",
+    "dep:testcontainers-modules",
     "dep:tokio",
     "dep:uuid",
 ]
@@ -57,10 +59,11 @@ __test_helpers = [
 aoc_leaderboard = { workspace = true, optional = true }
 aoc_leaderbot_lib = { workspace = true, optional = true, default-features = false }
 aws-config = { workspace = true, optional = true, features = ["behavior-version-latest"] }
-aws-sdk-dynamodb = { workspace = true, optional = true }
-rstest = { workspace = true, optional = true }
+aws-sdk-dynamodb = { workspace = true, optional = true, default-features = false, features = ["default-https-client", "rt-tokio"] }
+derive_builder = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive"] }
 serde_dynamo = { workspace = true, optional = true, features = ["aws-sdk-dynamodb+1"] }
+testcontainers-modules = { workspace = true, optional = true, features = ["dynamodb"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, optional = true, features = ["time"] }
 tracing = { workspace = true, optional = true }
@@ -70,5 +73,6 @@ uuid = { workspace = true, optional = true, features = ["v4"] }
 aoc_leaderboard = { workspace = true, features = ["__test_helpers"] }
 assert_matches = { workspace = true }
 rstest = { workspace = true }
+serial_test = { workspace = true, features = ["file_locks"] }
 test-log = { workspace = true, default-features = false, features = ["trace"] }
 tokio = { workspace = true, features = ["macros"] }

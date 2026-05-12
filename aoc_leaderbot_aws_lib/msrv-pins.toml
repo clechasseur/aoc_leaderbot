@@ -1,6 +1,10 @@
 [dependencies]
+async-trait = "0.1.89"
+num = "0.4.3"
 regex = "1.11.1"
 rustls = "0.23.23"
+serde_repr = "0.1.20"
+testcontainers = "0.27.3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "2.11.1"
