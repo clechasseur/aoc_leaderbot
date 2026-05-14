@@ -10,7 +10,7 @@ Add `aoc_leaderbot_lib` to your dependencies:
 
 ```toml
 [dependencies]
-aoc_leaderbot_lib = "2.0.0"
+aoc_leaderbot_lib = "3.0.0"
 ```
 
 or by running:
@@ -60,6 +60,7 @@ For other trait implementations, you can look at related crates like [`aoc_leade
 Required feature: `config-mem` (enabled by default)
 
 This implementation of `Config` simply stores its values in memory.
+It can also be persisted with [`serde`](https://serde.rs/).
 The most basic implementation, but it works.
 
 ### [`get_env_config`](https://docs.rs/aoc_leaderbot_lib/latest/aoc_leaderbot_lib/leaderbot/config/env/fn.get_env_config.html)

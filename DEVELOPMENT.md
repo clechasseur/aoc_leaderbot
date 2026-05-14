@@ -59,7 +59,34 @@ You can also install it via [cargo-binstall](https://github.com/cargo-bins/cargo
 cargo binstall cargo-llvm-cov
 ```
 
+### Docker (or equivalent)
+
+This project includes crates that connect to [AWS DynamoDB](https://aws.amazon.com/dynamodb/).
+To test this locally, the [`dynamodb-local`](https://hub.docker.com/r/amazon/dynamodb-local) Docker image is used to run a local, API-compatible DynamoDB service.
+To run this container, you will need either Docker or an equivalent containerization engine (like [Podman](https://podman.io/)).
+
+The easiest way to run containers locally is to use [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+It is free to use for non-commercial use.
+
+Whatever tool you install, make sure it also supports [Docker Compose](https://docs.docker.com/compose/).
+
+#### Linux
+
 ## Development
+
+### Running the local DynamoDB
+
+Both the tests and the bot code can connect to a local DynamoDB instance, running via [`dynamodb-local`](https://hub.docker.com/r/amazon/dynamodb-local).
+If tests are executed using the `just` recipe (see below), the DynamoDB container will be started and stopped automatically.
+To speed things up, it's also possible to start the container in advance - if it is already running, the tests won't try to start it again.
+
+To start or stop the local DynamoDB container, you can use
+
+```shell
+just dynamo
+```
+
+The command is a toggle - it detects whether the container is running and starts or stops it as appropriate.
 
 ### Running the tests
 

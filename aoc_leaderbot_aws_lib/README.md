@@ -10,7 +10,7 @@ Add `aoc_leaderbot_aws_lib` to your dependencies:
 
 ```toml
 [dependencies]
-aoc_leaderbot_aws_lib = "2.0.0"
+aoc_leaderbot_aws_lib = "3.0.0"
 ```
 
 or by running:
@@ -34,7 +34,7 @@ If that table does not yet exist, it's possible to create it via the [`create_ta
 
 ## Minimum Rust version
 
-`aoc_leaderbot_aws_lib` currently builds on Rust 1.88 or newer.
+`aoc_leaderbot_aws_lib` currently builds on Rust 1.91.1 or newer.
 
 ## Contributing / Local development
 
