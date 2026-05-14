@@ -49,10 +49,6 @@ impl LocalTableBuilder {
             .expect("all local table fields should have default values")
     }
 
-    pub async fn build(&self) -> LocalTable {
-        LocalTable::new(self.build_config()).await
-    }
-
     pub fn run_test<TF, TFR>(&self, test_f: TF)
     where
         TF: FnOnce(LocalTable) -> TFR + Send + 'static,
@@ -107,10 +103,6 @@ impl LocalTable {
         }
 
         table
-    }
-
-    pub async fn default() -> Self {
-        Self::new(<_>::default()).await
     }
 
     pub async fn create(&self) {

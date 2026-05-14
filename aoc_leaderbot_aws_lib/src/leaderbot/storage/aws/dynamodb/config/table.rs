@@ -18,7 +18,7 @@ pub const DEFAULT_WRITE_CAPACITY_UNITS: i64 = 5;
 /// Configuration parameters for DynamoDB table used by [`DynamoDbStorage`].
 ///
 /// [`DynamoDbStorage`]: crate::leaderbot::storage::aws::dynamodb::DynamoDbStorage
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq)]
 pub struct TableConfig {
     /// Config for the table's [billing mode].
     ///
@@ -36,7 +36,7 @@ pub struct TableConfig {
 ///
 /// [provisioned capacity mode]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html
 /// [read and write capacity units]: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/provisioned-capacity-mode.html#read-write-capacity-units
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BillingModeConfig {
     /// Configure table in [on-demand capacity mode], with optional throughput limits.
     ///
@@ -112,6 +112,95 @@ impl CreateTableBuilderExt for CreateTableFluentBuilder {
             BillingModeConfig::Provisioned(provisioned_throughput) => self
                 .billing_mode(BillingMode::Provisioned)
                 .provisioned_throughput(provisioned_throughput),
+        }
+    }
+}
+
+#[cfg(test)]
+#[cfg_attr(coverage_nightly, coverage(off))]
+mod tests {
+    use assert_matches::assert_matches;
+
+    use super::*;
+
+    mod billing_mode_config {
+        use super::*;
+
+        #[test]
+        fn unconstrained_pay_per_request() {
+            let actual = BillingModeConfig::unconstrained_pay_per_request();
+            assert_matches!(actual, BillingModeConfig::PayPerRequest(None));
+        }
+
+        #[test]
+        fn pay_per_request_none() {
+            let actual = BillingModeConfig::pay_per_request(None, None);
+            assert_matches!(actual, BillingModeConfig::PayPerRequest(None));
+        }
+
+        #[test]
+        fn pay_per_request_read_reqs() {
+            let actual = BillingModeConfig::pay_per_request(Some(42), None);
+            assert_matches!(
+                actual,
+                BillingModeConfig::PayPerRequest(Some(OnDemandThroughput {
+                    max_read_request_units: Some(42),
+                    max_write_request_units: None,
+                    ..
+                }))
+            );
+        }
+
+        #[test]
+        fn pay_per_request_write_reqs() {
+            let actual = BillingModeConfig::pay_per_request(None, Some(23));
+            assert_matches!(
+                actual,
+                BillingModeConfig::PayPerRequest(Some(OnDemandThroughput {
+                    max_read_request_units: None,
+                    max_write_request_units: Some(23),
+                    ..
+                }))
+            );
+        }
+
+        #[test]
+        fn pay_per_request_both_reqs() {
+            let actual = BillingModeConfig::pay_per_request(Some(42), Some(23));
+            assert_matches!(
+                actual,
+                BillingModeConfig::PayPerRequest(Some(OnDemandThroughput {
+                    max_read_request_units: Some(42),
+                    max_write_request_units: Some(23),
+                    ..
+                }))
+            );
+        }
+
+        #[test]
+        fn provisioned() {
+            let actual = BillingModeConfig::provisioned(42, 23);
+            assert_matches!(
+                actual,
+                BillingModeConfig::Provisioned(ProvisionedThroughput {
+                    read_capacity_units: 42,
+                    write_capacity_units: 23,
+                    ..
+                })
+            );
+        }
+
+        #[test]
+        fn default() {
+            let actual = BillingModeConfig::default();
+            assert_matches!(
+                actual,
+                BillingModeConfig::Provisioned(ProvisionedThroughput {
+                    read_capacity_units: DEFAULT_READ_CAPACITY_UNITS,
+                    write_capacity_units: DEFAULT_WRITE_CAPACITY_UNITS,
+                    ..
+                })
+            );
         }
     }
 }
