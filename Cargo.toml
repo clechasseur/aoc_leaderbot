@@ -24,7 +24,7 @@ aoc_leaderboard = { version = "3.0.0", path = "aoc_leaderboard" }
 aoc_leaderbot_aws_lib = { version = "3.0.0", path = "aoc_leaderbot_aws_lib" }
 aoc_leaderbot_lib = { version = "3.0.0", path = "aoc_leaderbot_lib", default-features = false }
 aoc_leaderbot_slack_lib = { version = "3.0.0", path = "aoc_leaderbot_slack_lib" }
-aws-config = "1.8.16"
+aws-config = "1.8.18"
 aws-sdk-dynamodb = { version = "1.111.0", default-features = false }
 chrono = "0.4.44"
 clap = "4.6.1"
