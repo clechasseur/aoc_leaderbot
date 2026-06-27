@@ -27,7 +27,6 @@ aoc_leaderbot_slack_lib = { version = "3.0.0", path = "aoc_leaderbot_slack_lib" 
 aws-config = "1.8.18"
 aws-sdk-dynamodb = { version = "1.116.0", default-features = false }
 chrono = "0.4.45"
-chrono = "0.4.44"
 clap = "4.6.1"
 derive_builder = "0.20.2"
 dotenvy = "0.15.7"
