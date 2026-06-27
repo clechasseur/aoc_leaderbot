@@ -1,5 +1,8 @@
 [dependencies]
 async-trait = "0.1.89"
+aws-lc-rs = "1.16.3"
+aws-lc-sys = "0.40.0"
+cmake = "0.1.58"
 num = "0.4.3"
 regex = "1.11.1"
 rustls = "0.23.23"
