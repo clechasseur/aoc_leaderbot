@@ -1,2 +1,4 @@
 [dependencies]
+aws-lc-rs = "1.16.3"
+aws-lc-sys = "0.40.0"
 cmake = "0.1.58"
