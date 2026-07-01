@@ -70,8 +70,6 @@ It is free to use for non-commercial use.
 
 Whatever tool you install, make sure it also supports [Docker Compose](https://docs.docker.com/compose/).
 
-#### Linux
-
 ## Development
 
 ### Running the local DynamoDB
