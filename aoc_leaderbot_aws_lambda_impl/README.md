@@ -19,7 +19,7 @@ In theory, running the bot every 15 minutes continuously should be well below se
 ### Prerequisites
 
 - A clone of [this project](https://github.com/clechasseur/aoc_leaderbot)
-- Rust 1.91.1 or newer (see [DEVELOPMENT](../DEVELOPMENT.md))
+- Rust 1.94.1 or newer (see [DEVELOPMENT](../DEVELOPMENT.md))
 - [just](https://github.com/casey/just) (see [DEVELOPMENT](../DEVELOPMENT.md))
 - [Cargo Lambda](https://www.cargo-lambda.info/guide/installation.html)
 
