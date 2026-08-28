@@ -1636,23 +1636,23 @@ checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 
 [[package]]
 name = "gratte"
-version = "2.0.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5efc368975dc81376d2cb37b93dccc2fbe9e5d5278042d2855a61c9878b931f"
+checksum = "0b31979f153f52b2978dd49a2fda646b1fed9fd42da274347f48c0557b93f17b"
 dependencies = [
  "gratte_macros",
 ]
 
 [[package]]
 name = "gratte_macros"
-version = "2.0.0"
+version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cc4a2259f62da7ca40ec119141b34c78e7b88590831460265300c75ad0754e9"
+checksum = "71173ba2370c10f6a303d2b346c66b09fcaaa311b6d7541a0a3c0bb18e1f6574"
 dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.4",
 ]
 
 [[package]]
