@@ -10,7 +10,7 @@ Add `aoc_leaderbot_slack_lib` to your dependencies:
 
 ```toml
 [dependencies]
-aoc_leaderbot_slack_lib = "4.0.0"
+aoc_leaderbot_slack_lib = "4.0.1"
 ```
 
 or by running:
