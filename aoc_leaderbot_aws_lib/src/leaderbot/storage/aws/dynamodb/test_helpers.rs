@@ -24,7 +24,7 @@ use crate::leaderbot::storage::aws::dynamodb::{
 };
 
 pub const LOCAL_ENDPOINT_URL: &str = "http://localhost:8000";
-pub const DYNAMODB_LOCAL_TAG: &str = "3.3.1";
+pub const DYNAMODB_LOCAL_TAG: &str = "3.3.2";
 
 #[derive(Debug, Clone, Builder)]
 #[builder(name = "LocalTableBuilder", derive(Debug), build_fn(private, name = "build_internal"))]
