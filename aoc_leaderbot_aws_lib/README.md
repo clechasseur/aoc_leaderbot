@@ -10,7 +10,7 @@ Add `aoc_leaderbot_aws_lib` to your dependencies:
 
 ```toml
 [dependencies]
-aoc_leaderbot_aws_lib = "4.0.1"
+aoc_leaderbot_aws_lib = "4.0.2"
 ```
 
 or by running:
