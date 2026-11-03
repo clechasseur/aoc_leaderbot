@@ -75,7 +75,7 @@ jobs:
       fail-fast: false
       matrix:
         package: [ "aoc_leaderboard", "aoc_leaderbot_lib", "aoc_leaderbot_aws_lib", "aoc_leaderbot_slack_lib", "aoc_leaderbot_aws_lambda_impl" ]
-        os: [ ubuntu-24.04, macos-15, windows-2025 ]
+        os: [ ubuntu-26.04, macos-26, windows-2025 ]
         include:
           - toolchain: 1.88.0
           - package: aoc_leaderbot_aws_lib
@@ -121,10 +121,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-24.04, macos-15, windows-2025 ]
+        os: [ ubuntu-26.04, macos-26, windows-2025 ]
         include:
           - with-docker: false
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
             with-docker: true
     runs-on: ${{ matrix.os }}
     steps:
