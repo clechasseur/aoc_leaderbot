@@ -36,9 +36,9 @@ jobs:
         arch: [ aarch64, x86_64 ]
         platform: [ unknown-linux-gnu, unknown-linux-musl, unknown-freebsd, apple-darwin, pc-windows-msvc ]
         include:
-          - os: ubuntu-24.04
+          - os: ubuntu-26.04
           - platform: apple-darwin
-            os: macos-15
+            os: macos-26
           - platform: pc-windows-msvc
             os: windows-2025
           - crt-static: false
@@ -50,7 +50,7 @@ jobs:
             link-self-contained: true
           - arch: universal
             platform: apple-darwin
-            os: macos-15
+            os: macos-26
         exclude:
           - arch: aarch64
             platform: unknown-freebsd
