@@ -180,6 +180,10 @@ jobs:
         with:
           toolchain: nightly
           cache: false
+          # There is a warning in aoc_leaderbot_slack_lib that says that coverage_attribute is unused.
+          # This appears to be false, because commenting it out results in a build failure.
+          # We'll set this to 'warn' for now - it might be a bug in recent Nightly builds.
+          build-warnings: 'warn'
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
