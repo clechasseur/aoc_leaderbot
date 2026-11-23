@@ -158,7 +158,7 @@ jobs:
 
       - name: Start DB Docker containers
         if: ${{ matrix.with-docker }}
-        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
+        uses: hoverkraft-tech/compose-action@cdaf49f2d715a87c3387e86cb35c772b14f0efe0 # v3.2.1
         with:
           down-flags: '--volumes'
 
@@ -206,7 +206,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Start DB Docker containers
-        uses: hoverkraft-tech/compose-action@b659c744ee9bed25aea2307c017ad849bd104433 # v3.2.0
+        uses: hoverkraft-tech/compose-action@cdaf49f2d715a87c3387e86cb35c772b14f0efe0 # v3.2.1
         with:
           down-flags: '--volumes'
 
